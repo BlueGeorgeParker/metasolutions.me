@@ -1,4 +1,7 @@
-"""Copy the latest Roblox infomap files in and push them live to metasolutions.me.
+"""Copy the latest Roblox infomap files in and push them live.
+
+`git push` sends to two GitHub repos at once: metasolutions.me (blocked on Uni Melb
+wifi as a new domain) and rogueacademia.net (works on campus).
 
 Run:  python publish.py
 """
@@ -24,4 +27,4 @@ if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=SITE).returncode =
 else:
     subprocess.run(["git", "commit", "-m", "Update maps"], cwd=SITE, check=True)
     subprocess.run(["git", "push"], cwd=SITE, check=True)
-    print("Pushed. Live at https://metasolutions.me in about a minute.")
+    print("Pushed. Live at metasolutions.me and rogueacademia.net in about a minute.")
