@@ -1,4 +1,4 @@
-"""Copy the latest Roblox infomap files in and push them live to rogueacademia.net.
+"""Copy the latest Roblox infomap files in and push them live to metasolutions.me.
 
 Run:  python publish.py
 """
@@ -24,4 +24,4 @@ if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=SITE).returncode =
 else:
     subprocess.run(["git", "commit", "-m", "Update maps"], cwd=SITE, check=True)
     subprocess.run(["git", "push"], cwd=SITE, check=True)
-    print("Pushed. Live at https://rogueacademia.net in about a minute.")
+    print("Pushed. Live at https://metasolutions.me in about a minute.")
