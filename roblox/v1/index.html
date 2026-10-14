@@ -1,0 +1,1112 @@
+<title>Roblox Infomap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: one full-window canvas. Every size on it is computed from the view each frame; no camera transform. */
+:root {
+  --ground: #EDF0F3;
+  --panel: #E1E6EC;
+  --card: #FFFFFF;
+  --ink: #131922;
+  --ink-soft: #5B6675;
+  --rule: #BCC5D0;
+  --curve: #2B50D6;
+  --local: #17805A;
+  --font-title: "Archivo", "Arial Narrow", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0F1318; --panel: #181E26; --card: #1F262F; --ink: #E7EBF0;
+    --ink-soft: #97A2B0; --rule: #36404C; --curve: #7E9BFF; --local: #4CC38F;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0F1318; --panel: #181E26; --card: #1F262F; --ink: #E7EBF0;
+  --ink-soft: #97A2B0; --rule: #36404C; --curve: #7E9BFF; --local: #4CC38F;
+  color-scheme: dark;
+}
+html, body { height: 100%; margin: 0; }
+body { background: var(--ground); color: var(--ink); overflow: hidden; }
+#map { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+#map.dragging { cursor: grabbing; }
+#map.over { cursor: pointer; }
+#hint {
+  position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  font: 14px/1.3 var(--font-body); color: var(--ink-soft);
+  background: var(--card); border: 1px solid var(--rule); border-radius: 6px;
+  padding: 8px 12px; max-width: calc(100% - 56px); transition: opacity .8s;
+}
+#hint.gone { opacity: 0; pointer-events: none; }
+</style>
+
+<canvas id="map" role="img" aria-label="Infomap: Roblox's daily players from 2004 to 2026 drawn as a curve, with the events of each year and the readings placed on the same timeline"></canvas>
+<div id="hint">Scroll or pinch to zoom · drag to move · click anything to go there · Esc for the whole map</div>
+
+<script>
+(() => {
+'use strict';
+
+// ---------- World ----------
+// x: one year = 100 units from 2004. y points UP: 160 million daily players = 1100 units.
+const YR = 100, HGT = 1100, PMAX = 160;
+const X = t => (t - 2004) * YR;
+const Y = m => m / PMAX * HGT;
+
+// Average daily active users (millions), from Roblox's SEC filings.
+// 2018 and 2019 are full-year averages (S-1); Q3 2020 is derived from the S-1's nine-month average.
+const SERIES = [
+  [2018.5, 12.0], [2019.5, 17.6],
+  [2020.125, 23.6], [2020.375, 33.4], [2020.625, 36.2], [2020.875, 37.1],
+  [2021.125, 42.1], [2021.375, 43.2], [2021.625, 47.3], [2021.875, 49.5],
+  [2022.125, 54.1], [2022.375, 52.2], [2022.625, 58.8], [2022.875, 58.8],
+  [2023.125, 66.1], [2023.375, 65.5], [2023.625, 70.2], [2023.875, 71.5],
+  [2024.125, 77.7], [2024.375, 79.5], [2024.625, 88.9], [2024.875, 85.3],
+  [2025.125, 97.8], [2025.375, 111.8], [2025.625, 151.5], [2025.875, 144.0],
+  [2026.125, 132.0], [2026.375, 123.0],
+].map(([t, m]) => ({ x: X(t), y: Y(m), t, m }));
+const LAUNCH = { x: X(2006.67), y: 0 };
+const PEAK = SERIES.reduce((a, b) => (b.m > a.m ? b : a));
+const LAST = SERIES[SERIES.length - 1];
+
+// Monotone cubic through the measured points, so the drawn curve never invents a higher peak.
+const SL = (() => {
+  const n = SERIES.length, d = [], m = new Array(n);
+  for (let i = 0; i < n - 1; i++) d[i] = (SERIES[i + 1].y - SERIES[i].y) / (SERIES[i + 1].x - SERIES[i].x);
+  m[0] = d[0]; m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    const a = m[i] / d[i], b = m[i + 1] / d[i], s = a * a + b * b;
+    if (s > 9) { const k = 3 / Math.sqrt(s); m[i] = k * a * d[i]; m[i + 1] = k * b * d[i]; }
+  }
+  return m;
+})();
+function curveAt(x) {
+  if (x <= LAUNCH.x) return 0;
+  const f = SERIES[0];
+  if (x <= f.x) return LAUNCH.y + (f.y - LAUNCH.y) * (x - LAUNCH.x) / (f.x - LAUNCH.x);
+  if (x >= LAST.x) return LAST.y;
+  let i = 0; while (SERIES[i + 1].x < x) i++;
+  const p = SERIES[i], q = SERIES[i + 1], h = q.x - p.x, t = (x - p.x) / h;
+  const t2 = t * t, t3 = t2 * t;
+  return (2 * t3 - 3 * t2 + 1) * p.y + (t3 - 2 * t2 + t) * h * SL[i] + (-2 * t3 + 3 * t2) * q.y + (t3 - t2) * h * SL[i + 1];
+}
+
+// ---------- Content ----------
+// Events on the curve, one card each, pinned to their date.
+const EVENTS = [
+  { t: 2004.5, date: '2004', title: 'Founded', body: 'David Baszucki and Erik Cassel start the company that becomes Roblox.', src: 'TechCrunch, 2019' },
+  { t: 2006.67, date: 'Sep 2006', title: 'Opens to the public', body: 'Roblox launches on PC for anyone to play.', src: 'Wikipedia: Roblox Corporation' },
+  { t: 2008.5, date: '2008', title: 'Every game user-made', body: 'Roblox stops making its own games. From here, players and creators make all of them.', src: 'Wikipedia: Roblox Corporation' },
+  { t: 2012.95, date: 'Dec 2012', title: 'iPhone and iPad', body: 'Roblox arrives on iOS.', src: 'VentureBeat, 2014' },
+  { t: 2013.5, date: '2013', title: 'Developer Exchange', body: 'Creators can cash the Robux their games earn out for real money.', src: 'Roblox newsroom' },
+  { t: 2014.54, date: 'Jul 2014', title: 'Android', body: 'Roblox arrives on Android phones.', src: 'VentureBeat, 2014' },
+  { t: 2016.07, date: 'Jan 2016', title: 'Xbox One', body: 'Roblox reaches its first games console.', src: 'Xbox Wire, 2016' },
+  { t: 2019.6, date: 'Aug 2019', title: '100 million a month', body: 'Roblox passes 100 million monthly players.', src: 'TechCrunch, 2019' },
+  { t: 2020.87, date: 'Nov 2020', title: 'Lil Nas X concert', body: 'Four shows over one weekend log more than 33 million visits.', src: 'Billboard, 2020' },
+  { t: 2020.88, date: 'Nov 2020', title: 'Calls itself a platform', body: 'Its stock-market filing describes a "human co-experience platform" and mentions the metaverse.', src: 'Roblox S-1, SEC' },
+  { t: 2021.19, date: 'Mar 2021', title: 'Goes public', body: 'Lists on the New York Stock Exchange, worth about $38 billion at the first close.', src: 'CNBC, 2021' },
+  { t: 2021.4, date: 'May 2021', title: 'Gucci Garden', body: 'A two-week virtual Gucci exhibition runs inside Roblox.', src: 'Dezeen, 2021' },
+  { t: 2021.63, date: 'Aug 2021', title: 'Young developers investigation', body: 'People Make Games (YouTube) reports on Roblox taking a 75% cut and its $1,000 cash-out minimum.', src: 'NME, 2021' },
+  { t: 2021.88, date: 'Nov 2021', title: 'Nikeland', body: 'Nike opens a permanent world modelled on its headquarters.', src: 'CNBC, 2021' },
+  { t: 2024.55, date: 'Jul 2024', title: 'Bloomberg investigation', body: 'Bloomberg Businessweek reports on predators finding children through Roblox.', src: 'Bloomberg, 2024' },
+  { t: 2024.6, date: 'Aug 2024', title: 'Turkey blocks Roblox', body: 'A Turkish court blocks the platform over child-abuse concerns.', src: 'Bloomberg, 2024' },
+  { t: 2024.77, date: 'Oct 2024', title: 'Short-seller report', body: 'Hindenburg Research alleges inflated user numbers and child-safety failures.', src: 'Sherwood News, 2024' },
+  { t: 2024.88, date: 'Nov 2024', title: 'Under-13 messaging limits', body: 'Under-13s can no longer message people outside games. Parents get controls from their own accounts.', src: 'TechCrunch, 2024' },
+  { t: 2025.47, date: 'Jun 2025', title: 'Grow a Garden', body: 'One player-made game reaches about 21.6 million players at once, beating Fortnite’s record.', src: 'NBC / AP, 2025' },
+  { t: 2025.625, date: 'Jul–Sep 2025', title: 'The peak', body: '151.5 million daily players on average, up 70% on a year earlier.', src: 'Roblox Q3 2025 results' },
+  { t: 2025.68, date: 'Sep 2025', title: 'Moments', body: 'A TikTok-style feed of gameplay clips opens in beta for over-13s. A clip leads straight into its game.', src: 'TechCrunch, 2025' },
+  { t: 2025.7, au: true, date: 'Sep 2025', title: 'Commitments to eSafety', body: 'Roblox makes nine commitments, including private-by-default accounts for under-16s.', src: 'eSafety Commissioner, 2025' },
+  { t: 2025.92, date: 'Dec 2025', title: 'Russia blocks Roblox', body: 'A national ban takes Russian players off the platform.', src: 'Roblox Q1 2026 letter' },
+  { t: 2025.93, au: true, date: 'Dec 2025', title: 'Age checks start here', body: 'Chat now needs a face or ID age check, first in Australia, New Zealand and the Netherlands.', src: 'Roblox newsroom, 2026' },
+  { t: 2025.94, au: true, date: 'Dec 2025', title: 'Left out of the under-16 ban', body: 'Australia’s social media ban starts. Roblox is not covered because it counts as a game.', src: 'ABC News, 2025' },
+  { t: 2026.05, date: 'Jan 2026', title: 'Age checks go global', body: 'The chat age check is now required everywhere.', src: 'Roblox newsroom, 2026' },
+  { t: 2026.12, au: true, date: 'Feb 2026', title: 'eSafety puts Roblox on notice', body: 'Australia’s online safety regulator formally warns Roblox.', src: 'ABC News, 2026' },
+  { t: 2026.45, date: 'Jun 2026', title: 'Russia unblocks Roblox', body: 'Roblox returns in Russia late in the quarter.', src: 'Roblox Q2 2026 letter' },
+  { t: 2026.63, au: true, date: 'Aug 2026', title: 'Court-enforceable undertaking', body: 'eSafety gives Roblox three months to fix problems, checked by an independent audit.', src: 'ABC News, 2026' },
+];
+
+const READINGS = [
+  { t: 2010, title: 'Gillespie 2010', work: 'The politics of “platforms”', venue: 'New Media & Society 12(3): 347–364', refs: [
+    ['p. 347', '“Platform” pitched to users, advertisers and lawmakers at once'],
+    ['p. 348', 'Why companies call themselves platforms: profit and legal shelter'],
+    ['p. 350', 'The word makes a service sound open, neutral and fair'],
+    ['p. 352', 'One word, three pitches: users, advertisers, clients'] ] },
+  { t: 2010, title: 'Venturini 2010', work: 'Diving in magma: how to explore controversies with actor-network theory', venue: 'Public Understanding of Science 19(3): 258–273', refs: [
+    ['', 'Mapping controversies: the method for an actor-network that changes over time'] ] },
+  { t: 2019, title: 'Poell, Nieborg & van Dijck 2019', work: 'Platformisation', venue: 'Internet Policy Review 8(4)', refs: [
+    ['', 'The standard definition of platformisation'] ] },
+  { t: 2019, title: 'Gorwa 2019', work: 'What is platform governance?', venue: 'Information, Communication & Society 22(6): 854–871', refs: [
+    ['p. 854', 'Platform governance: companies, users, advertisers, governments'],
+    ['p. 855', 'Governance by platforms vs governance of platforms'],
+    ['p. 858', 'Names game studies as a platform-studies tradition'],
+    ['pp. 862–4', 'Self-, external and co-governance'] ] },
+  { t: 2019, title: 'Beraldo & Milan 2019', work: 'From data politics to the contentious politics of data', venue: 'Big Data & Society 6(2)', refs: [
+    ['p. 2', 'Contentious politics of data: pushback from below'],
+    ['p. 2', 'Data as the stake vs data as the tool'] ] },
+  { t: 2020, title: 'Chia et al. 2020', work: 'Platformisation in game development', venue: 'Internet Policy Review 9(4)', refs: [
+    ['', 'Unity and Twine as cases of platformised game making'] ] },
+  { t: 2022, title: 'Galli 2022', work: 'Algorithmic Marketing and EU Law on Unfair Commercial Practices', venue: 'Springer', refs: [
+    ['p. 64', 'Marketing that finds customers for its products'],
+    ['p. 193', 'Children as a lucrative target for digital marketers'],
+    ['p. 194', 'Ads inside app games use children to spread brands'] ] },
+  { t: 2024, title: 'Morreale & Rosa 2024', work: 'Roblox and the pervasiveness of play: what game-making communities can teach us about participatory practices in affinity spaces', venue: 'International Journal of Communication 18: 4281–4299', refs: [
+    ['p. 4282', 'Froebel’s kindergarten, via Resnick: understanding through re-creation'],
+    ['p. 4282', 'Roblox as an affinity space with legitimate peripheral participation'],
+    ['p. 4291', 'Newcomers learn by watching skilled players, then take on more'],
+    ['p. 4294', 'Newcomers become designers and storytellers'] ] },
+  { t: 2026, title: 'Nielsen & Chia 2026', work: 'Speculators inside the slop factory: shovelware and financialized game development in Roblox', venue: 'International Journal of Communication 20', refs: [
+    ['', 'Interviews with 17 Roblox creators about making games for money'] ] },
+  { t: 2026, title: 'Kusmawan, Arifah & Chitra 2026', work: 'Tales more than just a game: dissecting Roblox as a popular culture and digital social transformation', venue: 'LingPoet 7(1): 17–22', refs: [
+    ['p. 17', 'Four factors: brainrot, Robux consumerism, cyberculture, third place'],
+    ['p. 20', 'Third place: social life outside home and school moves online'],
+    ['p. 21', 'Moments: a clip feed that keeps video inside Roblox'],
+    ['', 'Check before citing: two of its references could not be found, and several are blogs'] ] },
+];
+// The timelines: chosen topics (several tags folded into one), and Third place built from its theme's stories.
+const TIMELINES = [
+  { name: 'Child safety', tags: ['child-safety', 'moderation', 'data-privacy'] },
+  { name: 'Regulation and law', tags: ['regulation-legal'] },
+  { name: 'Creator economy', tags: ['creator-economy', 'labour', 'education'] },
+  { name: 'Kids and money', tags: ['kids-money'] },
+  { name: 'Culture and viral hits', tags: ['culture-virality'] },
+  { name: 'Brands and metaverse', tags: ['brands-metaverse'] },
+  { name: 'Third place', theme: 'Third place' },
+];
+
+// News coverage, grouped by period and hung in time order under the axis; each box points at its period.
+const MEDIA_GROUPS = [
+  { label: '2007–2016', from: 2007, to: 2016 },
+  { label: '2017', from: 2017, to: 2017 },
+  { label: '2018–2019', from: 2018, to: 2019 },
+  { label: '2020', from: 2020, to: 2020 },
+  { label: '2021', from: 2021, to: 2021 },
+  { label: '2022–2023', from: 2022, to: 2023 },
+  { label: '2024', from: 2024, to: 2024 },
+  { label: '2025', from: 2025, to: 2025 },
+  { label: '2026', from: 2026, to: 2026 },
+];
+const TAG_WORDS = { 'growth-business': 'business', 'creator-economy': 'creator economy', 'labour': 'labour', 'child-safety': 'child safety', 'moderation': 'moderation', 'kids-money': 'kids and money', 'brands-metaverse': 'brands and metaverse', 'culture-virality': 'culture and viral hits', 'education': 'education', 'regulation-legal': 'regulation and law', 'data-privacy': 'privacy', 'ai': 'AI', 'tech-outage': 'outage' };
+// One row per piece of coverage: d date, t year as a number, o outlet, k type, w what it covered, g topics, au Australian, u link.
+const COVERAGE = /*COVERAGE*/[{"d": "22 Feb 2007", "t": 2007.1409, "o": "Mashable (US)", "k": "news report", "w": "A daily tech-news roundup with a short item on the young Roblox site. Item not read.", "g": "growth-business", "au": false, "u": "https://mashable.com/2007/02/22/digg-trademark-singing-news-58-billion-video-market-roblox-more/"}, {"d": "29 Jun 2009", "t": 2009.4934, "o": "MakeUseOf (US)", "k": "feature", "w": "Reviewer recommends Roblox as a free, Lego-like world where kids make games; parental controls reassuring.", "g": "child-safety", "au": false, "u": "https://www.makeuseof.com/tag/roblox-lego-meets-webkinz-equals-fun-games/"}, {"d": "Aug 2009", "t": 2009.6233, "o": "VentureBeat (US)", "k": "news report", "w": "A regulatory filing showed the kids' block-building site had raised about $2.3 million in early funding.", "g": "growth-business", "au": false, "u": "https://creativeshed.com/2009/08/the-watch-virtual-worlds-in-the-news-84/"}, {"d": "18 Oct 2010", "t": 2010.7966, "o": "Gamasutra (US)", "k": "interview", "w": "Baszucki traces Roblox to educational physics software, word-of-mouth growth, a Disney promotional deal.", "g": "growth-business, education, brands-metaverse", "au": false, "u": "https://www.gamedeveloper.com/game-platforms/interview-roblox-the-little-known-user-generated-lego-competitor"}, {"d": "14 Jun 2011", "t": 2011.4523, "o": "TechCrunch (US)", "k": "news report", "w": "A $4 million round from existing investors, with plans to double the workforce that year.", "g": "growth-business", "au": false, "u": "https://techcrunch.com/?p=313640"}, {"d": "14 Jun 2011", "t": 2011.4523, "o": "Gamasutra (US)", "k": "interview", "w": "The CEO on the $4 million raise and growing users mainly by word of mouth.", "g": "growth-business", "au": false, "u": "https://gamedeveloper.com/business/interview-vcs-boost-building-game-roblox-with-4m-injection"}, {"d": "22 Aug 2011", "t": 2011.6409, "o": "VentureBeat (US)", "k": "feature", "w": "Profile of an 18-year-old whose Roblox games had passed 10 million plays.", "g": "creator-economy, culture-virality", "au": false, "u": "https://venturebeat.com/games/18-year-olds-games-get-10m-plays-in-roblox-game-world/"}, {"d": "12 Dec 2012", "t": 2012.9468, "o": "VentureBeat (US)", "k": "news report", "w": "Roblox launches on iPhone and iPad ahead of the holidays.", "g": "growth-business", "au": false, "u": "https://venturebeat.com/2012/12/12/roblox-mobile-ipad-iphone-now/"}, {"d": "Feb 2013", "t": 2013.1233, "o": "Wired (US)", "k": "interview", "w": "Q&A with founder and CEO David Baszucki (month inferred from URL).", "g": "growth-business", "au": false, "u": "https://www.wired.com/2013/02/roblox/"}, {"d": "2013", "t": 2013.5, "o": "Adweek (US)", "k": "news report", "w": "New programme lets kids who make Roblox games swap earned virtual currency for real money.", "g": "creator-economy", "au": false, "u": "https://develop.adweek.com/?p=460631"}, {"d": "28 Jan 2014", "t": 2014.074, "o": "Re/code (Vox) (US)", "k": "feature", "w": "Roblox as an entry point for young people into independent game making.", "g": "creator-economy, education", "au": false, "u": "https://www.vox.com/2014/1/28/11622786/roblox-wants-to-be-a-gateway-drug-for-indie-game-development"}, {"d": "12 Feb 2014", "t": 2014.1135, "o": "Massively / Engadget (US)", "k": "feature", "w": "Family-gaming column on winter events and the programme that pays young creators real money.", "g": "creator-economy, culture-virality", "au": false, "u": "https://www.engadget.com/2014-02-12-mmo-family-winter-fun-and-cool-cash-in-roblox.html"}, {"d": "1 May 2014", "t": 2014.3333, "o": "VentureBeat (US)", "k": "news report", "w": "Two 18-year-old Irish brothers become the first creators to earn a $10,000 monthly payout.", "g": "creator-economy", "au": false, "u": "https://gamesbeat.com/18-year-olds-make-10k-a-month-from-user-generated-games-in-roblox/"}, {"d": "7 Jun 2014", "t": 2014.4331, "o": "VentureBeat (US)", "k": "feature", "w": "Roblox as a big but little-noticed platform: peak player numbers, long weekly play times.", "g": "growth-business, culture-virality", "au": false, "u": "https://gamesbeat.com/roblox-is-gamings-quiet-giant-and-its-only-getting-bigger/"}, {"d": "Jul 2014", "t": 2014.54, "o": "Kidscreen (Canada)", "k": "news report", "w": "Children's-media trade report on Roblox's free Android app.", "g": "growth-business", "au": false, "u": "https://kidscreen.com/?p=54037"}, {"d": "24 Sep 2015", "t": 2015.7297, "o": "Engadget (US)", "k": "news report", "w": "Roblox coming to Xbox One; creators can publish one game to phones, PCs and console.", "g": "growth-business, creator-economy", "au": false, "u": "https://www.engadget.com/2015-09-24-roblox-xbox-one-indie-publishing.html"}, {"d": "27 Jan 2016", "t": 2016.0712, "o": "VentureBeat (US)", "k": "news report", "w": "Roblox launches on Xbox One with 15 staff-picked player-made games.", "g": "growth-business, creator-economy", "au": false, "u": "https://gamesbeat.com/roblox-launches-on-xbox-one-with-15-player-created-games-watch-us-play-them/"}, {"d": "15 Apr 2016", "t": 2016.2884, "o": "Fortune (US)", "k": "news report", "w": "Roblox on Oculus Rift, framed as the first step in a wider VR push.", "g": "growth-business, brands-metaverse", "au": false, "u": "https://fortune.com/2016/04/15/roblox-vr-oculus-rift/"}, {"d": "10 Jun 2016", "t": 2016.4413, "o": "Forbes (US)", "k": "interview", "w": "Founder profile: Baszucki says Roblox can overtake Minecraft; origins in physics software for students.", "g": "growth-business, education", "au": false, "u": "https://www.forbes.com/sites/forbestreptalks/2016/06/10/why-the-creator-of-roblox-thinks-his-gaming-platform-will-top-minecraft/"}, {"d": "13 Oct 2016", "t": 2016.7829, "o": "Lifehacker (US)", "k": "interview", "w": "Q&A on how the CEO organises his working day.", "g": "growth-business", "au": false, "u": "https://lifehacker.com/im-david-baszucki-ceo-of-roblox-and-this-is-how-i-wor-1787404285"}, {"d": "15 Dec 2016", "t": 2016.955, "o": "Trusted Reviews (UK)", "k": "opinion", "w": "Explains a hugely popular game many adults have never heard of.", "g": "culture-virality", "au": false, "u": "https://www.trustedreviews.com/opinion/what-is-roblox-the-world-s-most-popular-game-you-might-not-have-heard-of-2946534"}, {"d": "10 Jan 2017", "t": 2017.0247, "o": "VentureBeat (US)", "k": "news report", "w": "Jazwares toy line based on player-made games, with royalties paid to creators.", "g": "brands-metaverse, creator-economy", "au": false, "u": "https://gamesbeat.com/roblox-launches-toys-based-on-its-user-generated-games/"}, {"d": "12 Jan 2017", "t": 2017.0301, "o": "Kotaku Australia (AU)", "k": "news report", "w": "Australian gaming site on Roblox moving into physical toys.", "g": "brands-metaverse", "au": true, "u": "http://www.kotaku.com.au/2017/01/roblox-gets-into-the-toy-business/"}, {"d": "15 Feb 2017", "t": 2017.1217, "o": "Hull Daily Mail (UK)", "k": "news report", "w": "A Hull father says strangers sent sexual messages to his young son's account; starts the Feb 2017 wave.", "g": "child-safety", "au": false, "u": "https://www.snopes.com/fact-check/roblox/"}, {"d": "21 Feb 2017", "t": 2017.1381, "o": "CBS Philadelphia (US)", "k": "news report", "w": "Repeats the UK father's account with Roblox's reply about message screening.", "g": "child-safety, moderation", "au": false, "u": "https://www.cbsnews.com/philadelphia/news/dad-mortified-over-8-year-old-sons-online-game/"}, {"d": "21 Feb 2017", "t": 2017.1381, "o": "Lethbridge News Now (Canada)", "k": "news report", "w": "Canadian child-protection group warns of sexual chats and meet-up requests to under-12s.", "g": "child-safety", "au": false, "u": "https://lethbridgenewsnow.com/?p=149317"}, {"d": "22 Feb 2017", "t": 2017.1409, "o": "ABC News (AU)", "k": "news report", "w": "After the sex-chat reports, an Australian cyber-safety expert urges parents to check games first.", "g": "child-safety", "au": true, "u": "https://www.abc.net.au/news/2017-02-22/cyber-expert-warning-gaming-app-roblox-children/8292712"}, {"d": "26 Feb 2017", "t": 2017.1518, "o": "KWTX (US, Waco TX)", "k": "TV segment", "w": "Local parents warn about predators and obscene chat; privacy settings can turn chat off.", "g": "child-safety, moderation", "au": false, "u": "https://www.kwtx.com/content/news/Waco-Parents-warn-about-popular-online-games-chat-feature-414826853.html"}, {"d": "14 Mar 2017", "t": 2017.2023, "o": "TechCrunch (US)", "k": "news report", "w": "$92 million raise from Meritech and Index; total funding past $100 million.", "g": "growth-business", "au": false, "u": "https://techcrunch.com/2017/03/14/roblox-nabs-92-million-to-power-its-massive-social-gaming-platform-for-kids/"}, {"d": "14 Mar 2017", "t": 2017.2023, "o": "Bloomberg (US)", "k": "news report", "w": "Same $92 million round, framed as a challenge to Minecraft.", "g": "growth-business", "au": false, "u": "https://www.bloomberg.com/news/articles/2017-03-14/roblox-unearths-92-million-to-challenge-microsoft-s-minecraft"}, {"d": "6 Apr 2017", "t": 2017.2637, "o": "KPRC Click2Houston (US)", "k": "investigation", "w": "Channel 2 shows predators posing as children could reach young players through chat.", "g": "child-safety, moderation", "au": false, "u": "https://www.click2houston.com/news/2017/04/06/danger-warning-about-popular-virtual-world-for-kids"}, {"d": "6 Apr 2017", "t": 2017.2637, "o": "NBC 4 New York (US)", "k": "investigation", "w": "I-Team: a Louisiana mother says an adult posing as a child groomed her 8-year-old via Roblox chat.", "g": "child-safety, moderation", "au": false, "u": "https://www.nbcnewyork.com/news/local/Video-Game-Warning-ROBLOX-Child-Sex-Predator-Online-Site-Investigation-What-to-Know-418483173.html"}, {"d": "9 May 2017", "t": 2017.3553, "o": "Business Insider (US)", "k": "interview", "w": "Developer-relations VP: top creators earn about $50,000 a month; plans to raise earnings.", "g": "creator-economy", "au": false, "u": "https://www.businessinsider.com/roblox-vp-of-developer-relations-grace-francisco-2017-5"}, {"d": "22 Jul 2017", "t": 2017.5575, "o": "Engadget (US)", "k": "news report", "w": "Roblox expects to pay creators about $30 million in 2017; top developers over $100,000 a month.", "g": "creator-economy, growth-business", "au": false, "u": "https://www.engadget.com/2017/07/22/roblox-30-million-pay-out-developers-2017-how/"}, {"d": "16 Aug 2017", "t": 2017.6244, "o": "Shelby County Today (US, TX)", "k": "news report", "w": "Local alert: strangers can message kids freely; a parent got sexual messages within minutes.", "g": "child-safety", "au": false, "u": "https://scttx.com/node/15485"}, {"d": "15 Jun 2018", "t": 2018.455, "o": "WPVI-TV 6abc (US)", "k": "TV segment", "w": "A 10-year-old fell for a fake free-Robux offer that put an $89.99 charge on his grandmother's phone bill.", "g": "kids-money", "au": false, "u": "https://6abc.com/video-games-roblox-robux-fortnight/3603994/"}, {"d": "Jun 2018", "t": 2018.4567, "o": "Kidspot (AU)", "k": "news report", "w": "A Sydney mother says her six-year-old was invited into a sexual room built inside Roblox; taken down after report.", "g": "child-safety, moderation", "au": true, "u": ""}, {"d": "5 Jul 2018", "t": 2018.511, "o": "Naked Security / Sophos (UK)", "k": "news report", "w": "A North Carolina mother says players' avatars sexually assaulted her 7-year-old's avatar; Roblox banned the offender.", "g": "child-safety, moderation", "au": false, "u": "https://news.sophos.com/en-us/2018/07/05/7-year-olds-avatar-sexually-assaulted-on-family-friendly-roblox/"}, {"d": "6 Jul 2018", "t": 2018.5137, "o": "Fox News (US)", "k": "news report", "w": "The mother warns parents; Roblox blames one rogue user and promises safeguards.", "g": "child-safety, moderation", "au": false, "u": "https://www.foxnews.com/tech/north-carolina-mom-warns-of-popular-roblox-video-game-after-7-year-olds-avatar-violently-gang-raped"}, {"d": "6 Jul 2018", "t": 2018.5137, "o": "Global News (Canada)", "k": "news report", "w": "Canadian coverage of the avatar assault; player banned, game suspended.", "g": "child-safety", "au": false, "u": "https://globalnews.ca/news/4316449/roblox-gang-rape-7-year-old-girl/"}, {"d": "18 Jul 2018", "t": 2018.5466, "o": "TechCrunch (US)", "k": "news report", "w": "Roblox: a hacker injected banned animations; game security tightened.", "g": "moderation, child-safety", "au": false, "u": "https://techcrunch.com/2018/07/18/roblox-responds-to-the-hack-that-allowed-a-childs-avatar-to-be-raped-in-its-game"}, {"d": "5 Sep 2018", "t": 2018.6776, "o": "TechCrunch (US)", "k": "news report", "w": "$150M raise led by Greylock and Tiger Global; valuation above $2.5B; 70M monthly players.", "g": "growth-business", "au": false, "u": "https://techcrunch.com/2018/09/05/roblox-series-f/"}, {"d": "11 Sep 2018", "t": 2018.6941, "o": "DOGOnews (US, kids' news)", "k": "news report", "w": "Teenage game makers earn large sums; ~$30M paid to creators in 2017, ~$70M expected 2018.", "g": "creator-economy", "au": false, "u": "https://www.dogonews.com/2018/9/11/how-online-gaming-platform-roblox-is-helping-teenagers-become-millionaires"}, {"d": "21 Dec 2018", "t": 2018.9715, "o": "Variety (US)", "k": "news report", "w": "Warner Bros. uses Roblox tie-in events to promote films.", "g": "brands-metaverse", "au": false, "u": "https://variety.com/2018/film/news/roblox-warner-bros-movie-crossover-1203094353/"}, {"d": "29 May 2019", "t": 2019.41, "o": "TechCrunch (US)", "k": "news report", "w": "Joint company with Tencent to enter China, starting with coding education.", "g": "growth-business, education", "au": false, "u": "https://techcrunch.com/2019/05/29/eyeing-an-entry-into-china-roblox-enters-strategic-partnership-with-tencent/"}, {"d": "10 Jul 2019", "t": 2019.5247, "o": "The New Daily (AU)", "k": "feature", "w": "Cyber-safety piece for parents retelling the Sydney mother's 2018 experience.", "g": "child-safety", "au": true, "u": "https://thenewdaily.com.au/life/tech/2019/07/10/roblox-cyber-safety/"}, {"d": "11 Jul 2019", "t": 2019.5274, "o": "TechCrunch (US)", "k": "feature", "w": "Long history: how Roblox survived 15 years and grew into a $2.5B company.", "g": "growth-business", "au": false, "u": "https://techcrunch.com/2019/07/11/how-roblox-avoided-the-gaming-graveyard-and-grew-into-a-2-5b-company/"}, {"d": "4 Aug 2019", "t": 2019.5916, "o": "TechCrunch (US)", "k": "news report", "w": "100 million monthly players, overtaking Minecraft.", "g": "growth-business", "au": false, "u": "https://techcrunch.com/2019/08/04/roblox-hits-100-million-monthly-active-users"}, {"d": "12 Aug 2019", "t": 2019.6135, "o": "TechCrunch (US)", "k": "news report", "w": "Developer conference: new tools, asset marketplace; creators to earn ~$100M in 2019.", "g": "creator-economy", "au": false, "u": "https://techcrunch.com/2019/08/12/roblox-announces-new-game-creation-tools-and-marketplace-100m-in-2019-developer-revenue/"}, {"d": "21 Aug 2019", "t": 2019.6381, "o": "NBC News (US)", "k": "investigation", "w": "100+ accounts tied to neo-Nazi and extremist groups; removed after Roblox was told.", "g": "moderation, child-safety", "au": false, "u": "https://www.nbcnews.com/tech/tech-news/extremists-creep-roblox-online-game-popular-children-n1045056"}, {"d": "28 Sep 2019", "t": 2019.7406, "o": "The Guardian (UK)", "k": "feature", "w": "Parents' guide to Roblox, compared with Minecraft and Fortnite.", "g": "culture-virality, child-safety", "au": false, "u": "https://www.theguardian.com/games/2019/sep/28/roblox-guide-children-gaming-platform-developer-minecraft-fortnite"}, {"d": "25 Nov 2019", "t": 2019.8991, "o": "Hollywood Reporter (US)", "k": "news report", "w": "Lifetime mobile spending on Roblox passes $1 billion.", "g": "kids-money, growth-business", "au": false, "u": "https://www.hollywoodreporter.com/news/roblox-mobile-crosses-1b-lifetime-revenue-1257935"}, {"d": "9 Dec 2019", "t": 2019.9386, "o": "VentureBeat (US)", "k": "feature", "w": "Ten biggest Roblox games, each played over a billion times.", "g": "culture-virality", "au": false, "u": "https://venturebeat.com/2019/12/09/robloxs-10-biggest-games-of-all-time-each-with-more-than-a-billion-plays/"}, {"d": "31 Jan 2020", "t": 2020.0822, "o": "BBC News Wales (UK)", "k": "news report", "w": "A mother warns parents after her daughter ran up a large iPad bill in Roblox.", "g": "kids-money", "au": false, "u": "https://www.bbc.co.uk/news/uk-wales-51328762"}, {"d": "26 Feb 2020", "t": 2020.1518, "o": "TechCrunch (US)", "k": "news report", "w": "$150M round led by a16z; ~$4B valuation.", "g": "growth-business", "au": false, "u": "https://techcrunch.com/2020/02/26/roblox-raises-150m-series-g-led-by-andreessen-horowitz-now-valued-at-4b/"}, {"d": "11 Mar 2020", "t": 2020.1941, "o": "The Guardian (UK)", "k": "consumer column", "w": "Children spent ~£600 on iPad in-app purchases without the parent knowing.", "g": "kids-money", "au": false, "u": "https://www.theguardian.com/money/2020/mar/11/my-kids-spent-600-on-their-ipads-without-my-knowledge"}, {"d": "8 Apr 2020", "t": 2020.2692, "o": "CNBC (US)", "k": "news report", "w": "Use up ~40% in March as kids at home meet on Roblox; birthday parties held there.", "g": "growth-business, culture-virality", "au": false, "u": "https://www.cnbc.com/2020/04/08/roblox-is-seeing-a-surge-during-coronavirus-shelter-in-place.html"}, {"d": "8 Apr 2020", "t": 2020.2692, "o": "Canberra Times (AU)", "k": "news report", "w": "Roblox's Easter egg hunt pitched as something to do in isolation.", "g": "culture-virality", "au": true, "u": "https://www.canberratimes.com.au/story/6716010/roblox-has-an-easter-egg-hunt-to-help-you-through-the-weekend/"}, {"d": "15 Apr 2020", "t": 2020.2884, "o": "Bloomberg (US)", "k": "feature", "w": "Lockdown birthday parties and playdates inside Roblox.", "g": "culture-virality, growth-business", "au": false, "u": "https://www.bloomberg.com/news/articles/2020-04-15/kids-flock-to-roblox-for-parties-and-playdates-during-lockdown"}, {"d": "4 May 2020", "t": 2020.3416, "o": "Vice Motherboard (US)", "k": "investigation", "w": "A hacker bribed a support contractor to access an internal tool and user data.", "g": "data-privacy", "au": false, "u": "https://www.vice.com/en/article/qj4ddw/hacker-bribed-roblox-insider-accessed-user-data-reset-passwords"}, {"d": "20 Jul 2020", "t": 2020.5521, "o": "TechCrunch (US)", "k": "news report", "w": "Party Place: a free private space for virtual birthdays, classes, playdates.", "g": "culture-virality, growth-business", "au": false, "u": "https://techcrunch.com/2020/07/20/roblox-launches-party-place-a-private-venue-for-virtual-birthday-parties-and-other-meetups"}, {"d": "21 Jul 2020", "t": 2020.5548, "o": "The Verge (US)", "k": "news report", "w": "Over half of US children now play; Fortnite-style virtual events announced.", "g": "growth-business, culture-virality", "au": false, "u": "https://www.theverge.com/2020/7/21/21333431/roblox-over-half-of-us-kids-playing-virtual-parties-fortnite"}, {"d": "21 Jul 2020", "t": 2020.5548, "o": "GamesIndustry.biz (UK)", "k": "interview", "w": "Adopt Me! makers on huge player numbers most adults have never heard of.", "g": "culture-virality, creator-economy", "au": false, "u": "https://www.gamesindustry.biz/articles/2020-07-21-adopt-me-interview"}, {"d": "28 Jul 2020", "t": 2020.574, "o": "VentureBeat (US)", "k": "news report", "w": "Roblox expects to pay its mostly young creators ~$250M in 2020.", "g": "creator-economy", "au": false, "u": "https://venturebeat.com/business/roblox-expects-to-pay-250-million-to-its-mostly-teen-developers-this-year/"}, {"d": "16 Aug 2020", "t": 2020.6244, "o": "New York Times (US)", "k": "feature", "w": "A big pandemic winner adults barely know; about half of US under-16s play.", "g": "growth-business, culture-virality", "au": false, "u": "https://www.nytimes.com/2020/08/16/technology/roblox-tweens-videogame-coronavirus.html"}, {"d": "18 Aug 2020", "t": 2020.6299, "o": "The Hustle (US)", "k": "feature", "w": "Young creators, including Jailbreak's teen co-creator, turn games into businesses.", "g": "creator-economy", "au": false, "u": "https://thehustle.co/08182020"}, {"d": "19 Aug 2020", "t": 2020.6326, "o": "Fast Company (US)", "k": "investigation", "w": "Sexual condo games keep reappearing; users move to Discord to avoid moderators.", "g": "moderation, child-safety", "au": false, "u": "https://www.fastcompany.com/90539906/sex-lies-and-video-games-inside-roblox-war-on-porn"}, {"d": "19 Aug 2020", "t": 2020.6326, "o": "CBS News (US)", "k": "investigation", "w": "Condo games expose young players to nudity and simulated sex.", "g": "child-safety, moderation", "au": false, "u": "https://www.cbsnews.com/news/roblox-condo-games-kids-exposed-pornographic-scenes-sex-acts/"}, {"d": "12 Oct 2020", "t": 2020.7801, "o": "CNBC (US)", "k": "news report", "w": "Roblox confidentially files to go public.", "g": "growth-business", "au": false, "u": "https://www.cnbc.com/2020/10/12/roblox-confidentially-files-to-go-public.html"}, {"d": "22 Oct 2020", "t": 2020.8075, "o": "PocketGamer.biz (UK)", "k": "news report", "w": "Mobile player spending passes $2B, sped up by lockdowns.", "g": "kids-money, growth-business", "au": false, "u": "https://www.pocketgamer.biz/news/74828/roblox-surpasses-2-billion-in-player-spending/"}, {"d": "27 Oct 2020", "t": 2020.8212, "o": "CNN Business (US)", "k": "explainer", "w": "Roblox explained to adults: creation tools, pandemic parties, ~$250M to developers.", "g": "growth-business, creator-economy", "au": false, "u": "https://edition.cnn.com/2020/10/27/tech/roblox-explainer"}, {"d": "5 Nov 2020", "t": 2020.8443, "o": "Mercury News (US)", "k": "opinion", "w": "Larry Magid's advice to parents on keeping kids safe on Roblox.", "g": "child-safety", "au": false, "u": "https://www.mercurynews.com/2020/11/05/keeping-kids-safe-on-roblox/"}, {"d": "10 Nov 2020", "t": 2020.858, "o": "TechCrunch (US)", "k": "news report", "w": "First virtual concert: Lil Nas X with Columbia Records.", "g": "brands-metaverse, culture-virality", "au": false, "u": "https://techcrunch.com/2020/11/10/roblox-to-host-its-first-virtual-concert-featuring-lil-nas-x/"}, {"d": "Nov 2020", "t": 2020.8733, "o": "The Verge (US)", "k": "news report", "w": "Lil Nas X concert viewed ~33 million times (views, not unique attendees).", "g": "culture-virality, brands-metaverse", "au": false, "u": ""}, {"d": "19 Nov 2020", "t": 2020.8826, "o": "CNBC (US)", "k": "news report", "w": "Public IPO filing: Q3 revenue up 91%, net loss more than doubled.", "g": "growth-business", "au": false, "u": "https://www.cnbc.com/2020/11/19/roblox-s-1-ipo-filing-released.html"}, {"d": "19 Nov 2020", "t": 2020.8826, "o": "Reuters (global)", "k": "analysis", "w": "Offensive chat and inappropriate content could trouble the listing.", "g": "moderation, child-safety, growth-business", "au": false, "u": "https://www.reuters.com/article/uk-gaming-roblox-content-focus/kids-gaming-platform-roblox-faces-hurdles-ahead-of-public-listing-rough-words-idUKKBN27Z1GK"}, {"d": "20 Nov 2020", "t": 2020.8854, "o": "Vice Motherboard (US)", "k": "news report", "w": "The IPO filing lists child sexual abuse material and grooming as business risks.", "g": "child-safety, regulation-legal", "au": false, "u": "https://www.vice.com/en/article/roblox-goes-public-says-child-pornography-is-a-risk-to-its-business/"}, {"d": "20 Nov 2020", "t": 2020.8854, "o": "Bloomberg Opinion (US)", "k": "opinion", "w": "Roblox as the hottest game and IPO, given how much of kids' time it takes.", "g": "growth-business, culture-virality", "au": false, "u": "https://www.bloomberg.com/opinion/articles/2020-11-20/why-roblox-is-the-hottest-game-and-ipo-on-the-planet"}, {"d": "3 Dec 2020", "t": 2020.9221, "o": "GamesIndustry.biz (UK)", "k": "news report", "w": "Chinese regulators approve Roblox for release via Tencent.", "g": "regulation-legal, growth-business", "au": false, "u": "https://www.gamesindustry.biz/roblox-cleared-for-launch-in-china"}, {"d": "13 Dec 2020", "t": 2020.9495, "o": "Reuters via Globe and Mail", "k": "news report", "w": "Listing pushed to early 2021 after Airbnb and DoorDash first-day jumps.", "g": "growth-business", "au": false, "u": "https://theglobeandmail.com/business/international-business/article-us-gaming-platform-roblox-to-delay-ipo-until-early-next-year"}, {"d": "10 Mar 2021", "t": 2021.1913, "o": "Reuters via Business Standard", "k": "news report", "w": "Pre-open estimates of how high Roblox might price and what it would be worth.", "g": "growth-business", "au": false, "u": "https://www.business-standard.com/amp/article/international/us-gaming-platform-roblox-seen-surging-in-nyse-debut-121031001602_1.html"}, {"d": "10 Mar 2021", "t": 2021.1913, "o": "CNBC (US)", "k": "news report", "w": "Shares open at $64.50 in the NYSE direct listing, well above the $45 reference price.", "g": "growth-business", "au": false, "u": "https://www.cnbc.com/2021/03/10/roblox-rblx-starts-trading-at-64point50-after-direct-listing.html"}, {"d": "10 Mar 2021", "t": 2021.1913, "o": "Bloomberg (US)", "k": "news report", "w": "First day ends worth about $45bn fully diluted.", "g": "growth-business", "au": false, "u": "https://www.bloomberg.com/news/articles/2021-03-10/roblox-reaches-44-billion-valuation-in-direct-listing-debut"}, {"d": "17 Mar 2021", "t": 2021.2105, "o": "The Conversation (Carter, USyd; Mavoa, UniMelb)", "k": "opinion", "w": "Why Roblox was valued near $38bn at listing; what parents should know about user-made games and spending.", "g": "growth-business, kids-money, child-safety", "au": true, "u": "https://theconversation.com/why-is-kids-video-game-roblox-worth-38-billion-and-what-do-parents-need-to-know-157133"}, {"d": "3 May 2021", "t": 2021.3388, "o": "ABC Four Corners", "k": "investigation / TV", "w": "How games push players to spend; follows a 13-year-old saving Robux for an avatar item.", "g": "kids-money", "au": true, "u": "https://www.abc.net.au/news/2021-05-03/are-you-being-played/13327478"}, {"d": "26 May 2021", "t": 2021.4018, "o": "FashionUnited (UK)", "k": "news report", "w": "A virtual Gucci bag from Gucci Garden resold for more than the real bag's price.", "g": "brands-metaverse, culture-virality", "au": false, "u": "https://fashionunited.uk/news/fashion/a-digital-gucci-bag-sold-for-more-than-its-real-value/2021052655685"}, {"d": "9 Jun 2021", "t": 2021.4386, "o": "AP via WJLA (US)", "k": "news report", "w": "Gucci uses short-lived virtual bags and hats on Roblox to reach Gen Z.", "g": "brands-metaverse", "au": false, "u": "https://wjla.com/news/entertainment/gucci-digitally-outfits-gen-z-in-metaverse-foray-with-roblox"}, {"d": "19 Aug 2021", "t": 2021.6326, "o": "People Make Games (YouTube, UK)", "k": "video", "w": "Roblox's revenue cut and Robux payouts exploit its mostly young game makers.", "g": "labour, creator-economy", "au": false, "u": ""}, {"d": "20 Aug 2021", "t": 2021.6354, "o": "Eurogamer (UK)", "k": "news report", "w": "Reports the People Make Games claim.", "g": "labour, creator-economy", "au": false, "u": "https://www.eurogamer.net/articles/2021-08-20-roblox-exploiting-young-game-developers-new-investigation-reports"}, {"d": "20 Aug 2021", "t": 2021.6354, "o": "GamesIndustry.biz (UK)", "k": "news report", "w": "Trade coverage of the criticism that the business model exploits children.", "g": "labour, creator-economy", "au": false, "u": "https://www.gamesindustry.biz/articles/2021-08-20-roblox-business-model-criticized-as-exploiting-children"}, {"d": "20 Aug 2021", "t": 2021.6354, "o": "NME (UK)", "k": "news report", "w": "Summarises the video's claims: most revenue kept, creators paid in hard-to-cash currency.", "g": "labour, creator-economy", "au": false, "u": "https://www.nme.com/news/gaming-news/roblox-is-allegedly-exploiting-young-game-developers-3024548"}, {"d": "20 Aug 2021", "t": 2021.6354, "o": "Game World Observer", "k": "news report", "w": "Lists the critics' points; Roblox declines to answer in detail.", "g": "creator-economy, labour", "au": false, "u": "https://gameworldobserver.com/2021/08/20/roblox-criticized-for-exploiting-young-devs-by-charging-ridiculous-fees-and-paying-them-with-pretend-money"}, {"d": "21 Aug 2021", "t": 2021.6381, "o": "Ars Technica (US; likely a Wired story)", "k": "feature", "w": "Why most children building Roblox games earn little or nothing.", "g": "creator-economy, labour", "au": false, "u": "https://arstechnica.com/?p=1788915"}, {"d": "23 Aug 2021", "t": 2021.6436, "o": "AppleInsider (US)", "k": "news report", "w": "Roblox's developer share compared unfavourably with Apple's App Store.", "g": "creator-economy", "au": false, "u": "https://appleinsider.com/articles/21/08/23/roblox-raw-deal-pays-half-of-what-apples-app-store-does-to-developers"}, {"d": "6 Sep 2021", "t": 2021.6804, "o": "The Nerds of Color (US)", "k": "interview", "w": "Q&A with Quintin Smith about the video and its reception.", "g": "labour, creator-economy", "au": false, "u": "https://thenerdsofcolor.org/2021/09/06/noc-interview-quintin-smith-of-people-make-games-on-roblox-exploitation/"}, {"d": "21 Sep 2021", "t": 2021.7215, "o": "TechCrunch (US)", "k": "news report", "w": "Optional ID-plus-selfie age checks, needed for early voice chat.", "g": "child-safety, data-privacy", "au": false, "u": "https://techcrunch.com/2021/09/21/roblox-to-add-opt-in-age-verification-for-players-and-developers/"}, {"d": "30 Oct 2021", "t": 2021.8295, "o": "Engadget (US)", "k": "news report", "w": "The near two-day outage was not caused by the Chipotle giveaway.", "g": "tech-outage, brands-metaverse", "au": false, "u": "https://www.engadget.com/roblox-outage-not-chipotle-171646532.html"}, {"d": "30 Oct 2021", "t": 2021.8295, "o": "AP via WDBJ7 (US)", "k": "news report", "w": "Roblox offline into the Halloween weekend.", "g": "tech-outage", "au": false, "u": "https://www.wdbj7.com/2021/10/30/unhappy-halloween-gaming-platform-roblox-crashes"}, {"d": "1 Nov 2021", "t": 2021.8333, "o": "PocketGamer.biz (UK)", "k": "news report", "w": "Back after three days down; internal fault; no player data lost.", "g": "tech-outage", "au": false, "u": "https://www.pocketgamer.biz/news/77452/roblox-servers-back-online-following-three-day-outage/"}, {"d": "18 Nov 2021", "t": 2021.8799, "o": "CNBC (US)", "k": "news report", "w": "Nike opens Nikeland, modelled on its headquarters.", "g": "brands-metaverse", "au": false, "u": "https://www.cnbc.com/2021/11/18/nike-teams-up-with-roblox-to-create-a-virtual-world-called-nikeland-.html"}, {"d": "18 Nov 2021", "t": 2021.8799, "o": "Reuters via FX Empire", "k": "news report", "w": "Nikeland as one of the first big-brand moves into the metaverse.", "g": "brands-metaverse", "au": false, "u": "https://fxempire.com/news/article/into-the-metaverse-nike-creates-nikeland-on-roblox-813961"}, {"d": "24 Nov 2021", "t": 2021.8963, "o": "The Verge (US)", "k": "news report", "w": "Roblox sues YouTuber Ruben Sim over harassment and a false terror threat.", "g": "regulation-legal, moderation", "au": false, "u": "https://www.theverge.com/2021/11/24/22800526/roblox-lawsuit-benjamin-robert-simon-ruben-sim-harassment-rdc-shutdown-terrorism"}, {"d": "9 Dec 2021", "t": 2021.9386, "o": "USA Today via TechXplore", "k": "news report", "w": "Ralph Lauren's winter holiday world on Roblox.", "g": "brands-metaverse", "au": false, "u": "https://techxplore.com/news/2021-12-ralph-lauren-venture-metaverse-holiday.html"}, {"d": "13 Dec 2021", "t": 2021.9495, "o": "GamesIndustry.biz (UK)", "k": "news report", "w": "The follow-up's claims of weak safeguards and a stock-market-like collectibles trade.", "g": "child-safety, kids-money, moderation", "au": false, "u": "https://www.gamesindustry.biz/articles/2021-12-13-roblox-criticized-for-lack-of-safeguards-for-children-stock-market-like-collectibles"}, {"d": "13 Dec 2021", "t": 2021.9495, "o": "Game World Observer", "k": "news report", "w": "People Make Games refused to delete the first video; four-part follow-up.", "g": "moderation, child-safety, kids-money", "au": false, "u": "https://gameworldobserver.com/2021/12/13/people-make-games-digs-deeper-into-robloxs-black-market-and-child-exploitation-after-being-pressured-to-delete-previous-video"}, {"d": "13 Dec 2021", "t": 2021.9495, "o": "Gamepur (US)", "k": "news report", "w": "Follow-up claim that Roblox failed to act on child exploitation.", "g": "child-safety, moderation", "au": false, "u": "https://www.gamepur.com/news/people-make-games-reports-roblox-is-riddled-with-child-abuse"}, {"d": "15 Dec 2021", "t": 2021.955, "o": "For The Win / USA Today (US)", "k": "news report", "w": "Roblox faces public accusations it is unsafe for children.", "g": "child-safety", "au": false, "u": "https://ftw.usatoday.com/2021/12/roblox-facing-accusations-unsafe-children"}, {"d": "Dec 2021", "t": 2021.9567, "o": "People Make Games (YouTube, UK)", "k": "video", "w": "Follow-up on moderation, black markets and the limited-item trading economy.", "g": "child-safety, moderation, kids-money", "au": false, "u": "https://www.youtube.com/watch?v=vTMF6xEiAaY"}, {"d": "9 Jan 2022", "t": 2022.0219, "o": "The Guardian (UK)", "k": "feature", "w": "Teenage developers say adult studio leads underpaid, threatened and harassed them.", "g": "labour, creator-economy, child-safety", "au": false, "u": "https://www.theguardian.com/games/2022/jan/09/the-trouble-with-roblox-the-video-game-empire-built-on-child-labour"}, {"d": "18 Jan 2022", "t": 2022.0466, "o": "NPR (US)", "k": "radio", "w": "Critics say Roblox does not do enough to keep children safe.", "g": "child-safety, moderation", "au": false, "u": "https://www.npr.org/2022/01/18/1073818614/critics-say-roblox-shortchanges-kids-safety-the-state-of-voting-rights-legislati"}, {"d": "21 Jan 2022", "t": 2022.0548, "o": "Kotaku (US)", "k": "news report", "w": "Court bars Ruben Sim from Roblox.", "g": "regulation-legal, moderation", "au": false, "u": "https://kotaku.com/roblox-youtube-benjamin-ruben-simon-court-terrorist-ban-1848400596"}, {"d": "21 Jan 2022", "t": 2022.0548, "o": "Engadget (US)", "k": "news report", "w": "Settlement: Sim pays $150,000 and stays off the platform.", "g": "regulation-legal", "au": false, "u": "https://www.engadget.com/roblox-ruben-sim-settlement-191010830.html"}, {"d": "31 Jan 2022", "t": 2022.0822, "o": "InfoWorld (US)", "k": "feature", "w": "Roblox's own write-up of the bugs behind the October outage.", "g": "tech-outage", "au": false, "u": "https://www.infoworld.com/article/2334415/robloxs-cloud-native-catastrophe-a-post-mortem.html"}, {"d": "15 Feb 2022", "t": 2022.1217, "o": "CNN Chile (Chile)", "k": "news report", "w": "Spanish-language pickup of the BBC findings for parents.", "g": "child-safety, moderation", "au": false, "u": "https://www.cnnchile.com/tecnologias/roblox-plataforma-popular-ninos-contenido-sexual_20220215/"}, {"d": "Feb 2022", "t": 2022.1233, "o": "BBC News (UK)", "k": "investigation", "w": "Sexual condo games survive under an hour before removal; an avatar in Nazi uniform.", "g": "child-safety, moderation", "au": false, "u": "https://www.bbc.com/news/technology-60314572"}, {"d": "16 Feb 2022", "t": 2022.1244, "o": "CNBC (US)", "k": "news report", "w": "Shares fall after Q4 results miss; bookings growth slows.", "g": "growth-business", "au": false, "u": "https://www.cnbc.com/2022/02/16/roblox-shares-down-q4-earnings-miss-expectations.html"}, {"d": "21 Apr 2022", "t": 2022.3048, "o": "The Drum (UK)", "k": "feature", "w": "Metaverse column: Kim Kardashian threatens to sue over a user-made game ad; Roblox removes it.", "g": "culture-virality, moderation, regulation-legal", "au": false, "u": "https://www.thedrum.com/news/2022/04/21/week-the-metaverse-kim-kardashian-s-new-sex-tape-roblox-non-fungible-testicles"}, {"d": "10 May 2022", "t": 2022.358, "o": "CNBC (US)", "k": "news report", "w": "Q1 results trail estimates as the pandemic boost fades.", "g": "growth-business", "au": false, "u": "https://www.cnbc.com/2022/05/10/roblox-rblx-earnings-q1-2022.html"}, {"d": "9 Aug 2022", "t": 2022.6053, "o": "CNBC (US)", "k": "news report", "w": "Q2 bookings fall year on year.", "g": "growth-business", "au": false, "u": "https://www.cnbc.com/2022/08/09/roblox-rblx-earnings-q2-2022.html"}, {"d": "20 Mar 2023", "t": 2023.2187, "o": "GamesBeat (US)", "k": "news report", "w": "Beta AI tools that make textures and help write code.", "g": "ai, creator-economy", "au": false, "u": "https://gamesbeat.com/roblox-launches-generative-ai-materials-coding-tools-gdc-2023/"}, {"d": "30 Apr 2023", "t": 2023.3295, "o": "The Daily Aus", "k": "news report", "w": "Safe on Social tells a federal inquiry predators use Roblox for first contact; eSafety in regular contact with Roblox.", "g": "child-safety, regulation-legal", "au": true, "u": "https://thedailyaus.com.au/news/is-roblox-safe-one-online-safety-expert-doesnt-think-so"}, {"d": "21 Jun 2023", "t": 2023.4715, "o": "Video Games Chronicle (UK)", "k": "news report", "w": "17+ games with violence, blood or crude humour allowed behind ID-and-selfie checks.", "g": "child-safety, moderation", "au": false, "u": "https://videogameschronicle.com/news/roblox-is-starting-to-allow-17-rated-experiences-with-violence-blood-or-crude-humour"}, {"d": "9 Aug 2023", "t": 2023.6053, "o": "Reuters via Investing.com", "k": "news report", "w": "Q2 bookings miss; stock falls nearly 20%.", "g": "growth-business", "au": false, "u": "https://www.investing.com/news/stock-market-news/roblox-misses-quarterly-bookings-estimates-on-lower-spending-shares-tumble-3149959"}, {"d": "21 Aug 2023", "t": 2023.6381, "o": "Tubefilter (US)", "k": "news report", "w": "Parents' proposed class action: Roblox profits from outside sites where children gamble Robux.", "g": "kids-money, regulation-legal", "au": false, "u": "https://www.tubefilter.com/2023/08/21/roblox-lawsuit-gambling-sites/"}, {"d": "18 Oct 2023", "t": 2023.7966, "o": "The Register (UK)", "k": "news report", "w": "CEO tells remote staff to relocate near HQ or take severance.", "g": "labour", "au": false, "u": "https://www.theregister.com/2023/10/18/relocate_to_our_hq_or/"}, {"d": "19 Oct 2023", "t": 2023.7993, "o": "Fortune (US)", "k": "news report", "w": "The same return-to-office ultimatum.", "g": "labour", "au": false, "u": "https://fortune.com/2023/10/19/roblox-ceo-david-baszucki-ultimatum-office-rto-severance/"}, {"d": "10 Nov 2023", "t": 2023.858, "o": "ABC News (Religion & Ethics)", "k": "feature", "w": "Players protesting the Israel–Gaza war inside Roblox; whether virtual activism counts.", "g": "culture-virality", "au": true, "u": "https://www.abc.net.au/news/2023-11-10/virtual-protest-activism-in-video-games-like-roblox/103077494"}, {"d": "5 Dec 2023", "t": 2023.9276, "o": "Canberra Times / ACM (AU)", "k": "news report", "w": "Same AFP warning: games recreating atrocities used to spread extremist ideas.", "g": "child-safety, moderation", "au": true, "u": "https://www.canberratimes.com.au/story/8446831/"}, {"d": "Dec 2023", "t": 2023.9567, "o": "AAP (AU)", "k": "news report", "w": "AFP warns extremists use platforms like Roblox to radicalise children as young as 12.", "g": "child-safety, moderation", "au": true, "u": "https://aapnews.aap.com.au/news/extremists-using-online-gaming-platform-to-recruit-kids"}, {"d": "23 Jul 2024", "t": 2024.5603, "o": "Bloomberg Businessweek (US)", "k": "investigation", "w": "How adults used Roblox to groom and abuse children; at least two dozen US arrests, stretched moderators, staff warnings.", "g": "child-safety, moderation", "au": false, "u": "https://www.bloomberg.com/features/2024-roblox-pedophile-problem/"}, {"d": "29 Jul 2024", "t": 2024.5767, "o": "Bloomberg (US)", "k": "video", "w": "Reporter Cecilia D'Anastasio explains the predator findings.", "g": "child-safety", "au": false, "u": "https://www.bloomberg.com/news/videos/2024-07-29/roblox-has-a-predator-problem"}, {"d": "31 Jul 2024", "t": 2024.5822, "o": "Marketplace / APM (US)", "k": "radio", "w": "The company's struggle to keep predators away from young users.", "g": "child-safety, moderation", "au": false, "u": "https://www.marketplace.org/story/2024/07/31/roblox-predators"}, {"d": "8 Aug 2024", "t": 2024.6025, "o": "Bloomberg (US)", "k": "news report", "w": "Turkey's justice minister: a court ordered Roblox blocked over content that could enable child abuse.", "g": "regulation-legal, child-safety", "au": false, "u": "https://www.bloomberg.com/news/articles/2024-08-08/turkey-blocks-roblox-over-child-abuse-risk-minister-says"}, {"d": "8 Aug 2024", "t": 2024.6025, "o": "Fortune Europe", "k": "news report", "w": "The Turkish block beside the Instagram shutdown days earlier; censorship concerns.", "g": "regulation-legal, child-safety", "au": false, "u": "https://fortune.com/europe/2024/08/08/roblox-banned-from-turkey-for-causing-abuse-of-children-following-an-instagram-blackout-tiktok-ban-may-be-next-fascism-x"}, {"d": "12 Aug 2024", "t": 2024.6135, "o": "The Conversation (Bernot, Griffith; Scanlan, UTas)", "k": "opinion", "w": "Uses Turkey's block to ask what Australian law and eSafety do for children on Roblox.", "g": "child-safety, regulation-legal", "au": true, "u": "https://theconversation.com/roblox-was-just-banned-in-turkey-to-protect-children-whats-australia-doing-236489"}, {"d": "8 Oct 2024", "t": 2024.7692, "o": "Reuters (via AOL)", "k": "news report", "w": "Hindenburg's short bet: alleged inflated user and engagement numbers; shares fell up to 9%.", "g": "growth-business, child-safety", "au": false, "u": "https://www.aol.com/news/hindenburg-research-goes-short-roblox-125415113.html"}, {"d": "8 Oct 2024", "t": 2024.7692, "o": "Fortune (US)", "k": "news report", "w": "The short report pushed the stock to its lowest since early August.", "g": "growth-business", "au": false, "u": "https://fortune.com/2024/10/08/roblox-short-sale-stocks-tumble-lowest-level"}, {"d": "9 Oct 2024", "t": 2024.7719, "o": "Fortune (US)", "k": "news report", "w": "The short seller's child-safety claims.", "g": "child-safety, moderation", "au": false, "u": "https://www.fortune.com/2024/10/09/roblox-hindenburg-research-report-pedophile-hellscape"}, {"d": "21 Oct 2024", "t": 2024.8048, "o": "WBUR Here & Now (US)", "k": "radio interview", "w": "Predators targeting children on Roblox and the company's safety response.", "g": "child-safety", "au": false, "u": "https://www.wbur.org/hereandnow/2024/10/21/roblox-child-predators-safety"}, {"d": "23 Oct 2024", "t": 2024.8103, "o": "Bloomberg via BNN (Canada)", "k": "news report", "w": "Coming changes giving parents more control over children's accounts.", "g": "child-safety", "au": false, "u": "https://bnnbloomberg.ca/business/company-news/2024/10/23/roblox-to-enact-child-safety-changes-giving-parents-more-control"}, {"d": "13 Nov 2024", "t": 2024.8662, "o": "The Conversation (Carter & Hardwick, USyd)", "k": "opinion", "w": "Online games like Roblox should stay out of the under-16 ban; they matter to kids' friendships.", "g": "regulation-legal, culture-virality", "au": true, "u": "https://theconversation.com/online-games-should-not-be-included-in-australias-social-media-ban-they-are-crucial-for-kids-social-lives-243374"}, {"d": "18 Nov 2024", "t": 2024.8799, "o": "TechCrunch (US)", "k": "news report", "w": "Under-13s lose messaging outside games; parents manage accounts remotely; follows Bloomberg's reporting.", "g": "child-safety, moderation", "au": false, "u": "https://techcrunch.com/2024/11/18/roblox-no-longer-allows-users-under-13-to-message-others-outside-of-games"}, {"d": "18 Nov 2024", "t": 2024.8799, "o": "CBC News (Canada)", "k": "news report", "w": "The new parental controls and under-13 messaging limits.", "g": "child-safety", "au": false, "u": "https://www.cbc.ca/1.7386393"}, {"d": "2 Dec 2024", "t": 2024.9194, "o": "ABC 7.30", "k": "TV segment + article", "w": "Predators reaching children through Roblox chat; a UK case, Australian figures, the law's gaming exemption.", "g": "child-safety, moderation, regulation-legal", "au": true, "u": "https://www.abc.net.au/news/2024-12-02/dangers-still-lurk-for-young-social-media-users-in-chatrooms/104675480"}, {"d": "17 Dec 2024", "t": 2024.9605, "o": "Sky News (UK)", "k": "investigation", "w": "Unlicensed casinos let children gamble Robux via Roblox logins; UK Gambling Commission moved against them.", "g": "kids-money, regulation-legal", "au": false, "u": "https://news.sky.com/story/illegal-casinos-are-using-roblox-to-draw-children-into-online-gambling-13273519"}, {"d": "21 Jan 2025", "t": 2025.0548, "o": "The Conversation (Orlando, WSU)", "k": "opinion", "w": "New under-13 controls lower risks, but gaps remain.", "g": "child-safety, moderation", "au": true, "u": "https://theconversation.com/should-i-let-my-kid-play-roblox-new-safety-features-reduce-risks-but-more-are-needed-246971"}, {"d": "7 Feb 2025", "t": 2025.0998, "o": "Bloomberg (US)", "k": "news report", "w": "Records request: SEC had an active investigation involving Roblox, subject undisclosed.", "g": "regulation-legal, growth-business", "au": false, "u": "https://www.bloomberg.com/news/articles/2025-02-07/sec-confirms-game-service-roblox-part-of-active-investigation"}, {"d": "13 Mar 2025", "t": 2025.1995, "o": "BBC News (UK)", "k": "interview", "w": "CEO told uneasy parents to keep children off Roblox; reporters showed fake accounts could get round safeguards.", "g": "child-safety, moderation", "au": false, "u": "https://www.bbc.co.uk/news/articles/c5yrjkl7dd6o"}, {"d": "13 Mar 2025", "t": 2025.1995, "o": "Video Games Chronicle (UK)", "k": "news report", "w": "Pickup of the CEO's BBC advice to worried parents.", "g": "child-safety", "au": false, "u": "https://www.videogameschronicle.com/news/roblox-ceos-advice-to-worried-parents-dont-let-your-kids-on-the-platform"}, {"d": "17 Mar 2025", "t": 2025.2105, "o": "TechCrunch (US)", "k": "news report", "w": "Roblox open-sources Cube 3D, a text-to-3D-object model for creators.", "g": "ai, creator-economy", "au": false, "u": "https://techcrunch.com/2025/03/17/roblox-releases-its-open-source-model-that-can-create-3d-objects-using-ai/"}, {"d": "23 Mar 2025", "t": 2025.2269, "o": "The Conversation (Hardwick & Carter, USyd)", "k": "opinion (research)", "w": "Children's own views on Robux, random-reward items and refunds; some call it gambling.", "g": "kids-money", "au": true, "u": "https://theconversation.com/literally-just-child-gambling-what-kids-say-about-roblox-lootboxes-and-money-in-online-games-250387"}, {"d": "3 Apr 2025", "t": 2025.2555, "o": "Tubefilter (US)", "k": "news report", "w": "Google deal for opt-in video ads in exchange for in-game rewards.", "g": "brands-metaverse", "au": false, "u": "https://www.tubefilter.com/2025/04/03/get-ready-for-real-ads-in-virtual-worlds-thanks-to-new-google-roblox-team-up/"}, {"d": "7 Apr 2025", "t": 2025.2664, "o": "The Drum (UK)", "k": "opinion", "w": "Advertisers should treat Roblox as a serious immersive ad channel.", "g": "brands-metaverse", "au": false, "u": "https://www.thedrum.com/news/2025/04/07/the-most-immersive-ad-platform-yet-why-brands-should-take-roblox-seriously-post"}, {"d": "14 Apr 2025", "t": 2025.2856, "o": "The Guardian (UK)", "k": "news report", "w": "Researchers' test accounts posing as young children reached suggestive spaces and adults with few barriers.", "g": "child-safety, moderation", "au": false, "u": "https://www.magzter.com/stories/newspaper/The-Guardian/RESEARCHERS-FICTIONAL-GAMERS-REVEAL-DISTURBING-ROBLOX-RISKS-TO-CHILDREN"}, {"d": "17 Apr 2025", "t": 2025.2938, "o": "ABC News", "k": "news report", "w": "CPRC–Monash report on gambling-like tactics in kids' games; a teen's unresolved Roblox spending complaints.", "g": "kids-money, regulation-legal", "au": true, "u": "https://www.abc.net.au/news/2025-04-17/childrens-video-games-addictive-features-gaming-report/105136744"}, {"d": "21 Apr 2025", "t": 2025.3048, "o": "Bloomberg (US)", "k": "news report", "w": "A user group re-creating real mass shootings inside Roblox experiences.", "g": "moderation, child-safety", "au": false, "u": "https://www.bloomberg.com/news/articles/2025-04-21/roblox-user-group-re-creates-real-life-mass-shooting-events"}, {"d": "2025", "t": 2025.5, "o": "AOL Lifestyle (US)", "k": "feature", "w": "Kids' craze for Steal a Brainrot and Italian-brainrot slang offline.", "g": "culture-virality", "au": false, "u": "https://www.aol.com/lifestyle/italian-brainrot-gen-alpha-trend-193732224.html"}, {"d": "2025", "t": 2025.5, "o": "Aftermath (US)", "k": "news report", "w": "Steal a Brainrot developer takes a copycat game to court.", "g": "culture-virality, creator-economy, regulation-legal", "au": false, "u": "https://aftermath.site/brainrot-roblox-court/"}, {"d": "11 Jul 2025", "t": 2025.5274, "o": "Bloomberg (US)", "k": "feature", "w": "Investors buying up hit games, turning teenage creators into millionaires.", "g": "creator-economy, growth-business", "au": false, "u": "https://www.bloomberg.com/news/articles/2025-07-11/roblox-game-buying-frenzy-is-turning-teens-into-millionaires"}, {"d": "30 Jul 2025", "t": 2025.5795, "o": "AP via Boston Globe (US)", "k": "news report", "w": "Grow a Garden, built by a 16-year-old: record players, sale to a studio, lift to company revenue.", "g": "culture-virality, creator-economy, growth-business", "au": false, "u": "https://www.bostonglobe.com/2025/07/30/wires/roblox-grow-a-garden-teenager/"}, {"d": "7 Aug 2025", "t": 2025.5998, "o": "AP via NY1 (US)", "k": "news report", "w": "Roblox releases Sentinel, an open-source AI system to spot grooming patterns in chat.", "g": "ai, child-safety, moderation", "au": false, "u": "https://ny1.com/nyc/all-boroughs/ap-top-news/2025/08/07/roblox-rolls-out-open-source-ai-system-to-protect-kids-from-predators-in-chats"}, {"d": "13 Aug 2025", "t": 2025.6162, "o": "Gulf News (UAE)", "k": "news report", "w": "Qatar appears to block Roblox; no official confirmation.", "g": "regulation-legal, child-safety", "au": false, "u": "https://gulfnews.com/world/gulf/qatar/qatar-blocks-popular-online-game-roblox-amid-child-safety-concerns-1.500232420"}, {"d": "13 Aug 2025", "t": 2025.6162, "o": "Tubefilter (US)", "k": "news report", "w": "Roblox bans predator-hunting YouTuber Schlep and sends a cease-and-desist.", "g": "moderation, child-safety, creator-economy", "au": false, "u": "https://www.tubefilter.com/2025/08/13/roblox-schlep-jidion-banned-predator-hunting/"}, {"d": "14 Aug 2025", "t": 2025.6189, "o": "NBC News (US)", "k": "news report", "w": "Louisiana's attorney general sues, alleging weak age checks let predators exploit children.", "g": "regulation-legal, child-safety", "au": false, "u": "https://www.nbcnews.com/tech/tech-news/louisiana-attorney-general-sues-roblox-calling-platform-perfect-place-rcna225144"}, {"d": "15 Aug 2025", "t": 2025.6217, "o": "Bloomberg (US)", "k": "news report", "w": "Agency document: the SEC closed its Roblox case in May.", "g": "regulation-legal", "au": false, "u": "https://www.bloomberg.com/news/articles/2025-08-15/roblox-case-at-sec-concluded-in-may-agency-document-shows"}, {"d": "Aug 2025", "t": 2025.6233, "o": "Rolling Stone (US)", "k": "feature", "w": "The Schlep backlash set against lawsuits and political pressure.", "g": "moderation, child-safety, regulation-legal", "au": false, "u": "https://www.rollingstone.com/culture/culture-features/roblox-schlep-pedophile-vigilante-lawsuits-1235414218/"}, {"d": "19 Aug 2025", "t": 2025.6326, "o": "IOL (South Africa)", "k": "opinion", "w": "Uses the Qatar block to urge parents everywhere to watch kids' online safety.", "g": "child-safety, regulation-legal", "au": false, "u": "https://iol.co.za/lifestyle/2025-08-19-qatar-blocks-roblox-why-parents-everywhere-should-pay-attention-to-kids-online-safety/"}, {"d": "22 Aug 2025", "t": 2025.6409, "o": "TheWrap (US)", "k": "interview", "w": "Chris Hansen on response to his planned Roblox predator documentary with Schlep.", "g": "child-safety, moderation", "au": false, "u": "https://www.thewrap.com/chris-hansen-roblox-sex-predator-documentary-response-schlep/"}, {"d": "4 Sep 2025", "t": 2025.6749, "o": "The National (UAE)", "k": "news report", "w": "Roblox turns off in-game chat across Arabic-speaking Middle East as Gulf regulators tighten rules.", "g": "regulation-legal, moderation", "au": false, "u": "https://thenational-the-national-prod.cdn.arcpublishing.com/news/uae/2025/09/04/uae-clamps-down-on-regulation-of-video-game-roblox"}, {"d": "5 Sep 2025", "t": 2025.6776, "o": "GamesBeat (US)", "k": "news report", "w": "Developer conference: new AI creation tools, higher cash-out rate for creators.", "g": "ai, creator-economy", "au": false, "u": "https://gamesbeat.com/roblox-unveils-new-ai-capabilities-for-game-creators-and-shares-more-revenue/"}, {"d": "15 Sep 2025", "t": 2025.705, "o": "eSafety Commissioner", "k": "media release", "w": "Roblox's Australian commitments: private under-16 accounts, chat off until age estimated, no adult–child chat.", "g": "child-safety, moderation, regulation-legal", "au": true, "u": "https://www.esafety.gov.au/newsroom/media-releases/roblox-commits-to-lift-game-to-protect-kids-from-online-grooming-under-australias-world-leading-online-safety-codes-and-standards"}, {"d": "17 Sep 2025", "t": 2025.7105, "o": "ABC Behind The News", "k": "TV (kids)", "w": "Explains Roblox's new adult–child contact limits, private accounts, age estimation.", "g": "child-safety, regulation-legal", "au": true, "u": "https://www.abc.net.au/btn/newsbreak/btn-newsbreak-20250917/105783090"}, {"d": "7 Oct 2025", "t": 2025.7664, "o": "Spectrum News 1 (US)", "k": "news report", "w": "Kentucky's attorney general sues, calling Roblox a magnet for child predators.", "g": "regulation-legal, child-safety", "au": false, "u": "https://spectrumnews1.com/ky/louisville/news/2025/10/07/kentucky-attorney-general-sues-roblox"}, {"d": "14 Oct 2025", "t": 2025.7856, "o": "ABC News (Specialist Reporting)", "k": "news report", "w": "Researchers and a teen describe predators, sexual and extremist content while Roblox argues for exemption from the ban.", "g": "child-safety, moderation, regulation-legal", "au": true, "u": "https://www.abc.net.au/news/2025-10-14/social-media-ban-roblox-predators-access-online-gaming-platform/105884322"}, {"d": "14 Oct 2025", "t": 2025.7856, "o": "ABC News", "k": "news report", "w": "Inman Grant: Roblox pushed into safety changes but may stay outside the ban because gaming is its main purpose.", "g": "regulation-legal, child-safety", "au": true, "u": "https://www.abc.net.au/news/2025-10-14/esafety-commissioner-social-media-ban-roblox/105889222"}, {"d": "20 Oct 2025", "t": 2025.8021, "o": "Reuters via Khaleej Times", "k": "news report", "w": "Iraq bans Roblox nationwide over exploitation risks and local values.", "g": "regulation-legal, child-safety", "au": false, "u": "https://www.khaleejtimes.com/world/mena/iraq-bans-roblox-child-safety"}, {"d": "20 Oct 2025", "t": 2025.8021, "o": "Spectrum News 13 (US)", "k": "news report", "w": "Florida's attorney general issues criminal subpoenas.", "g": "regulation-legal, child-safety", "au": false, "u": "https://mynews13.com/fl/orlando/news/2025/10/20/uthmeier-issues-criminal-subpoenas-to-roblox"}, {"d": "31 Oct 2025", "t": 2025.8322, "o": "Game World Observer", "k": "news report", "w": "Q3 results: record ~151m daily users, surging bookings from viral hits, widening losses.", "g": "growth-business, culture-virality", "au": false, "u": "https://gameworldobserver.com/2025/10/31/roblox-report-revenue-is-skyrocketing-but-so-are-losses"}, {"d": "5 Nov 2025", "t": 2025.8443, "o": "Guardian Australia (Sarah Martin)", "k": "investigation", "w": "A week on Roblox posing as an eight-year-old: sexualised content, bullying, a simulated assault, despite parental controls.", "g": "child-safety, moderation", "au": true, "u": "https://www.theguardian.com/games/2025/nov/05/roblox-game-robux-children-child-kids-safety-parental-controls"}, {"d": "5 Nov 2025", "t": 2025.8443, "o": "AAP (via Canberra Times)", "k": "news report", "w": "eSafety's main-purpose test leaves Roblox outside the ban for now; Reddit and Kick added.", "g": "regulation-legal", "au": true, "u": "https://www.canberratimes.com.au/story/9104668/roblox-escapes-under-16s-social-media-ban-for-now/"}, {"d": "6 Nov 2025", "t": 2025.847, "o": "Fox 7 Austin (US)", "k": "news report", "w": "Texas's attorney general sues under deceptive-trade law.", "g": "regulation-legal, child-safety", "au": false, "u": "https://www.fox7austin.com/news/ken-paxton-texas-ag-lawsuit-roblox-childrens-safety"}, {"d": "6 Nov 2025", "t": 2025.847, "o": "ABC NewsRadio", "k": "radio", "w": "What kids meet on Roblox, why it isn't on the ban list, the Guardian reporter's week undercover.", "g": "child-safety, regulation-legal", "au": true, "u": "https://www.abc.net.au/news/2025-11-06/naus_robloxnr_0611/105979756"}, {"d": "13 Nov 2025", "t": 2025.8662, "o": "AFR", "k": "opinion or news (not seen)", "w": "Appears to argue Roblox should be inside the under-16 ban.", "g": "regulation-legal, child-safety, kids-money", "au": true, "u": "https://www.afr.com/technology/grooming-and-gambling-app-should-be-in-kids-social-media-ban-20251113-p5nf16"}, {"d": "14 Nov 2025", "t": 2025.8689, "o": "ITV News (UK)", "k": "investigation", "w": "Reporters posing as teens found far-right avatars and re-enacted mosque attacks in games.", "g": "moderation, child-safety", "au": false, "u": "https://www.itv.com/news/2025-11-14/mosque-attacks-and-far-right-skins-roblox-teens-exposed-to-extremist-content"}, {"d": "18 Nov 2025", "t": 2025.8799, "o": "The Nightly (Seven West)", "k": "news report", "w": "Facial age checks and age-group chat rolled out as a way to stay out of the ban.", "g": "regulation-legal, data-privacy, child-safety", "au": true, "u": "https://thenightly.com.au/politics/gaming-site-roblox-rolls-out-major-changes-in-attempt-to-avoid-australias-under-16s-social-media-ban-c-20711923"}, {"d": "19 Nov 2025", "t": 2025.8826, "o": "ABC News", "k": "news report", "w": "Age checks for chat in AU, NZ, NL from early December, before the 10 Dec ban.", "g": "regulation-legal, data-privacy, child-safety", "au": true, "u": "https://www.abc.net.au/news/2025-11-19/roblox-brings-in-age-checks-ahead-of-australian-ban/106025742"}, {"d": "19 Nov 2025", "t": 2025.8826, "o": "SBS News", "k": "news report", "w": "Inman Grant: AI face age estimation came after negotiations and threats of fines.", "g": "regulation-legal, data-privacy, ai", "au": true, "u": "https://www.sbs.com.au/news/article/roblox-to-introduce-age-guessing-tech-to-avoid-looming-social-media-ban-for-kids/8kgad5lie"}, {"d": "19 Nov 2025", "t": 2025.8826, "o": "The Conversation (Given, RMIT)", "k": "opinion", "w": "Age checks imperfect; grooming, gambling-style features, virtual assault unaddressed.", "g": "data-privacy, child-safety, kids-money", "au": true, "u": "https://theconversation.com/roblox-set-to-start-checking-peoples-ages-but-it-will-need-to-do-more-to-keep-kids-safe-270138"}, {"d": "c. 21 Nov 2025", "t": 2025.8881, "o": "NYT Hard Fork podcast (US)", "k": "interview", "w": "Hosts pressed the CEO on predators and age checks; his answers drew wide criticism.", "g": "child-safety, moderation, kids-money", "au": false, "u": ""}, {"d": "24 Nov 2025", "t": 2025.8963, "o": "PCGamesN (UK)", "k": "news report", "w": "Relays the CEO's podcast remarks (predator issue as opportunity; prediction-market ideas).", "g": "child-safety, kids-money", "au": false, "u": "https://www.pcgamesn.com/roblox/interview-child-safety"}, {"d": "3 Dec 2025", "t": 2025.9221, "o": "Interfax (Russia)", "k": "news report", "w": "Russia's media regulator blocks Roblox citing extremist material and LGBT content.", "g": "regulation-legal", "au": false, "u": "https://interfax.com/newsroom/top-stories/115142/"}, {"d": "11 Dec 2025", "t": 2025.9441, "o": "Boston Globe (US)", "k": "news report", "w": "Russian children write to Putin asking for Roblox back.", "g": "regulation-legal, culture-virality", "au": false, "u": "https://www.bostonglobe.com/2025/12/11/world/russia-blocks-roblox-game-site/"}, {"d": "12 Dec 2025", "t": 2025.9468, "o": "HarrisMartin (US legal news)", "k": "news report", "w": "Federal panel combines child-exploitation suits into one case in Northern California.", "g": "regulation-legal, child-safety", "au": false, "u": "https://harrismartin.com/publications/27/MDL/articles/78049/jpml-centralizes-roblox-sexual-exploitationassault-lawsuits/"}, {"d": "Jan 2026", "t": 2026.04, "o": "Wired (US)", "k": "investigation", "w": "Age-verified child accounts for sale on eBay; AI age checks misjudge ages.", "g": "child-safety, data-privacy, ai", "au": false, "u": ""}, {"d": "1 Feb 2026", "t": 2026.0833, "o": "Anadolu Agency (Turkey)", "k": "news report", "w": "Egypt officially blocks Roblox.", "g": "regulation-legal, child-safety", "au": false, "u": "https://aa.com.tr/en/science-technology/egypt-officially-blocks-roblox-online-kids-game/3817303"}, {"d": "2 Feb 2026", "t": 2026.0861, "o": "Egyptian Streets (Egypt)", "k": "news report", "w": "The Senate discussion behind Egypt's block and enforcement.", "g": "regulation-legal", "au": false, "u": "https://egyptianstreets.com/2026/02/02/egypt-moves-to-block-roblox-over-child-safety-concerns/"}, {"d": "5 Feb 2026", "t": 2026.0943, "o": "Shacknews (US)", "k": "news report", "w": "Q4 2025 results beat estimates.", "g": "growth-business", "au": false, "u": "https://www.shacknews.com/article/147768/roblox-rblx-q4-2025-earnings-results"}, {"d": "10 Feb 2026", "t": 2026.108, "o": "ABC News", "k": "news report", "w": "Minister Wells seeks urgent meeting and review of Roblox's PG rating; eSafety to test commitments.", "g": "regulation-legal, child-safety", "au": true, "u": "https://www.abc.net.au/news/2026-02-10/commonwealth-roblox-reports-of-child-grooming/106323242"}, {"d": "10 Feb 2026", "t": 2026.108, "o": "SBS News", "k": "news report", "w": "Regulator and minister put Roblox on notice; new content codes from March.", "g": "regulation-legal, child-safety, moderation", "au": true, "u": "https://www.sbs.com.au/news/article/roblox-put-on-notice-over-disturbing-child-grooming-reports/op1usxr7v"}, {"d": "10 Feb 2026", "t": 2026.108, "o": "SBS News", "k": "TV (video)", "w": "Safer Internet Day report: Roblox agrees to meet the minister.", "g": "child-safety, regulation-legal", "au": true, "u": "https://www.sbs.com.au/news/video/roblox-will-meet-with-government-over-on-platform-grooming/fsdlvoy4k"}, {"d": "c. 10 Feb 2026", "t": 2026.108, "o": "eSafety Commissioner", "k": "media release", "w": "Will directly test Roblox's nine commitments; penalties up to $49.5m.", "g": "regulation-legal, child-safety", "au": true, "u": "https://www.esafety.gov.au/newsroom/media-releases/roblox-on-notice-over-ongoing-concerns-about-online-child-grooming"}, {"d": "17 Feb 2026", "t": 2026.1272, "o": "ABC Behind The News", "k": "TV (classroom)", "w": "Roblox's appeal and risks: spending pressure, low creator pay, unrated games, chat; safety tips.", "g": "child-safety, kids-money, creator-economy, education", "au": true, "u": "https://www.abc.net.au/btn/classroom/roblox-safety/106351518"}, {"d": "27 Feb 2026", "t": 2026.1546, "o": "TruBlu (US)", "k": "documentary", "w": "Chris Hansen special on moderation, whistleblower claims and predator risks.", "g": "child-safety, moderation", "au": false, "u": ""}, {"d": "9 Mar 2026", "t": 2026.1886, "o": "404 Media (US)", "k": "podcast", "w": "Interview with Bloomberg's D'Anastasio on the grooming problem.", "g": "child-safety, moderation", "au": false, "u": "https://www.404media.co/understanding-robloxs-grooming-problem/"}, {"d": "16 Mar 2026", "t": 2026.2078, "o": "ABC News", "k": "feature", "w": "Parents say children were groomed or shown sexual content; couldn't fix age settings.", "g": "child-safety, moderation", "au": true, "u": "https://www.abc.net.au/news/2026-03-16/inside-the-experiences-of-roblox-for-parents-and-children/106337574"}, {"d": "13 Apr 2026", "t": 2026.2829, "o": "The Conversation (Given, RMIT)", "k": "opinion", "w": "New protections are progress but leave things out.", "g": "child-safety, regulation-legal", "au": true, "u": "https://theconversation.com/roblox-is-boosting-safety-features-for-young-people-its-a-step-in-the-right-direction-280360"}, {"d": "14 Apr 2026", "t": 2026.2856, "o": "ABC News (AAP/ABC)", "k": "news report", "w": "Roblox Kids (5–8) and Roblox Select (9–15) accounts from June, with game and chat limits.", "g": "child-safety, moderation, regulation-legal", "au": true, "u": "https://www.abc.net.au/news/2026-04-14/roblox-launches-accounts-for-children-after-grooming-claims/106561814"}, {"d": "15 Apr 2026", "t": 2026.2884, "o": "AP via NY1 (US)", "k": "news report", "w": "Nevada settles for over $12m; Roblox agrees to age checks and restricted child accounts.", "g": "regulation-legal, child-safety", "au": false, "u": "https://ny1.com/nyc/all-boroughs/ap-top-news/2026/04/15/roblox-gaming-platform-reaches-12-million-settlement-with-nevada-enhancing-youth-protections"}, {"d": "22 Apr 2026", "t": 2026.3075, "o": "SBS News", "k": "news report", "w": "eSafety orders Roblox, Fortnite, Minecraft, Steam to explain grooming and radicalisation handling.", "g": "regulation-legal, child-safety, moderation", "au": true, "u": "https://www.sbs.com.au/news/article/online-watchdog-puts-video-game-giants-on-notice-as-child-grooming-concerns-rise/b8a4n6bw8"}, {"d": "c. 22 Apr 2026", "t": 2026.3075, "o": "eSafety Commissioner", "k": "media release", "w": "Legally binding transparency notices to gaming platforms.", "g": "regulation-legal, child-safety", "au": true, "u": "https://www.esafety.gov.au/newsroom/media-releases/esafety-asks-gaming-giants-what-they-are-doing-to-prevent-grooming-and-radicalisation"}, {"d": "23 Apr 2026", "t": 2026.3103, "o": "Insurance Journal (US)", "k": "news report", "w": "Nevada, Alabama and West Virginia settlements total $35.8m.", "g": "regulation-legal, child-safety", "au": false, "u": "https://amp.insurancejournal.com/news/southeast/2026/04/23/866879.htm"}, {"d": "30 Apr 2026", "t": 2026.3295, "o": "Sherwood News (US)", "k": "news report", "w": "Shares fall as daily users miss forecasts; management links the cut outlook to age-gating.", "g": "growth-business, child-safety", "au": false, "u": "https://www.sherwood.news/markets/roblox-q1-2026-earnings-report-guidance-cut-daily-active-users-miss/"}, {"d": "3 May 2026", "t": 2026.3388, "o": "Yahoo Finance (US)", "k": "news report", "w": "CEO blames the age-check rollout for the weaker outlook; shares drop ~17%.", "g": "growth-business, child-safety", "au": false, "u": "https://finance.yahoo.com/markets/article/roblox-ceo-cites-challenges-from-its-age-check-for-dimmed-outlook-as-stock-plummets-182507944.html"}, {"d": "20 May 2026", "t": 2026.3854, "o": "ABC Behind The News", "k": "TV (kids)", "w": "USyd study finds gambling-style and pressure-selling tactics in some Roblox games.", "g": "kids-money", "au": true, "u": "https://www.abc.net.au/btn/newsbreak/btn-newsbreak-20260520/106702560"}, {"d": "Jun 2026", "t": 2026.4567, "o": "MediaNama (India)", "k": "news report", "w": "Privacy and accuracy questions about AI facial age estimates.", "g": "data-privacy, ai, child-safety", "au": false, "u": "https://www.medianama.com/2026/06/223-robloxs-ai-facial-age-checks-raise-questions-user-privacy-inaccurate-age-estimations/"}, {"d": "31 Jul 2026", "t": 2026.5822, "o": "Quartz (US)", "k": "news report", "w": "Q2 miss and weak forecast: worst one-day stock fall on record.", "g": "growth-business", "au": false, "u": "https://qz.com/roblox-stock-earnings-miss-outlook-073126"}, {"d": "13 Aug 2026", "t": 2026.6162, "o": "Politico via WJLA (US)", "k": "news report", "w": "Senators Hawley and Durbin open an inquiry, demand child-safety documents.", "g": "regulation-legal, child-safety", "au": false, "u": "https://wjla.com/news/nation-world/senators-launch-investigation-into-roblox-and-how-company-handles-safety-protocol-ceo-josh-hawley-dick-durbin"}, {"d": "20 Aug 2026", "t": 2026.6354, "o": "eSafety Commissioner", "k": "media release", "w": "Court-enforceable undertaking: stop adult contact with unknown under-16s, private-by-default, independent audit.", "g": "regulation-legal, child-safety", "au": true, "u": "https://www.esafety.gov.au/newsroom/media-releases/esafety-secures-court-enforceable-undertaking-from-roblox-to-do-more-to-protect-australian-kids-from-grooming-and-sexual-exploitation"}, {"d": "20 Aug 2026", "t": 2026.6354, "o": "AAP (via ACM)", "k": "news report", "w": "The undertaking's three-month deadline; Roblox says it already met its obligations.", "g": "regulation-legal, child-safety", "au": true, "u": "https://www.thesenior.com.au/story/9333815/kids-game-given-three-months-to-bolster-child-safety/"}, {"d": "20 Aug 2026", "t": 2026.6354, "o": "ABC News Top Stories", "k": "podcast", "w": "What Roblox is and why the regulator got a binding agreement.", "g": "regulation-legal, child-safety", "au": true, "u": "https://www.abc.net.au/listen/programs/abc-news-top-stories/what-s-roblox-and-why-is-the-regulator-cracking-down-on-it-/107057230"}, {"d": "20 Aug 2026", "t": 2026.6354, "o": "The Nightly (Seven West)", "k": "news report", "w": "Minister Wells criticises Roblox; warns of Federal Court action.", "g": "regulation-legal", "au": true, "u": "https://thenightly.com.au/politics/anika-wells-puts-roblox-on-notice-over-child-safety-as-esafety-orders-overhaul-to-prevent-potential-grooming-c-22746640"}, {"d": "20 Aug 2026", "t": 2026.6354, "o": "The Conversation (Given, RMIT)", "k": "opinion", "w": "eSafety found adults could still see and request child accounts; practical checks for parents.", "g": "regulation-legal, child-safety", "au": true, "u": "https://theconversation.com/roblox-has-been-put-on-notice-yet-again-over-child-safety-concerns-what-do-parents-need-to-know-290148"}, {"d": "25 Sep 2026", "t": 2026.7324, "o": "Gray TV via WBTV (US)", "k": "news report", "w": "FBI work against the 764 extremist network targeting teens on platforms including Roblox.", "g": "child-safety, moderation", "au": false, "u": "https://www.wbtv.com/2026/09/25/how-fbi-is-investigating-an-online-extremist-group-targeting-other-teens/"}, {"d": "2 Oct 2026", "t": 2026.7527, "o": "AAP (via ACM)", "k": "news report", "w": "eSafety: Roblox, Minecraft, Fortnite, Steam child-protection still has significant gaps.", "g": "regulation-legal, child-safety, moderation", "au": true, "u": "https://www.mudgeeguardian.com.au/story/9361290/kids-at-risk-of-grooming-unless-companies-crack-down/"}, {"d": "11 Oct 2026", "t": 2026.7774, "o": "Mediaweek", "k": "feature", "w": "A mother finds sexualised messages to her daughter despite strict controls, during the undertaking window.", "g": "child-safety, moderation", "au": true, "u": "https://www.mediaweek.com.au/roblox-s-safety-promises-meet-a-mother-s-nightmare"}]/*END*/;
+
+// Analysis: farthest from the curve, around the title. "Our note" lines are Parker's own words.
+const IDEAS = [
+  { pages: 'Kusmawan et al. 2026, pp. 20–21', title: 'Third place', events: ['Lil Nas X concert', 'Grow a Garden'], stories: [['8 Apr 2020', 'CNBC'], ['15 Apr 2020', 'Bloomberg'], ['20 Jul 2020', 'TechCrunch'], ['10 Nov 2020', 'TechCrunch'], ['10 Nov 2023', 'ABC'], ['13 Nov 2024', 'Conversation']],
+    paper: 'Roblox works as a digital third place: somewhere outside home and school where young people hang out, hold birthdays and go to concerts.',
+    note: 'Videogame platforms do things that social media platforms tend not to anymore, they give a space to be, they are perhaps more inherently social than "social" media, which has become more about lonely people interacting with content rather than actually interacting with other people',
+    read: 'Steinkuehler & Williams 2006 (online games as third places). Meta’s own antitrust-trial chart: time on friends’ posts fell from 22% to 17% on Facebook and 11% to 7% on Instagram, 2023–2025.' },
+  { pages: 'Kusmawan et al. 2026, pp. 18, 21', title: 'Users make the culture', events: ['Every game user-made', 'Developer Exchange', 'Grow a Garden'], stories: [['22 Aug 2011', 'VentureBeat'], ['30 Jul 2025', 'AP'], ['2025', 'AOL'], ['2025', 'Aftermath']],
+    paper: 'Audiences take part in making popular culture rather than only consuming it. Roblox has no single story, just thousands of user-made games from around the world, in a space without borders.',
+    note: 'Pop culture used to be created by large companies and is now created by users on platforms -- geographically boundless is an important element too.' },
+  { pages: 'Kusmawan et al. 2026, pp. 19–20', title: 'Robux and digital consumerism', events: ['Developer Exchange', 'Gucci Garden', 'Nikeland'], stories: [['15 Jun 2018', '6abc'], ['3 May 2021', 'Four Corners'], ['26 May 2021', 'FashionUnited'], ['17 Dec 2024', 'Sky'], ['23 Mar 2025', 'Conversation']],
+    paper: 'Robux drives a digital economy among children and teenagers, and social norms and values move from the physical world to the digital one.',
+    note: 'Big theme, the digital taking over more aspects of normative reality, in covid people thought the metaverse would be big, and maybe it will be, we predicted that digital spaces would become more and more popular among people, and I think this will eventually happen' },
+  { pages: 'Kusmawan et al. 2026, p. 20', title: 'Child safety: who is responsible?', events: ['Bloomberg investigation', 'Turkey blocks Roblox', 'Under-13 messaging limits', 'Commitments to eSafety', 'Russia blocks Roblox', 'Age checks start here', 'Age checks go global', 'Court-enforceable undertaking'], stories: [['20 Nov 2020', 'Vice'], ['13 Mar 2025', 'BBC'], ['13 Aug 2025', 'Tubefilter'], ['20 Aug 2026', 'eSafety']],
+    paper: 'Children meet inappropriate content and adult predators, and neither they nor their parents have the digital literacy to spot the risks. Protection needs developers, parents and regulators working together.',
+    note: 'This is interesting because it reflects issues of platform governance, who is responsible for preventing harm: the individual or the platform?',
+    read: 'Gorwa 2019, p. 855: governance by platforms vs governance of platforms.' },
+  { pages: 'Kusmawan et al. 2026, pp. 18–19', title: 'Brainrot and addiction', events: ['Grow a Garden'], stories: [['2025', 'AOL']],
+    paper: 'Heavy use and short attention spans, which young people themselves call brainrot.',
+    note: '' },
+  { pages: 'Morreale & Rosa 2024, pp. 4282, 4291', title: 'Learning by joining in', events: ['Every game user-made', 'Developer Exchange', 'Young developers investigation'], stories: [['28 Jan 2014', 'Re/code'], ['1 May 2014', 'VentureBeat'], ['29 May 2019', 'TechCrunch'], ['19 Aug 2021', 'People Make Games'], ['9 Jan 2022', 'Guardian']],
+    paper: 'Roblox is an affinity space (Gee 2007): people gather around a shared interest and learn from each other. Newcomers start at the edges and move toward the centre, which Lave and Wenger (1991) call legitimate peripheral participation. Like Froebel’s kindergarten, it teaches through re-creation.',
+    note: 'In line with this, I wonder if just as social media is able to shape opinion, if digital spaces like Roblox will be able to shape unconscious social scripts.' },
+  { pages: 'Gillespie 2010, p. 348', title: 'Game, not social media', events: ['Calls itself a platform', 'Left out of the under-16 ban', 'Age checks start here', 'eSafety puts Roblox on notice', 'Court-enforceable undertaking'],
+    stories: [['20 Nov 2020', 'Vice'], ['13 Nov 2024', 'Conversation'], ['14 Oct 2025', 'ABC News', 'Inman Grant'], ['5 Nov 2025', 'AAP'], ['18 Nov 2025', 'Nightly'], ['10 Feb 2026', 'ABC'], ['17 Feb 2026', 'ABC Behind']],
+    paper: 'Companies choose the word "platform" to position themselves: to chase profit and keep the legal protections they want while avoiding the obligations they don’t.',
+    note: "One news story talked about unrated games which is interesting in the Australian context, it's also interesting that Roblox dodged the social-media bans because it's a videogame not a social media",
+    read: 'Gorwa 2019, pp. 862–864: self-, external and co-governance.' },
+  { pages: 'Kusmawan et al. 2026, p. 21', title: 'Moments: video brought home', events: ['Moments'],
+    paper: 'Moments, a TikTok-style clip feed, keeps the making and watching of Roblox videos inside Roblox, and a clip leads straight into its game.',
+    note: '' },
+];
+
+// ---------- Theme + type ----------
+const T = {};
+function readTheme() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['ground', 'panel', 'card', 'ink', 'ink-soft', 'rule', 'curve', 'local']) T[k] = cs.getPropertyValue('--' + k).trim();
+  T.title = cs.getPropertyValue('--font-title').trim() || 'sans-serif';
+  T.body = cs.getPropertyValue('--font-body').trim() || 'sans-serif';
+}
+readTheme();
+const mctx = document.createElement('canvas').getContext('2d');
+const font = (wt, px, fam, it) => `${it ? 'italic ' : ''}${wt} ${px}px ${fam}`;
+function unitW(text, wt, fam, it) { mctx.font = font(wt, 100, fam, it); return mctx.measureText(text).width / 100; }
+function wrap(text, wt, fam, size, maxW, it) {
+  const words = text.split(/\s+/), out = [];
+  let cur = '';
+  for (const w of words) {
+    const test = cur ? cur + ' ' + w : w;
+    if (!cur || unitW(test, wt, fam, it) * size <= maxW) cur = test; else { out.push(cur); cur = w; }
+  }
+  if (cur) out.push(cur);
+  return out.map(s => ({ s, w: unitW(s, wt, fam, it) * size }));
+}
+// A text block: lines laid out in world units, offsets relative to its node's top-left.
+function block(text, o) {
+  const lines = wrap(text, o.wt, o.fam, o.size, o.maxW, o.it);
+  return { lines, size: o.size, lh: o.size * (o.lh || 1.3), wt: o.wt, fam: o.fam, it: o.it, color: o.color, dx: o.dx || 0, dy: 0 };
+}
+const fits = b => b.lines.every(l => l.w <= b.maxW + 0.01);
+
+// ---------- Build ----------
+const CARD = 100, GAP = 8, PAD = 10;
+let NODES = [], CARDS = [], RCARDS = [], FUTURE = null;
+
+// The event's name leads; the date sits under it, small. Laid out for an 80-unit card and scaled by k.
+function layoutEventCard(n, c) {
+  const k = n.w / 80, pad = 6 * k, g = 2.5 * k, iw = n.w - pad * 2, ih = n.h - pad * 2;
+  for (let tf = 12; tf >= 5; tf -= 0.5) {
+    for (let bf = 4.8; bf >= 3.6; bf -= 0.2) {
+      const ti = block(c.title, { wt: 800, fam: T.title, size: tf * k, maxW: iw, color: 'ink', lh: 1.08 });
+      const eb = block((c.au ? 'Australia · ' : '') + c.date, { wt: 700, fam: T.body, size: 4.2 * k, maxW: iw, color: c.au ? 'local' : 'ink-soft', lh: 1.2 });
+      const bo = block(c.body, { wt: 400, fam: T.body, size: bf * k, maxW: iw, color: 'ink' });
+      const so = block(c.src, { wt: 400, fam: T.body, size: 3.5 * k, maxW: iw, color: 'ink-soft', it: true, lh: 1.2 });
+      eb.maxW = ti.maxW = bo.maxW = so.maxW = iw;
+      if (ti.lines.length > 3 || !fits(ti) || !fits(eb)) continue;
+      const used = ti.lines.length * ti.lh + g + eb.lines.length * eb.lh + g + bo.lines.length * bo.lh + g + so.lines.length * so.lh;
+      if (used > ih) continue;
+      let y = pad;
+      for (const b of [ti, eb, bo]) { b.dx = pad; b.dy = y; y += b.lines.length * b.lh + g; }
+      so.dx = pad; so.dy = n.h - pad - so.lines.length * so.lh;
+      return [ti, eb, bo, so];
+    }
+  }
+  return [];
+}
+
+function layoutReading(n, r) {
+  const pad = 8, iw = n.w - pad * 2, lab = 24;
+  for (let rf = 5; rf >= 3.8; rf -= 0.2) {
+    let tf = 13, ti;
+    for (; tf >= 7; tf -= 0.5) { ti = block(r.title, { wt: 800, fam: T.title, size: tf, maxW: iw, color: 'ink', lh: 1.08 }); ti.maxW = iw; if (ti.lines.length <= 2 && fits(ti)) break; }
+    const wk = block(r.work, { wt: 400, fam: T.body, size: rf + 1.2, maxW: iw, color: 'ink', it: true });
+    const ve = block(r.venue, { wt: 400, fam: T.body, size: rf, maxW: iw, color: 'ink-soft' });
+    const out = [ti, wk, ve];
+    let y = pad;
+    for (const b of out) { b.dx = pad; b.dy = y; y += b.lines.length * b.lh + 3; }
+    y += 3;
+    for (const [p, txt] of r.refs) {
+      const hasP = !!p;
+      const tb = block(txt, { wt: 400, fam: T.body, size: rf, maxW: hasP ? iw - lab : iw, color: 'ink' });
+      tb.dx = pad + (hasP ? lab : 0); tb.dy = y;
+      if (hasP) { const pb = block(p, { wt: 700, fam: T.body, size: rf, maxW: lab, color: 'curve' }); pb.dx = pad; pb.dy = y; out.push(pb); }
+      out.push(tb);
+      y += tb.lines.length * tb.lh + 2.5;
+    }
+    if (y <= n.h - pad) { out.used = y + pad; return out; }
+  }
+  return [];
+}
+
+// Laid out for a 48-unit card and scaled by k for any other size, so every news card reads the same.
+// places: the other places this story appears; each becomes a door along the bottom of the card.
+function layoutNewsCard(n, c, places) {
+  const k = n.w / 48, pad = 4 * k, gap = 1.5 * k, iw = n.w - pad * 2, ih = n.h - pad * 2;
+  // doors, flowed from the bottom edge up
+  const ds = 1.9 * k, px = 1.1 * k, py = 0.8 * k, th = ds * 1.15 + py * 2, dg = 1 * k;
+  const tiles = places.map(p => {
+    let size = ds;
+    while (unitW(p, 700, T.body) * size + px * 2 > iw && size > ds * 0.6) size *= 0.92;
+    return { p, size, w: Math.min(iw, unitW(p, 700, T.body) * size + px * 2) };
+  });
+  const rowsOf = [];
+  for (const t of tiles) { const r = rowsOf[rowsOf.length - 1]; if (r && r.w + dg + t.w <= iw) { r.items.push(t); r.w += dg + t.w; } else rowsOf.push({ items: [t], w: t.w }); }
+  const head = places.length ? block('Also in', { wt: 700, fam: T.body, size: 1.8 * k, maxW: iw, color: 'ink-soft', lh: 1.2 }) : null;
+  const doorsH = rowsOf.length ? (head.lines.length * head.lh + gap * 0.6 + rowsOf.length * th + (rowsOf.length - 1) * dg) : 0;
+  const doors = [];
+  let ry = n.h - pad - doorsH + (head ? head.lh + gap * 0.6 : 0);
+  for (const r of rowsOf) {
+    let rx = pad;
+    for (const t of r.items) {
+      const label = Object.assign(block(t.p, { wt: 700, fam: T.body, size: t.size, maxW: t.w, color: 'ink', lh: 1.15 }), { dx: px, dy: py + (ds - t.size) * 0.5 });
+      doors.push({ dx: rx, dy: ry, w: t.w, h: th, label });
+      rx += t.w + dg;
+    }
+    ry += th + dg;
+  }
+  if (head) { head.dx = pad; head.dy = n.h - pad - doorsH; }
+  let best = null;
+  for (let tf = 4.6; tf >= 2.6 && !best; tf -= 0.2) {
+    for (let bf = 2.8; bf >= 1.6 && !best; bf -= 0.15) {
+      const eb = block((c.au ? 'Australia · ' : '') + c.d + ' · ' + c.k, { wt: 700, fam: T.body, size: Math.min(2.3, bf) * k, maxW: iw, color: c.au ? 'local' : 'ink-soft', lh: 1.2 });
+      const ti = block(c.o, { wt: 800, fam: T.title, size: tf * k, maxW: iw, color: 'ink', lh: 1.08 });
+      const bo = block(c.w, { wt: 400, fam: T.body, size: bf * k, maxW: iw, color: 'ink' });
+      eb.maxW = ti.maxW = bo.maxW = iw;
+      if (ti.lines.length > 2 || !fits(ti) || !fits(eb)) continue;
+      const used = eb.lines.length * eb.lh + gap + ti.lines.length * ti.lh + gap + bo.lines.length * bo.lh + (doorsH ? gap + doorsH : 0);
+      if (used > ih) continue;
+      best = [eb, ti, bo];
+    }
+  }
+  if (!best) { // too many doors for the body text: keep the date, outlet and doors
+    const eb = block(c.d, { wt: 700, fam: T.body, size: 2.1 * k, maxW: iw, color: c.au ? 'local' : 'ink-soft', lh: 1.2 });
+    const ti = block(c.o, { wt: 800, fam: T.title, size: 3 * k, maxW: iw, color: 'ink', lh: 1.08 });
+    best = [eb, ti];
+  }
+  let y = pad;
+  for (const b of best) { b.dx = pad; b.dy = y; y += b.lines.length * b.lh + gap; }
+  return { blocks: head ? [...best, head] : best, doors };
+}
+
+function layoutIdea(n, d) {
+  const pad = 10, iw = n.w - pad * 2, out = [];
+  let y = pad;
+  const add = (text, o, gap) => { const b = block(text, Object.assign({ maxW: iw }, o)); b.dx = pad; b.dy = y; out.push(b); y += b.lines.length * b.lh + gap; return b; };
+  // the theme's name is the header, as large as it fits in three lines; everything else sits under it, small
+  let tf = 46; while (tf > 14 && (wrap(d.title, 800, T.title, tf, iw).length > 3 || wrap(d.title, 800, T.title, tf, iw).some(l => l.w > iw))) tf -= 1;
+  add(d.title, { wt: 800, fam: T.title, size: tf, color: 'ink', lh: 1.04 }, 8);
+  add(d.pages, { wt: 700, fam: T.body, size: 7, color: 'curve', lh: 1.2 }, 6);
+  add('In the paper', { wt: 700, fam: T.body, size: 6.5, color: 'ink-soft', lh: 1.2 }, 1.5);
+  add(d.paper, { wt: 400, fam: T.body, size: 8, color: 'ink' }, 8);
+  add('Our note', { wt: 700, fam: T.body, size: 6.5, color: 'ink-soft', lh: 1.2 }, 1.5);
+  if (d.note) add(d.note, { wt: 400, fam: T.body, size: 8, color: 'ink' }, 8);
+  else add('None yet', { wt: 400, fam: T.body, size: 8, color: 'ink-soft', it: true }, 8);
+  if (d.read) {
+    add('Read with', { wt: 700, fam: T.body, size: 6.5, color: 'ink-soft', lh: 1.2 }, 1.5);
+    add(d.read, { wt: 400, fam: T.body, size: 7, color: 'ink' }, 8);
+  }
+  // a pocket of the stories that fit this theme: the same stories as in the news boxes and timelines
+  const items = themeStories(d);
+  if (items.length) {
+    add('In the news', { wt: 700, fam: T.body, size: 6.5, color: 'ink-soft', lh: 1.2 }, 2);
+    const p = pack(items, 6, false);
+    n.pocket = { items, dy: y };
+    y += p.rows * 44 - 4 + 8;
+  }
+  out.used = y - 7 + pad;
+  return out;
+}
+
+function build() {
+  NODES = []; CARDS = []; RCARDS = []; NEWS = [];
+  // The future
+  FUTURE = { kind: 'future', x0: 2450, y1: 1150, w: 300, h: 300 };
+  {
+    const pad = 16, iw = FUTURE.w - pad * 2;
+    const eb = block('Our argument, in draft', { wt: 700, fam: T.body, size: 10, maxW: iw, color: 'curve', lh: 1.2 });
+    const tsz = Math.min(40, iw / unitW('The future', 800, T.title));
+    const ti = block('The future', { wt: 800, fam: T.title, size: tsz, maxW: iw, color: 'ink', lh: 1.05 });
+    const bo = block('Platformization in games will be a continuing phenomenon.', { wt: 600, fam: T.body, size: 15, maxW: iw, color: 'ink', lh: 1.25 });
+    let y = pad;
+    for (const b of [eb, ti, bo]) { b.dx = pad; b.dy = y; y += b.lines.length * b.lh + 6; }
+    FUTURE.pocket = { dx: pad, dy: y + 6, w: iw, h: FUTURE.h - y - 6 - pad };
+    const pk = block('The team’s case for this goes here', { wt: 400, fam: T.body, size: 9, maxW: iw - 20, color: 'ink-soft', it: true });
+    pk.dx = pad + 10; pk.dy = y + 16;
+    FUTURE.blocks = [eb, ti, bo, pk];
+  }
+  NODES.push(FUTURE);
+
+  // Readings, under the title in the top-left corner
+  {
+    const SB = 40, cols = 3, cw = 160;
+    const reads = READINGS.map(r => { const n = { kind: 'reading', w: cw, h: 400, data: r }; n.blocks = layoutReading(n, r); return n; });
+    RCARDS = reads;
+    const ch = Math.max(...reads.map(n => n.blocks.used)) + 4, rows = Math.ceil(reads.length / cols);
+    READFRAME = { kind: 'rframe', x0: 20, y1: 1150, w: PAD * 2 + cols * cw + (cols - 1) * GAP, h: SB + rows * ch + (rows - 1) * GAP + PAD, cards: reads };
+    const tf = Math.min(30, (READFRAME.w - PAD * 2) / unitW('Readings', 800, T.title));
+    READFRAME.blocks = [Object.assign(block('Readings', { wt: 800, fam: T.title, size: tf, maxW: READFRAME.w, color: 'ink', lh: 1 }), { dx: PAD, dy: (SB - tf) / 2 + 1 })];
+    reads.forEach((n, i) => { n.parent = READFRAME; n.h = ch; n.x0 = READFRAME.x0 + PAD + (i % cols) * (cw + GAP); n.y1 = READFRAME.y1 - SB - Math.floor(i / cols) * (ch + GAP); });
+    NODES.push(READFRAME);
+  }
+
+  // What is already on the plot, so nothing is placed on top of it: the line, its labels, the title
+  const linePts = [];
+  for (let x = LAUNCH.x; x <= LAST.x; x += 10) linePts.push({ x, y: curveAt(x) });
+  { const fy = FUTURE.y1 - FUTURE.h / 2; for (let k = 0; k <= 1; k += 0.04) linePts.push({ x: LAST.x + (FUTURE.x0 - LAST.x) * k, y: LAST.y + (fy - LAST.y) * k }); }
+  const taken = [FUTURE, READFRAME,
+    { x0: 10, y1: READFRAME.y1 + 175, w: 540, h: 160 },
+    { x0: 1160, y1: Y(150) + 20, w: 215, h: 30 }, { x0: 1310, y1: Y(100) + 20, w: 65, h: 30 }, { x0: 1320, y1: Y(50) + 20, w: 55, h: 30 },
+    { x0: PEAK.x - 35, y1: PEAK.y + 40, w: 70, h: 30 }, { x0: LAST.x, y1: LAST.y + 40, w: 60, h: 30 },
+    { x0: 500, y1: 80, w: 680, h: 60 }];
+
+  // Events: one card each, first put as close to its date on the line as it fits
+  for (const e of EVENTS) {
+    const px = Math.min(X(e.t), LAST.x), py = e.t < 2006.67 ? 0 : curveAt(px);
+    const cn = Object.assign(placeNear(CARD, CARD, px, py, taken, linePts, 60, 10, 900, 10), { kind: 'card', data: e, pin: { x: px, y: py } });
+    cn.blocks = layoutEventCard(cn, e);
+    taken.push(cn); CARDS.push(cn); NODES.push(cn);
+  }
+
+  // Themes: first put farther out, near the events they explain
+  THEMES = [];
+  for (const d of IDEAS) {
+    const n = { kind: 'idea', w: 300, h: 900, data: d, place: 'Theme: ' + d.title, fill: 'card' };
+    n.blocks = layoutIdea(n, d);
+    n.h = n.blocks.used;
+    n.links = (d.events || []).map(t => CARDS.find(c => c.data.title === t)).filter(Boolean);
+    const ax = n.links.reduce((a, c) => a + c.x0 + CARD / 2, 0) / Math.max(1, n.links.length);
+    const ay = n.links.reduce((a, c) => a + c.y1 - CARD / 2, 0) / Math.max(1, n.links.length);
+    Object.assign(n, placeNear(n.w, n.h, ax, ay, taken, linePts, 220, 20, 3000, 30));
+    taken.push(n); THEMES.push(n); NODES.push(n);
+  }
+
+  // Then both are moved about to shorten every edge and keep edges from crossing other cards
+  // The untangling waits for the real fonts (they set the themes' heights) and is kept for later redraws.
+  const key = THEMES.map(t => Math.round(t.h)).join(',');
+  if (fontsReady && untangled.key !== key) {
+    untangle(CARDS, THEMES, taken.filter(t => !CARDS.includes(t) && !THEMES.includes(t)), linePts);
+    untangled = { key, at: [...CARDS, ...THEMES].map(n => [n.x0, n.y1]) };
+  } else if (untangled.key === key) [...CARDS, ...THEMES].forEach((n, i) => { [n.x0, n.y1] = untangled.at[i]; });
+  for (const cn of CARDS) cn.spoke = { x: clamp(cn.pin.x, cn.x0, cn.x0 + CARD), y: clamp(cn.pin.y, cn.y1 - CARD, cn.y1) };
+  for (const n of THEMES) if (n.pocket) { n.cards = []; fillGrid(n, n.pocket.items, 40, 4, n.x0 + 10, n.y1 - n.pocket.dy, 6, false); }
+
+  // News coverage, under the axis
+  MFRAMES = [];
+  {
+    const MC = 48, MG = 6, MB = 26, cols = 5, top = -90;
+    let x = 0;
+    for (const g of MEDIA_GROUPS) {
+      const items = COVERAGE.filter(c => c.t >= g.from && c.t < g.to + 1).sort((a, b) => a.t - b.t);
+      if (!items.length) continue;
+      const f = { kind: 'mframe', x0: x, y1: top, cards: [], span: [X(g.from), Math.min(X(g.to + 1), X(2026.8))], place: g.label + ' in the news' };
+      const grid = fillGrid(f, items, MC, MG, f.x0 + PAD, f.y1 - MB, cols, false);
+      f.w = PAD * 2 + grid.w; f.h = MB + grid.h + PAD;
+      x += f.w + 16;
+      const tf = Math.min(14, (f.w - PAD * 2) / unitW(f.place, 800, T.title));
+      f.blocks = [Object.assign(block(f.place, { wt: 800, fam: T.title, size: tf, maxW: f.w, color: 'ink', lh: 1 }), { dx: PAD, dy: (MB - tf) / 2 + 1 })];
+      MFRAMES.push(f); NODES.push(f);
+    }
+  }
+
+  // Timelines: the same news again, one timeline per chosen topic, each year a cell, time running left to right.
+  // Each timeline takes its own width; a story with several topics appears in each of their timelines.
+  {
+    const SLOT = 48, SG = 6, CP = 6, YB = 22, TB = 70, SB = 90;
+    TSECTION = { kind: 'tsection', x0: -20, y1: Math.min(...MFRAMES.map(f => f.y1 - f.h)) - 100, cards: [] };
+    const lines = TIMELINES.map(tl => {
+      const items = (tl.theme ? themeStories(IDEAS.find(d => d.title === tl.theme)) : COVERAGE.filter(c => tl.tags.some(t => hasTopic(c, t)))).sort((a, b) => a.t - b.t);
+      const slots = items.reduce((s, c) => s + (isLandmark(c) ? 4 : 1), 0);
+      const R = clamp(Math.round(Math.sqrt(slots / 1.6)), 2, 9);
+      const line = { kind: 'tline', parent: TSECTION, cards: [], items, R, name: tl.name, place: tl.name + ' timeline' };
+      line.cells = [...new Set(items.map(c => Math.floor(c.t)))].map(year => ({ year, list: items.filter(c => Math.floor(c.t) === year) }));
+      line.cw = line.cells.map(ce => pack(ce.list, R, true).cols * (SLOT + SG) - SG + CP * 2);
+      line.w = PAD * 2 + line.cw.reduce((a, b) => a + b, 0) + (line.cells.length - 1) * 10;
+      line.h = TB + YB + R * (SLOT + SG) - SG + CP + PAD;
+      return line;
+    });
+    // flow the timelines into rows under the section title
+    let x = TSECTION.x0 + PAD * 2, y = TSECTION.y1 - SB, rowH = 0, right = 0;
+    for (const line of lines) {
+      if (x > TSECTION.x0 + PAD * 2 && x + line.w > 2820) { x = TSECTION.x0 + PAD * 2; y -= rowH + 30; rowH = 0; }
+      line.x0 = x; line.y1 = y;
+      const tf = Math.min(48, (line.w - PAD * 2) / unitW(line.name, 800, T.title));
+      line.blocks = [Object.assign(block(line.name, { wt: 800, fam: T.title, size: tf, maxW: line.w, color: 'ink', lh: 1 }), { dx: PAD, dy: (TB - tf) / 2 + 2 })];
+      let cx = line.x0 + PAD;
+      line.cells.forEach((ce, i) => {
+        const cell = { kind: 'cell', parent: line, x0: cx, y1: line.y1 - TB, w: line.cw[i], h: YB + line.R * (SLOT + SG) - SG + CP, cards: [] };
+        cell.blocks = [Object.assign(block(String(ce.year), { wt: 700, fam: T.body, size: 14, maxW: cell.w, color: 'ink-soft', lh: 1 }), { dx: CP, dy: 4 })];
+        fillGrid(cell, ce.list, SLOT, SG, cell.x0 + CP, cell.y1 - YB, line.R, true);
+        line.cards.push(cell);
+        cx += cell.w + 10;
+      });
+      TSECTION.cards.push(line);
+      x += line.w + 30; rowH = Math.max(rowH, line.h); right = Math.max(right, x);
+    }
+    TSECTION.w = Math.max(2840, right - TSECTION.x0);
+    TSECTION.h = TSECTION.y1 - (y - rowH) + 30;
+    TSECTION.blocks = [Object.assign(block('Timelines', { wt: 800, fam: T.title, size: 64, maxW: 900, color: 'ink', lh: 1 }), { dx: PAD * 2, dy: 14 })];
+    NODES.push(TSECTION);
+  }
+
+  // Doors: every story shows the other places it appears, and each door leads to the same story there
+  {
+    const byStory = new Map();
+    for (const n of NEWS) { if (!byStory.has(n.data)) byStory.set(n.data, []); byStory.get(n.data).push(n); }
+    APPEAR = byStory;
+    for (const n of NEWS) {
+      const others = byStory.get(n.data).filter(o => o !== n);
+      const laid = layoutNewsCard(n, n.data, others.map(placeOf));
+      n.blocks = laid.blocks;
+      n.fill = 'card';
+      n.cards = laid.doors.map((d, i) => Object.assign({ kind: 'door', parent: n, x0: n.x0 + d.dx, y1: n.y1 - d.dy, w: d.w, h: d.h, target: others[i], fill: 'panel' }, { blocks: [d.label] }));
+    }
+  }
+
+  // Extents: the opening view frames everything above the timelines plus the section's name;
+  // zooming out reaches all of it.
+  {
+    const ext = ns => {
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const n of ns) { x0 = Math.min(x0, n.x0); x1 = Math.max(x1, n.x0 + n.w); y0 = Math.min(y0, n.y1 - n.h); y1 = Math.max(y1, n.y1); }
+      return { x0: x0 - 30, y1: y1 + 30, w: x1 - x0 + 60, h: y1 - y0 + 60 };
+    };
+    const title = { x0: 20, y1: READFRAME.y1 + 170, w: 520, h: 130 };
+    const main = ext([...NODES.filter(n => n !== TSECTION), title]);
+    const peek = main.y1 - (TSECTION.y1 - 90);
+    Object.assign(WORLD, main, { h: Math.max(main.h, peek) });
+    Object.assign(FULL, ext(NODES));
+  }
+  // Plain labels on the plot
+  LABELS = [
+    { text: 'Roblox', x: 20, y: READFRAME.y1 + 40, size: 170, wt: 800, fam: T.title, color: 'ink' },
+    { text: '150M daily players', x: 1370, y: Y(150) - 7, size: 22, wt: 600, fam: T.body, color: 'ink-soft', align: 'right' },
+    { text: '100M', x: 1370, y: Y(100) - 7, size: 22, wt: 600, fam: T.body, color: 'ink-soft', align: 'right' },
+    { text: '50M', x: 1370, y: Y(50) - 7, size: 22, wt: 600, fam: T.body, color: 'ink-soft', align: 'right' },
+    { text: PEAK.m.toFixed(1) + 'M', x: PEAK.x, y: PEAK.y + 22, size: 16, wt: 700, fam: T.body, color: 'curve', align: 'center' },
+    { text: LAST.m.toFixed(0) + 'M', x: LAST.x + 12, y: LAST.y + 22, size: 16, wt: 700, fam: T.body, color: 'curve' },
+  ];
+  for (let yr = 2004; yr <= 2031; yr++) LABELS.push({ text: String(yr), x: X(yr), y: -42, size: 24, wt: 600, fam: T.body, color: 'ink-soft', align: 'center' });
+  GAP_LABEL = { text: 'No daily player figures were published before 2018', size: 16, wt: 400, fam: T.body, it: true };
+}
+let fontsReady = false, untangled = { key: null, at: [] };
+let LABELS = [], GAP_LABEL = null, READFRAME = null, THEMES = [], MFRAMES = [], TSECTION = null, NEWS = [], APPEAR = new Map();
+const FULL = {};
+const hasTopic = (c, tag) => c.g.split(',').some(s => s.trim() === tag);
+// Investigations, documentaries and video investigations are the landmarks: they take a double-size card.
+const isLandmark = c => /investigation|documentary|video/.test(c.k);
+const themeStories = d => (d.stories || []).map(([dd, o, w]) => COVERAGE.find(c => c.d === dd && c.o.includes(o) && (!w || c.w.includes(w)))).filter(Boolean);
+const placeOf = n => { for (let p = n.parent; p; p = p.parent) if (p.place) return p.place; return ''; };
+// Grid packing in date order: `minor` slots across the fixed side, growing along the other; landmarks take 2×2.
+function pack(items, minor, byColumn) {
+  const used = new Set(), at = [], key = (M, m) => M + ',' + m;
+  let start = 0;
+  for (const c of items) {
+    const sz = isLandmark(c) && minor >= 2 ? 2 : 1;
+    let spot = null;
+    for (let M = start; !spot; M++) {
+      for (let m = 0; m + sz <= minor && !spot; m++) {
+        let ok = true;
+        for (let i = 0; i < sz && ok; i++) for (let j = 0; j < sz && ok; j++) ok = !used.has(key(M + i, m + j));
+        if (ok) spot = [M, m];
+      }
+    }
+    for (let i = 0; i < sz; i++) for (let j = 0; j < sz; j++) used.add(key(spot[0] + i, spot[1] + j));
+    while ([...Array(minor).keys()].every(m => used.has(key(start, m)))) start++;
+    at.push({ c, sz, row: byColumn ? spot[1] : spot[0], col: byColumn ? spot[0] : spot[1] });
+  }
+  const span = at.length ? Math.max(...at.map(p => (byColumn ? p.col : p.row) + p.sz)) : 0;
+  return { at, rows: byColumn ? minor : span, cols: byColumn ? span : minor };
+}
+// Rectangles are world rects { x0, y1 (top), w, h }; m is the clearance between them.
+const overlaps = (a, b, m) => a.x0 < b.x0 + b.w + m && b.x0 < a.x0 + a.w + m && a.y1 - a.h < b.y1 + m && b.y1 - b.h < a.y1 + m;
+// Put a box as close as it fits to a point near the line, moving out along the line's normal on either side,
+// clear of everything already placed, of the line itself and of the axis.
+function placeNear(w, h, ax, ay, taken, pts, dmin, dstep, dmax, m) {
+  const ty = curveAt(Math.min(ax + 20, LAST.x)) - curveAt(Math.max(ax - 20, LAUNCH.x));
+  const base = Math.atan2(40, -ty);
+  const angs = [0, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05].flatMap(o => [base + o, base + Math.PI + o]);
+  for (let d = dmin; d <= dmax; d += dstep) {
+    for (const a of angs) {
+      const cx = ax + Math.cos(a) * d, cy = ay + Math.sin(a) * d;
+      const r = { x0: cx - w / 2, y1: cy + h / 2, w, h };
+      if (r.y1 - h < 30) continue;
+      if (taken.some(t => overlaps(r, t, m))) continue;
+      if (pts.some(p => p.x > r.x0 - m && p.x < r.x0 + w + m && p.y > r.y1 - h - m && p.y < r.y1 + m)) continue;
+      return r;
+    }
+  }
+  return { x0: ax - w / 2, y1: ay + dmax + h, w, h };
+}
+// A small seeded random source, so the layout comes out the same on every load.
+function seeded(a) { return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+// Does the segment (x1, y1)–(x2, y2) pass through box r?
+function segHits(x1, y1, x2, y2, r) {
+  let t0 = 0, t1 = 1;
+  const dx = x2 - x1, dy = y2 - y1;
+  for (const [p, q] of [[-dx, x1 - r.x0], [dx, r.x0 + r.w - x1], [-dy, y1 - (r.y1 - r.h)], [dy, r.y1 - y1]]) {
+    if (p === 0) { if (q < 0) return false; continue; }
+    const u = q / p;
+    if (p < 0) { if (u > t1) return false; if (u > t0) t0 = u; } else { if (u < t0) return false; if (u < t1) t1 = u; }
+  }
+  return t0 < t1;
+}
+// Does the segment cross the curve? Samples along it change side of the line if it does.
+function crossesLine(x1, y1, x2, y2) {
+  let side = 0;
+  for (let i = 0; i <= 24; i++) {
+    const x = x1 + (x2 - x1) * i / 24, y = y1 + (y2 - y1) * i / 24;
+    if (x < LAUNCH.x || x > LAST.x) continue;
+    const s = Math.sign(y - curveAt(x));
+    if (s && side && s !== side) return true;
+    if (s) side = s;
+  }
+  return false;
+}
+// The stretch of the centre-to-centre line between two boxes that lies outside both, in world units.
+function worldEdge(p, q) {
+  const ax = p.x0 + p.w / 2, ay = p.y1 - p.h / 2, bx = q.x0 + q.w / 2, by = q.y1 - q.h / 2, dx = bx - ax, dy = by - ay;
+  const exit = (r, x, y, ddx, ddy) => { const t = Math.min(ddx ? (r.w / 2) / Math.abs(ddx) : Infinity, ddy ? (r.h / 2) / Math.abs(ddy) : Infinity); return [x + ddx * t, y + ddy * t]; };
+  return [...exit(p, ax, ay, dx, dy), ...exit(q, bx, by, -dx, -dy)];
+}
+// Move events and themes about (annealing) to make every edge short and keep edges from running through
+// other cards. Events stay clear of the line; themes keep their distance from it, so analysis stays farther out.
+function untangle(cards, themes, fixed, pts) {
+  const rnd = seeded(7), movers = [...cards, ...themes], boxes = [...movers, ...fixed];
+  const edges = [...cards.map(c => ({ c })), ...themes.flatMap(t => t.links.map(c => ({ t, c })))];
+  const seg = e => e.t ? worldEdge(e.t, e.c) : [clamp(e.c.pin.x, e.c.x0, e.c.x0 + e.c.w), clamp(e.c.pin.y, e.c.y1 - e.c.h, e.c.y1), e.c.pin.x, e.c.pin.y];
+  const CROSS = 600, LINE = 1200;
+  const crosses = (e, n) => { const [x1, y1, x2, y2] = seg(e); return segHits(x1, y1, x2, y2, n) ? 1 : 0; };
+  const edgeCost = e => {
+    const [x1, y1, x2, y2] = seg(e);
+    let k = Math.hypot(x2 - x1, y2 - y1) * (e.t ? 1 : 1.5);
+    for (const n of boxes) if (n !== e.c && n !== e.t && segHits(x1, y1, x2, y2, n)) k += CROSS;
+    if (e.t && crossesLine(x1, y1, x2, y2)) k += LINE; // a theme and its event belong on the same side of the line
+    return k;
+  };
+  const incident = new Map(movers.map(n => [n, edges.filter(e => e.c === n || e.t === n)]));
+  const partial = n => {
+    let k = 0;
+    for (const e of incident.get(n)) k += edgeCost(e);
+    for (const e of edges) if (e.c !== n && e.t !== n) k += CROSS * crosses(e, n);
+    return k;
+  };
+  const fits = n => {
+    if (n.y1 - n.h < 30) return false;
+    const m = n.kind === 'idea' ? 30 : 10, far = n.kind === 'idea' ? 140 : 10;
+    for (const o of boxes) if (o !== n && overlaps(n, o, m)) return false;
+    for (const p of pts) if (p.x > n.x0 - far && p.x < n.x0 + n.w + far && p.y > n.y1 - n.h - far && p.y < n.y1 + far) return false;
+    return true;
+  };
+  const N = 12000;
+  for (let i = 0; i < N; i++) {
+    const heat = 1 - i / N, T = 250 * heat + 1;
+    const n = movers[Math.floor(rnd() * movers.length)];
+    if (n.kind === 'card' && rnd() < 0.25) { // swap two events' places
+      const m = cards[Math.floor(rnd() * cards.length)];
+      if (m === n) continue;
+      const before = partial(n) + partial(m);
+      [n.x0, m.x0] = [m.x0, n.x0]; [n.y1, m.y1] = [m.y1, n.y1];
+      const d = partial(n) + partial(m) - before;
+      if (!(d <= 0 || rnd() < Math.exp(-d / T))) { [n.x0, m.x0] = [m.x0, n.x0]; [n.y1, m.y1] = [m.y1, n.y1]; }
+      continue;
+    }
+    const ox = n.x0, oy = n.y1, before = partial(n);
+    if (rnd() < 0.35) { // pull toward what it connects to: its pin, or its theme's events
+      const ends = n.kind === 'idea' ? n.links.map(c => [c.x0 + c.w / 2, c.y1 - c.h / 2]) : [[n.pin.x, n.pin.y], ...themes.filter(t => t.links.includes(n)).map(t => [t.x0 + t.w / 2, t.y1 - t.h / 2])];
+      const tx = ends.reduce((a, e) => a + e[0], 0) / ends.length, ty = ends.reduce((a, e) => a + e[1], 0) / ends.length;
+      const f = 0.15 + rnd() * 0.4;
+      n.x0 += (tx - (ox + n.w / 2)) * f; n.y1 += (ty - (oy - n.h / 2)) * f;
+    } else {
+      const step = (n.kind === 'idea' ? 300 : 160) * (0.1 + heat);
+      n.x0 += (rnd() - 0.5) * 2 * step; n.y1 += (rnd() - 0.5) * 2 * step;
+    }
+    if (!fits(n)) { n.x0 = ox; n.y1 = oy; continue; }
+    const d = partial(n) - before;
+    if (!(d <= 0 || rnd() < Math.exp(-d / T))) { n.x0 = ox; n.y1 = oy; }
+  }
+}
+// Lay a packed grid of news cards into frame f, top-left at (x0, y1).
+function fillGrid(f, items, slot, gap, x0, y1, minor, byColumn) {
+  const p = pack(items, minor, byColumn);
+  for (const q of p.at) {
+    const size = q.sz * slot + (q.sz - 1) * gap;
+    const cn = { kind: 'news', parent: f, x0: x0 + q.col * (slot + gap), y1: y1 - q.row * (slot + gap), w: size, h: size, data: q.c, blocks: [] };
+    f.cards.push(cn); NEWS.push(cn);
+  }
+  return { w: p.cols * (slot + gap) - gap, h: p.rows * (slot + gap) - gap };
+}
+
+// ---------- View (computed sizes: screen = world × s + offset; y flipped) ----------
+const cv = document.getElementById('map'), ctx = cv.getContext('2d');
+const hint = document.getElementById('hint');
+let W = 0, H = 0, dpr = 1;
+const view = { s: 1, ox: 0, oy: 0 };
+const WORLD = { x0: -40, y1: 1240, w: 2860, h: 1640 };
+const sx = x => x * view.s + view.ox;
+const sy = y => -y * view.s + view.oy;
+const rectOf = n => ({ x: sx(n.x0), y: sy(n.y1), w: n.w * view.s, h: n.h * view.s });
+function fitView(x0, y1, w, h, pad) {
+  const s = Math.min((W * (1 - 2 * pad)) / w, (H * (1 - 2 * pad)) / h);
+  const cx = x0 + w / 2, cy = y1 - h / 2;
+  return { s, ox: W / 2 - cx * s, oy: H / 2 + cy * s };
+}
+let minS = 0.05;
+const MAX_S = 60;
+
+function resize() {
+  dpr = Math.max(1, window.devicePixelRatio || 1);
+  const r = cv.getBoundingClientRect();
+  const first = W === 0;
+  const cx = W ? (W / 2 - view.ox) / view.s : 0, cy = H ? (view.oy - H / 2) / view.s : 0;
+  W = r.width; H = r.height;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  const all = fitView(WORLD.x0, WORLD.y1, WORLD.w, WORLD.h, 0.03);
+  minS = fitView(FULL.x0, FULL.y1, FULL.w, FULL.h, 0.03).s * 0.7;
+  if (first) Object.assign(view, all);
+  else { view.ox = W / 2 - cx * view.s; view.oy = H / 2 + cy * view.s; }
+  dirty();
+}
+
+// ---------- Drawing ----------
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const ramp = (v, a, b) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+function col(key, a) {
+  ctx.globalAlpha = clamp(a, 0, 1);
+  return T[key] || key;
+}
+function rr(x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+// Type has three rungs by its own on-screen size: a block per paragraph, then a bar per row, then words.
+function drawBlock(b, nx, ny, a) {
+  const s = view.s, fs = b.size * s;
+  if (a <= 0.004 || fs < 0.4) return;
+  const words = ramp(fs, 5.5, 8.5), barsIn = ramp(fs, 2.2, 3.6);
+  const blockA = 1 - barsIn, barsA = barsIn * (1 - words);
+  const x0 = nx + b.dx * s, lh = b.lh * s, top0 = ny + b.dy * s;
+  if (top0 > H || top0 + lh * b.lines.length < 0 || x0 > W) return;
+  if (blockA > 0.01) {
+    ctx.fillStyle = col(b.color, a * blockA * 0.16);
+    ctx.beginPath();
+    b.lines.forEach((l, i) => ctx.rect(x0, top0 + i * lh, l.w * s, lh));
+    ctx.fill();
+  }
+  if (barsA > 0.01) {
+    ctx.fillStyle = col(b.color, a * barsA * 0.38);
+    ctx.beginPath();
+    b.lines.forEach((l, i) => ctx.rect(x0, top0 + i * lh + lh * 0.3, l.w * s, lh * 0.42));
+    ctx.fill();
+  }
+  if (words > 0.01) {
+    ctx.fillStyle = col(b.color, a * words);
+    ctx.font = font(b.wt, fs, b.fam, b.it);
+    ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    const base = (b.lh - b.size) / 2 * s + fs * 0.8;
+    b.lines.forEach((l, i) => {
+      const y = top0 + i * lh + base;
+      if (y - fs > H || y < 0) return;
+      ctx.fillText(l.s, x0, y);
+    });
+  }
+}
+function drawLabel(L, a) {
+  const fs = L.size * view.s;
+  if (fs < 1.5) return;
+  const words = ramp(fs, 5.5, 8.5);
+  const w = unitW(L.text, L.wt, L.fam, L.it) * fs;
+  const x = L.align === 'right' ? sx(L.x) - w : L.align === 'center' ? sx(L.x) - w / 2 : sx(L.x);
+  const y = sy(L.y);
+  if (x > W || x + w < 0 || y - fs > H || y + fs < 0) return;
+  if (words < 1) {
+    ctx.fillStyle = col(L.color, a * (1 - words) * 0.38);
+    ctx.fillRect(x, y - fs * 0.62, w, fs * 0.5);
+  }
+  if (words > 0.01) {
+    ctx.fillStyle = col(L.color, a * words);
+    ctx.font = font(L.wt, fs, L.fam, L.it);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(L.text, x, y);
+  }
+}
+const presence = r => ramp(Math.min(r.w, r.h), 3, 14);
+const onScreen = r => !(r.x > W || r.y > H || r.x + r.w < 0 || r.y + r.h < 0);
+
+let hover = null;
+
+function drawSpokes() {
+  const themeLit = t => hover && (hover === t || hover.parent === t || (hover.kind === 'card' && t.links.includes(hover)));
+  for (const cn of CARDS) {
+    const on = hover === cn || THEMES.some(t => themeLit(t) && t.links.includes(cn));
+    const a = Math.max(presence(rectOf(cn)), 0.6) * (on ? 1 : 0.55);
+    const x1 = sx(cn.spoke.x), y1 = sy(cn.spoke.y), x2 = sx(cn.pin.x), y2 = sy(cn.pin.y);
+    ctx.strokeStyle = col(on ? 'curve' : 'ink-soft', a);
+    ctx.lineWidth = on ? 2 : 1;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.fillStyle = col(on ? 'curve' : 'ink', a);
+    ctx.beginPath(); ctx.arc(x2, y2, on ? 3.5 : 2.5, 0, Math.PI * 2); ctx.fill();
+  }
+  for (const t of THEMES) {
+    const on = themeLit(t);
+    const a = Math.max(presence(rectOf(t)), 0.5) * (on ? 1 : 0.4);
+    for (const cn of t.links) {
+      const [p, q] = edgeLine(rectOf(t), rectOf(cn));
+      ctx.strokeStyle = col(on ? 'curve' : 'ink-soft', a);
+      ctx.lineWidth = on ? 2 : 1;
+      ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+    }
+  }
+  // each news box points at the stretch of time it covers, marked just under the year labels
+  const by = sy(-58), cap = 4;
+  for (const f of MFRAMES) {
+    const on = hover === f || (hover && hover.parent === f);
+    const a = Math.max(presence(rectOf(f)), 0.6) * (on ? 1 : 0.55);
+    const x0 = sx(f.span[0]) + 2, x1 = sx(f.span[1]) - 2, mid = (x0 + x1) / 2;
+    ctx.strokeStyle = col(on ? 'curve' : 'ink-soft', a);
+    ctx.lineWidth = on ? 2 : 1;
+    ctx.beginPath();
+    ctx.moveTo(x0, by - cap); ctx.lineTo(x0, by); ctx.lineTo(x1, by); ctx.lineTo(x1, by - cap);
+    ctx.moveTo(mid, by); ctx.lineTo(sx(f.x0 + f.w / 2), sy(f.y1));
+    ctx.stroke();
+  }
+}
+
+function drawPlot() {
+  const s = view.s;
+  // gridlines across the measured years
+  for (const m of [50, 100, 150]) {
+    ctx.strokeStyle = col('rule', 0.7); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx(1380), sy(Y(m))); ctx.lineTo(sx(2300), sy(Y(m))); ctx.stroke();
+  }
+  // time axis
+  ctx.strokeStyle = col('ink-soft', 0.8); ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(sx(0), sy(0)); ctx.lineTo(sx(2800), sy(0)); ctx.stroke();
+  for (let yr = 2004; yr <= 2031; yr++) {
+    ctx.beginPath(); ctx.moveTo(sx(X(yr)), sy(0)); ctx.lineTo(sx(X(yr)), sy(0) + Math.max(3, 8 * s)); ctx.stroke();
+  }
+  // the unmeasured years: dashed
+  const cw = clamp(5 * s, 1.5, 7);
+  ctx.setLineDash([cw * 2.2, cw * 1.8]);
+  ctx.strokeStyle = col('curve', 0.75); ctx.lineWidth = cw * 0.7;
+  ctx.beginPath(); ctx.moveTo(sx(LAUNCH.x), sy(LAUNCH.y)); ctx.lineTo(sx(SERIES[0].x), sy(SERIES[0].y)); ctx.stroke();
+  // on to the future
+  ctx.beginPath(); ctx.moveTo(sx(LAST.x), sy(LAST.y));
+  const fx = FUTURE.x0, fy = FUTURE.y1 - FUTURE.h / 2;
+  ctx.bezierCurveTo(sx(LAST.x + 90), sy(LAST.y - 20), sx(fx - 90), sy(fy), sx(fx), sy(fy));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // the measured curve
+  ctx.strokeStyle = col('curve', 1); ctx.lineWidth = cw; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(sx(SERIES[0].x), sy(SERIES[0].y));
+  for (let i = 0; i < SERIES.length - 1; i++) {
+    const p = SERIES[i], q = SERIES[i + 1], h = q.x - p.x;
+    ctx.bezierCurveTo(sx(p.x + h / 3), sy(p.y + SL[i] * h / 3), sx(q.x - h / 3), sy(q.y - SL[i + 1] * h / 3), sx(q.x), sy(q.y));
+  }
+  ctx.stroke();
+  for (const p of [PEAK, LAST]) {
+    ctx.fillStyle = col('curve', 1);
+    ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), cw * 1.1, 0, Math.PI * 2); ctx.fill();
+  }
+  // label riding along the dashed stretch
+  const gx0 = 515, gx1 = 1140;
+  const ang = Math.atan2(sy(curveAt(gx1)) - sy(curveAt(gx0)), sx(gx1) - sx(gx0));
+  const fs = GAP_LABEL.size * s;
+  if (fs > 1.5) {
+    const words = ramp(fs, 5.5, 8.5);
+    ctx.save();
+    ctx.translate(sx(gx0), sy(curveAt(gx0) + 10));
+    ctx.rotate(ang);
+    const w = unitW(GAP_LABEL.text, GAP_LABEL.wt, GAP_LABEL.fam, true) * fs;
+    if (words < 1) { ctx.fillStyle = col('ink-soft', (1 - words) * 0.38); ctx.fillRect(0, -fs * 0.62, w, fs * 0.5); }
+    if (words > 0.01) {
+      ctx.fillStyle = col('ink-soft', words);
+      ctx.font = font(GAP_LABEL.wt, fs, GAP_LABEL.fam, true); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      ctx.fillText(GAP_LABEL.text, 0, 0);
+    }
+    ctx.restore();
+  }
+}
+
+// A story is lit wherever it appears while any one of its copies, or a door to it, is under the cursor.
+const litStory = n => hover && ((n.kind === 'news' && ((hover.kind === 'news' && hover.data === n.data) || (hover.kind === 'door' && hover.target === n)))
+  || (n.kind === 'card' && hover.kind === 'idea' && hover.links.includes(n)) || (n.kind === 'idea' && hover.kind === 'card' && n.links.includes(hover)));
+function casing(n, r, a, fillKey, opts = {}) {
+  const on = hover === n || litStory(n);
+  const rad = Math.max(2, (opts.radius || 4) * view.s);
+  rr(r.x, r.y, r.w, r.h, rad);
+  if (fillKey) { ctx.fillStyle = col(fillKey, a); ctx.fill(); }
+  if (opts.dash) ctx.setLineDash(opts.dash);
+  ctx.strokeStyle = col(on ? 'curve' : (opts.stroke || 'rule'), a);
+  ctx.lineWidth = on ? 2 : (opts.lw || 1);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawNodes() {
+  // every card and frame, nested as deep as they go
+  const drawTree = (n, pa) => {
+    const r = rectOf(n);
+    if (!onScreen(r)) return;
+    const a = pa * presence(r);
+    if (a <= 0.004) return;
+    const leaf = !n.cards || !n.cards.length || n.kind === 'news';
+    const fill = n.fill !== undefined ? n.fill : leaf ? 'card' : ['aframe', 'tsection', 'tline'].includes(n.kind) ? null : 'panel';
+    casing(n, r, a, fill, { radius: Math.min(leaf || n.kind === 'idea' || n.kind === 'door' ? 3 : 6, n.w * 0.06) });
+    if ((n.kind === 'news' || n.kind === 'card') && n.data.au) {
+      ctx.fillStyle = col('local', a);
+      const hgt = Math.max(1.2, 1.6 * view.s);
+      rr(r.x, r.y, r.w, hgt * 2, Math.max(2, 2.5 * view.s)); ctx.save(); ctx.clip();
+      ctx.fillRect(r.x, r.y, r.w, hgt); ctx.restore();
+    }
+    for (const b of n.blocks) drawBlock(b, r.x, r.y, a);
+    if (n.cards) for (const c of n.cards) drawTree(c, a);
+  };
+  for (const f of [...CARDS, ...THEMES, READFRAME, ...MFRAMES, TSECTION]) drawTree(f, 1);
+  // the future
+  {
+    const r = rectOf(FUTURE);
+    if (onScreen(r)) {
+      const a = presence(r);
+      const d = Math.max(3, 6 * view.s);
+      casing(FUTURE, r, a, 'card', { radius: 8, stroke: 'curve', dash: [d * 1.4, d], lw: 1.5 });
+      const p = FUTURE.pocket, s = view.s;
+      rr(r.x + p.dx * s, r.y + p.dy * s, p.w * s, p.h * s, Math.max(2, 4 * s));
+      ctx.setLineDash([d, d]); ctx.strokeStyle = col('rule', a); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+      for (const b of FUTURE.blocks) drawBlock(b, r.x, r.y, a);
+    }
+  }
+}
+
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = T.ground; ctx.fillRect(0, 0, W, H);
+  drawPlot();
+  for (const L of LABELS) drawLabel(L, 1);
+  drawSpokes();
+  drawWeave(false);
+  drawNodes();
+  drawWeave(true);
+  ctx.globalAlpha = 1;
+}
+// From the story under the cursor to every other place it appears (or from a door to where it leads).
+// The lines run beneath the cards, edge to edge, so none crosses a card's face; the rings go on top.
+function drawWeave(rings) {
+  if (!hover || (hover.kind !== 'news' && hover.kind !== 'door')) return;
+  const tos = hover.kind === 'door' ? [hover.target] : (APPEAR.get(hover.data) || []).filter(o => o !== hover);
+  const fr = rectOf(hover);
+  ctx.strokeStyle = col('curve', 0.85); ctx.lineWidth = 2; ctx.setLineDash([]);
+  for (const t of tos) {
+    const r = rectOf(t);
+    if (rings) { rr(r.x - 2, r.y - 2, r.w + 4, r.h + 4, Math.max(3, 3 * view.s)); ctx.stroke(); continue; }
+    const [a, b] = edgeLine(fr, r);
+    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+  }
+}
+// The stretch of the line between two boxes' centres that lies outside both boxes.
+function edgeLine(p, q) {
+  const ax = p.x + p.w / 2, ay = p.y + p.h / 2, bx = q.x + q.w / 2, by = q.y + q.h / 2, dx = bx - ax, dy = by - ay;
+  const exit = (r, sx0, sy0, ddx, ddy) => { const t = Math.min(ddx ? (r.w / 2) / Math.abs(ddx) : Infinity, ddy ? (r.h / 2) / Math.abs(ddy) : Infinity); return [sx0 + ddx * t, sy0 + ddy * t]; };
+  return [exit(p, ax, ay, dx, dy), exit(q, bx, by, -dx, -dy)];
+}
+let raf = 0;
+function dirty() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw(); }); }
+
+// ---------- Moving ----------
+function zoomAt(px, py, k) {
+  const s2 = clamp(view.s * k, minS, MAX_S), kk = s2 / view.s;
+  view.ox = px - (px - view.ox) * kk; view.oy = py - (py - view.oy) * kk; view.s = s2;
+  dirty();
+}
+let flight = null;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function travel(to) {
+  const from = { s: view.s, cx: (W / 2 - view.ox) / view.s, cy: (view.oy - H / 2) / view.s };
+  const dest = { s: to.s, cx: (W / 2 - to.ox) / to.s, cy: (to.oy - H / 2) / to.s };
+  if (reduce) { Object.assign(view, to); dirty(); return; }
+  const dur = 700, t0 = performance.now();
+  flight = { stop: false };
+  const me = flight;
+  const step = now => {
+    if (me.stop) return;
+    const t = clamp((now - t0) / dur, 0, 1), e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const s = Math.exp(Math.log(from.s) + (Math.log(dest.s) - Math.log(from.s)) * e);
+    // move the centre in step with the zoom so the target stays in view the whole way
+    const k = from.s === dest.s ? e : (1 / s - 1 / from.s) / (1 / dest.s - 1 / from.s);
+    const cx = from.cx + (dest.cx - from.cx) * k, cy = from.cy + (dest.cy - from.cy) * k;
+    view.s = s; view.ox = W / 2 - cx * s; view.oy = H / 2 + cy * s;
+    draw();
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+const stopFlight = () => { if (flight) flight.stop = true; };
+const goHome = () => travel(fitView(WORLD.x0, WORLD.y1, WORLD.w, WORLD.h, 0.03));
+const fitFor = n => fitView(n.x0, n.y1, n.w, n.h, n.kind === 'card' || n.kind === 'reading' ? 0.1 : 0.06);
+const goTo = n => travel(fitFor(n));
+// A click goes one level down: to the outermost structure under the cursor that isn't already
+// filling the view. From far away that is a theme, an event or a box, never a card inside a box.
+function hit(px, py) {
+  const inside = n => { const r = rectOf(n); return px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h && presence(r) > 0.2; };
+  const chain = [];
+  let level = [...CARDS, ...THEMES, READFRAME, ...MFRAMES, FUTURE, TSECTION];
+  while (level) {
+    const n = level.find(inside);
+    if (!n) break;
+    chain.push(n);
+    level = n.cards;
+  }
+  for (const n of chain) if (fitFor(n).s > view.s * 1.2) return n;
+  return chain[chain.length - 1] || null;
+}
+
+const pointers = new Map();
+let drag = null, pinch = null;
+let moved = false; // once the visitor has moved, a rebuild never moves the view under them
+function quietHint() { hint.classList.add('gone'); moved = true; }
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
+  stopFlight();
+  if (pointers.size === 1) drag = { x: e.offsetX, y: e.offsetY, moved: false };
+  else if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+    drag = null;
+  }
+});
+cv.addEventListener('pointermove', e => {
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
+  if (pinch && pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    view.ox += mx - pinch.mx; view.oy += my - pinch.my;
+    zoomAt(mx, my, d / pinch.d);
+    pinch = { d, mx, my }; quietHint();
+    return;
+  }
+  if (drag) {
+    const dx = e.offsetX - drag.x, dy = e.offsetY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) > 4) { drag.moved = true; cv.classList.add('dragging'); quietHint(); }
+    if (drag.moved) { view.ox += dx; view.oy += dy; drag.x = e.offsetX; drag.y = e.offsetY; dirty(); }
+    return;
+  }
+  const h = hit(e.offsetX, e.offsetY);
+  if (h !== hover) { hover = h; cv.classList.toggle('over', !!h); dirty(); }
+});
+function endPointer(e) {
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinch = null;
+  if (drag && !drag.moved && e.type === 'pointerup') {
+    const n = hit(e.offsetX, e.offsetY);
+    if (n) { goTo(n.kind === 'door' ? n.target : n); quietHint(); }
+  }
+  drag = null; cv.classList.remove('dragging');
+}
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+cv.addEventListener('pointerleave', () => { if (hover) { hover = null; cv.classList.remove('over'); dirty(); } });
+cv.addEventListener('wheel', e => {
+  e.preventDefault(); stopFlight(); quietHint();
+  const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? H : 1;
+  zoomAt(e.offsetX, e.offsetY, Math.exp(-e.deltaY * unit * (e.ctrlKey ? 0.01 : 0.0015)));
+}, { passive: false });
+window.addEventListener('keydown', e => {
+  const step = 80;
+  if (e.key === 'Escape' || e.key === 'Home' || e.key === '0') { goHome(); }
+  else if (e.key === '+' || e.key === '=') zoomAt(W / 2, H / 2, 1.4);
+  else if (e.key === '-' || e.key === '_') zoomAt(W / 2, H / 2, 1 / 1.4);
+  else if (e.key === 'ArrowLeft') { view.ox += step; dirty(); }
+  else if (e.key === 'ArrowRight') { view.ox -= step; dirty(); }
+  else if (e.key === 'ArrowUp') { view.oy += step; dirty(); }
+  else if (e.key === 'ArrowDown') { view.oy -= step; dirty(); }
+  else return;
+  stopFlight(); quietHint();
+});
+
+// ---------- Start ----------
+window.addEventListener('resize', resize);
+const relook = () => {
+  readTheme(); build();
+  minS = fitView(FULL.x0, FULL.y1, FULL.w, FULL.h, 0.03).s * 0.7;
+  if (!moved) Object.assign(view, fitView(WORLD.x0, WORLD.y1, WORLD.w, WORLD.h, 0.03));
+  dirty();
+};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', relook);
+new MutationObserver(relook).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+build(); resize();
+const faces = ['800 40px Archivo', '700 40px Archivo', '400 40px "Source Sans 3"', '600 40px "Source Sans 3"', '700 40px "Source Sans 3"', 'italic 400 40px "Source Sans 3"'];
+Promise.race([Promise.all(faces.map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 2500))]).then(() => { fontsReady = true; relook(); });
+document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', relook);
+window.__map = { view, goTo, goHome, curveAt, get CARDS() { return CARDS; }, get THEMES() { return THEMES; }, get READFRAME() { return READFRAME; }, FUTURE, hit, get RCARDS() { return RCARDS; }, get MFRAMES() { return MFRAMES; }, get TSECTION() { return TSECTION; }, get NEWS() { return NEWS; }, get APPEAR() { return APPEAR; } };
+})();
+</script>
