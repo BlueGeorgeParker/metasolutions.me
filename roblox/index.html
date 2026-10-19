@@ -111,7 +111,8 @@ const K = 16, SHEET = { w: 1400, h: 840 };
 const TOP = [
   { id: 'masthead', kind: 'masthead', rect: [14, 14, 922, 472],
     kicker: 'What is the future of platform games?',
-    title: 'Platform games won’t replace game stores. They’re replacing social media for kids, and they’ll end up governed like it.',
+    // Parker's thesis, in his words (2026-10-20)
+    title: 'The future of platform games depends on how they get regulated.',
     note: 'A platform game is a game that is also a platform: players make the games, and carry one avatar, one friends list and one wallet across all of them. Roblox, Minecraft and Fortnite are platform games. Steam and the app stores are game platforms: shops that sell separate games.',
     // the three arguments, one for each part of the thesis; clicking one goes to the card or theme that makes it (`to`)
     args: [
@@ -188,7 +189,7 @@ const CONTENT = {
   // card's width and height, from its top left), nearer the hub that pulls it harder, in a crescent down the open
   // years on the left; `pull` is how hard each side pulls, drawn as the weight of its line to each hub. A theme's
   // points sit in the room under its name, each tinted by its `side`. The themes are Parker's, in his words; a
-  // `split` theme pulls through its own pair of halves, one beside each hub. The card's earlier argument hangs on the
+  // `split` theme pulls through its own pair of halves, one beside each hub, each half holding its own points. The card's earlier argument hangs on the
   // lines between (`links`): each of its sentences a small circle on the line `between` two of them, `along` it from
   // the first, `size` times the usual, holding its points as relations. Three hang on the rope between the hubs:
   // that the two are growing into each other, nearer social media; Parker's two futures, at the knot; and the
@@ -233,12 +234,25 @@ const CONTENT = {
           ] },
         { id: 'tug-money', title: 'Monetization', pull: { sm: 2, pg: 2 }, at: [0.4, 0.68],
           body: 'Platform games and social media’s currently use different methods of monetization (but there is no reason for this to remain true forever)',
-          split: [{ id: 'tug-ads', title: 'Advertisers pay', to: 'sm', pull: 4, at: [0.69, 0.33] },
-                  { id: 'tug-players', title: 'Players pay', to: 'pg', pull: 4, at: [0.7, 0.64] }],
+          split: [{ id: 'tug-ads', title: 'Social media earns mostly from advertisers', to: 'sm', pull: 4, at: [0.69, 0.33],
+                    members: [
+                      { id: 'usermoney', side: 'sm', title: 'Social media platforms take money from their users',
+                        body: 'Snapchat passed 25 million paying subscribers in 2026, and Meta began testing a paid Instagram Plus. About a third of YouTube’s 2025 income came from people paying. TikTok was the first app to earn US$6bn in a year from in-app purchases, mostly coins people buy to send gifts.',
+                        src: 'YouTube’s share: our calculation from Alphabet’s 2025 annual report', rel: ['paid'] },
+                    ] },
+                  { id: 'tug-players', title: 'Platform games earn mostly from players', to: 'pg', pull: 4, at: [0.7, 0.64],
+                    members: [
+                      { id: 'gameads', side: 'pg', title: 'Roblox sells ads',
+                        body: 'Roblox has had ads inside games since 2023, video ads since 2024, rewarded video ads sold through Google since 2025, and ads on its home screen since 2026. Ads are “an insignificant amount” of Roblox’s income, and Roblox shows them only to players over 13.',
+                        rel: ['paid', 'money'] },
+                    ] }],
           members: [
-            { id: 'paid', side: 'both', title: 'Advertisers pay social media; kids pay Roblox',
-              body: 'Meta made 98% of its 2025 revenue from ads. Roblox makes nearly all of its money selling Robux to its players, most of them young.',
+            { id: 'paid', side: 'both', title: 'Social media and platform games both earn from ads and from users',
+              body: 'Meta made 98% of its 2025 revenue from ads and sells Meta Verified subscriptions. Roblox made nearly all of its 2025 revenue from selling Robux and sells ads inside its games.',
               src: 'Meta 10-K, 2025; Roblox 10-K', rel: ['money'] },
+            { id: 'agelimits', side: 'both', title: 'Age limits shape who platforms sell to',
+              body: 'Roblox shows ads only to players over 13, and TikTok sells gift coins only to users over 18. Roblox sells Robux to players of any age.',
+              rel: ['tug-regulation', 'money'] },
             // Parker's words (2026-10-19)
             { id: 'incentives', side: 'both', title: 'Social media and platform games also have similar incentives',
               body: 'Currently, social media sells advertising and Roblox sells robux for in-game content, but it’s easy to imagine games selling advertising space and platforms have started moving towards selling exclusive content.',
@@ -261,11 +275,11 @@ const CONTENT = {
           title: 'Social media and platform games share many similar troubles.',
           body: 'However the dissimilarity between the two may be sufficient to generate different future trajectories. Either social media and platform games will continue to blend into each other, or regulation will provide sufficient incentive to keep them as separate classes.' },
         { id: 'social-end', between: ['hub-sm', 'hub-pg'], along: 0.86, size: 1.3, points: ['kids', 'grow', 'differ'],
-          title: 'Platform games are taking social media’s place in kids’ lives, but not its business or its dangers, so rules written for feeds won’t fit them.' },
+          title: 'Platform games are taking social media’s place in kids’ lives, and how platform games get regulated will decide whether they become social media.' },
         { id: 'kids', between: ['tug-sociality', 'hub-pg'], along: 0.25, points: ['parts', 'grewup', 'ban'],
           title: 'Kids already use platform games as their social media.' },
-        { id: 'differ', between: ['tug-tactics', 'tug-money'], along: 0.5, points: ['paid', 'meet', 'spend'],
-          title: 'But they don’t make money or cause harm the same way.' },
+        { id: 'differ', between: ['tug-tactics', 'tug-money'], along: 0.5, size: 1.3, points: ['paid', 'meet', 'spend'],
+          title: 'Social media earns mostly from ads, and its risk to kids is what they see. Platform games earn mostly from players, and their risk to kids is who they meet and what they spend.' },
       ],
     },
   },
@@ -421,7 +435,7 @@ const THEMES = [
         body: 'Games that are also platforms: players make the games, and carry one avatar, friends list and wallet across them. Roblox, Minecraft, Fortnite.',
         rel: ['^replace'] },
       { id: 'socialmedia', title: 'Social media platforms',
-        body: 'Feeds of what users post, paid for by advertisers: TikTok, Instagram, Facebook.',
+        body: 'Feeds of what users post, paid for mostly by advertisers: TikTok, Instagram, Facebook.',
         src: 'Meta 10-K, 2025', rel: ['^paid', 'adding'] },
       { id: 'liveservice', title: 'Live-service games',
         body: 'Games run as an ongoing service rather than sold once, with constant updates, events and in-game purchases: Fortnite, Genshin Impact.',
