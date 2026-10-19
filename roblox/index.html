@@ -67,7 +67,7 @@ body { background: var(--ground); color: var(--ink); overflow: hidden; }
 #hint.gone { opacity: 0; pointer-events: none; }
 </style>
 
-<canvas id="map" role="img" aria-label="Infomap on the future of platform games: a front page of cards, the thesis and its three arguments in the largest with a QR code to open the map on a phone, a card asking whether platform games will replace game platforms, ending on the future of platform games: platforms of all sorts trending towards each other's functions, regulatory burdens that may limit social media giants, and what happens when the two meet, the Roblox money map, a card asking whether platform games will replace social media, set on a graph comparing Roblox with TikTok, and the map's six themes: the Roblox economy, child safety, regulation and governance, online social life, feeds and content discovery, and a typology of platforms"></canvas>
+<canvas id="map" role="img" aria-label="Infomap on the future of platform games: a front page of cards, the thesis and its three arguments in the largest with a QR code to open the map on a phone, a card asking whether platform games will replace game platforms, ending on the future of platform games: platforms of all sorts trending towards each other's functions, regulatory burdens that may limit social media giants, and what happens when the two meet: if regulation prevails, platforms more selective about who joins, and a more networked approach to platformization, the Roblox money map, a card asking whether platform games will replace social media, set on a graph comparing Roblox with TikTok, and the map's six themes: the Roblox economy, child safety, regulation and governance, online social life, feeds and content discovery, and a typology of platforms"></canvas>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
 <script src="map-fonts.js"></script>
 <script src="path-text.js"></script>
@@ -232,7 +232,7 @@ const CONTENT = {
     ],
   },
   // the corner under the replace card's argument (x 752 to 1370, y 605 to 918 of its units): the future of platform
-  // games, as two trends and the question of what happens when they meet. Parker's words, as he gave them; keep them
+  // games, as two trends, the question of what happens when they meet, and what may follow. Parker's words, as he gave them; keep them
   // his. Drawn by this page, not by replace-card.js, so regenerating that leaves it be.
   replace: {
     containers: [
@@ -244,8 +244,9 @@ const CONTENT = {
             body: 'Platform games are integrating their own social media’s, social media’s are hosting games. This is in an attempt to produce insular spaces which capture user attention and do not lose users to other platforms for any reason.' },
           { id: 'burdens',
             title: 'At the same time, increasing regulatory burdens may limit the size of social media giants' },
-          { id: 'meets', top: 110, maxLines: 6,
-            title: 'What happens when an unmovable object meets an unstoppable force?' },
+          { id: 'meets',
+            title: 'What happens when an unmovable object meets an unstoppable force?',
+            body: 'If regulation prevails, we may see social platforms become more selective about who is allowed to join and interact with others. Depending on how governments decide to regulate addictive software, we might also see a more networked approach to platformization, undoing the trend toward generality of service and insularity of user attention.' },
         ] },
     ],
   },
