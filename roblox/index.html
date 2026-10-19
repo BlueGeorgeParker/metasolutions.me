@@ -160,9 +160,10 @@ const TOP = [
     title: 'Will platform games replace game platforms?' },
   { id: 'social', kind: 'graphic', rect: [948, 256, 438, 570],
     title: 'Will platform games replace social media?',
-    // users on an even scale, so a billion looks like a billion; drawn faint behind the argument, across the whole card
+    // users on an even scale, so a billion looks like a billion; drawn faint behind the argument, across the whole card,
+    // with finer steps (`minor`) under 250 million, where Roblox's lines run
     graph: { t0: 2007, t1: 2027, lines: [['roblox', 'daily'], ['roblox', 'monthly'], ['tiktok', 'monthly']], linear: true, vmin: 0, vmax: 1100,
-      grid: [250, 500, 750, 1000], background: true } },
+      grid: [250, 500, 750, 1000], minor: [50, 100, 150, 200], background: true } },
   // the themes that run through the whole map, each a node holding its facets (THEMES, below)
   { id: 'themes', kind: 'themes', rect: [948, 14, 438, 230] },
   // the Roblox money map (roblox-money-map.js), drawn in its card and zoomed into like the rest; it has no statement
@@ -1414,6 +1415,12 @@ function drawGraph(g) {
     ctx.strokeStyle = col('rule', 0.9 * f); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(sx(g.left), sy(g.y(v))); ctx.lineTo(sx(g.right), sy(g.y(v))); ctx.stroke();
     gtext(v >= 1000 ? `${v / 1000} billion` : `${v} million`, g.right + lab * 0.4, g.y(v) - lab * 0.3, lab, { a: f });
+  }
+  // the finer steps: lighter lines and smaller labels, so the main scale still leads
+  for (const v of sp.minor || []) {
+    ctx.strokeStyle = col('rule', 0.55 * f); ctx.lineWidth = 0.75;
+    ctx.beginPath(); ctx.moveTo(sx(g.left), sy(g.y(v))); ctx.lineTo(sx(g.right), sy(g.y(v))); ctx.stroke();
+    gtext(`${v} million`, g.right + lab * 0.4, g.y(v) - lab * 0.22, lab * 0.75, { a: f });
   }
   ctx.strokeStyle = col('ink-soft', 0.9 * f); ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(sx(g.left), sy(g.bottom)); ctx.lineTo(sx(g.right), sy(g.bottom)); ctx.stroke();
