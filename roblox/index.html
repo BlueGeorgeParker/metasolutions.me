@@ -1408,7 +1408,8 @@ function drawCard(c) {
   for (const b of c.blocks) drawBlock(b, r.x, r.y, 1);
 }
 function drawGraph(g) {
-  const lab = 3.6 * K, sp = g.spec, f = sp.background ? 0.45 : 1;
+  // a background graph keeps its grid and scale faint; its lines (`fl`) stay bold enough to read through the argument
+  const lab = 3.6 * K, sp = g.spec, f = sp.background ? 0.45 : 1, fl = sp.background ? 0.85 : 1;
   for (const v of sp.grid) {
     ctx.strokeStyle = col('rule', 0.9 * f); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(sx(g.left), sy(g.y(v))); ctx.lineTo(sx(g.right), sy(g.y(v))); ctx.stroke();
@@ -1430,24 +1431,24 @@ function drawGraph(g) {
     ctx.beginPath(); ctx.moveTo(sx(g.x(sp.split)), sy(g.bottom)); ctx.lineTo(sx(g.x(sp.split)), sy(g.top)); ctx.stroke();
     ctx.setLineDash([]);
   }
-  const cw = clamp(0.9 * K * view.s, 1.5, 7);
+  const cw = clamp(0.9 * K * view.s, 1.5, 7) * (sp.background ? 1.8 : 1);
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   for (const s of g.series) {
     ctx.setLineDash(s.kind === 'monthly' ? [cw * 2.4, cw * 1.6] : []);
-    ctx.strokeStyle = col(s.key, f); ctx.lineWidth = cw * (s.kind === 'monthly' ? 0.75 : 1);
+    ctx.strokeStyle = col(s.key, fl); ctx.lineWidth = cw * (s.kind === 'monthly' ? 0.75 : 1);
     ctx.beginPath(); s.pts.forEach((p, i) => { const x = sx(g.x(p[0])), y = sy(g.y(p[1])); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = col(s.key, f);
+    ctx.fillStyle = col(s.key, fl);
     for (const p of s.pts) { ctx.beginPath(); ctx.arc(sx(g.x(p[0])), sy(g.y(p[1])), cw * 0.9, 0, Math.PI * 2); ctx.fill(); }
     if (s.est) {
       const end = s.pts[s.pts.length - 1], [t, v] = s.est;
-      ctx.setLineDash([cw * 0.4, cw * 1.6]); ctx.strokeStyle = col(s.key, 0.85 * f); ctx.lineWidth = cw * 0.6;
+      ctx.setLineDash([cw * 0.4, cw * 1.6]); ctx.strokeStyle = col(s.key, 0.85 * fl); ctx.lineWidth = cw * 0.6;
       ctx.beginPath(); ctx.moveTo(sx(g.x(end[0])), sy(g.y(end[1]))); ctx.lineTo(sx(g.x(t)), sy(g.y(v))); ctx.stroke();
       ctx.setLineDash([]); ctx.lineWidth = cw * 0.5;
-      ctx.beginPath(); ctx.arc(sx(g.x(t)), sy(g.y(v)), cw * 1.3, 0, Math.PI * 2); ctx.fillStyle = col('card', 1); ctx.fill(); ctx.strokeStyle = col(s.key, f); ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx(g.x(t)), sy(g.y(v)), cw * 1.3, 0, Math.PI * 2); ctx.fillStyle = col('card', 1); ctx.fill(); ctx.strokeStyle = col(s.key, fl); ctx.stroke();
     }
   }
-  for (const n of g.names) gtext(n.text, n.x, n.y, g.nameSize, { color: n.s.key, wt: 700, a: f });
+  for (const n of g.names) gtext(n.text, n.x, n.y, g.nameSize, { color: n.s.key, wt: 700, a: fl });
 }
 function drawEdges() {
   for (const e of EDGES) {
