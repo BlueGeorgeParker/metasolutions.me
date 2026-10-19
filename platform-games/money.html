@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roblox Money Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+/* Roblox's money for one year, as a zoomable map. One arrow in: Robux, nearly all of Roblox's money. Inside the
+   arrow, four short articles; a linked phrase in an article leads to a smaller node beside it. The arrow points into
+   Roblox, and arrows out show where the money goes. Same ground, ink and type as the Roblox infomap. */
+:root {
+  --ground: #F2E9DD;
+  --card: #FFF8F0;
+  --ink: #1B263F;
+  --ink-soft: #55627A;
+  --rule: #C7B8A3;
+  --line: #3F6FA3;
+  --local: #2E7A57;
+  --fees: #6D4FC0;
+  --creators: #D0602A;
+  --running: #00927F;
+  --kept: #B58300;
+  --flow-a: 0.32;
+  --arrow-a: 0.16;
+  --font-title: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #11151D; --card: #1E2533; --ink: #ECE4D7; --ink-soft: #A4AEC0; --rule: #3A4357;
+    --line: #86B2E3; --local: #5BC795;
+    --fees: #8670E0; --creators: #D2652C; --running: #109A8A; --kept: #B9870C; --flow-a: 0.5; --arrow-a: 0.2;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #11151D; --card: #1E2533; --ink: #ECE4D7; --ink-soft: #A4AEC0; --rule: #3A4357;
+  --line: #86B2E3; --local: #5BC795;
+  --fees: #8670E0; --creators: #D2652C; --running: #109A8A; --kept: #B9870C; --flow-a: 0.5; --arrow-a: 0.2;
+  color-scheme: dark;
+}
+html, body { height: 100%; margin: 0; }
+body { background: var(--ground); color: var(--ink); overflow: hidden; }
+#map { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+#map.dragging { cursor: grabbing; }
+#map.over { cursor: pointer; }
+#hint {
+  position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  font: 14px/1.3 var(--font-body); color: var(--ink-soft);
+  background: var(--card); border: 1px solid var(--rule); border-radius: 6px;
+  padding: 8px 12px; max-width: calc(100% - 56px); transition: opacity .8s;
+}
+#hint.gone { opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="map" role="img" aria-label="Map of Roblox's money in 2025. A large arrow of Robux, about 9.8 billion Australian dollars bought by players, points into Roblox. Inside the arrow, four short articles: Roblox makes almost all of its money through Robux; most Roblox players are minors; deceptive tactics are used; regulators aren't keeping up. Arrows out of Roblox show where the money goes: app stores, creators, running Roblox, and what is left over."></canvas>
+<div id="hint">Scroll or pinch to zoom · drag to move · click anything to go there · Esc for the whole map</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
+<script src="map-fonts.js"></script>
+<script src="path-text.js"></script>
+<script src="roblox-money-map.js"></script>
+<script>
+// The money map on its own page: the view, zooming, dragging and clicking. The map itself is roblox-money-map.js.
+(() => {
+'use strict';
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const M = window.MoneyMap;
+
+// ---------- View (computed sizes: screen = world x s + offset) ----------
+const cv = document.getElementById('map'), ctx = cv.getContext('2d');
+const hint = document.getElementById('hint');
+let W = 0, H = 0, dpr = 1;
+const view = { s: 1, ox: 0, oy: 0 };
+const sx = x => x * view.s + view.ox;
+const sy = y => y * view.s + view.oy;
+const fitView = (x0, y0, w, h, pad) => M.fitView(x0, y0, w, h, pad, W, H);
+const home = () => { const w = M.world; return fitView(w.x0, w.y0, w.w, w.h, 0.03); };
+let minS = 0.01;
+const MAX_S = 40;
+function resize() {
+  dpr = Math.max(1, window.devicePixelRatio || 1);
+  const r = cv.getBoundingClientRect();
+  const first = W === 0;
+  const cx = W ? (W / 2 - view.ox) / view.s : 0, cy = H ? (H / 2 - view.oy) / view.s : 0;
+  W = r.width; H = r.height;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  minS = home().s * 0.6;
+  if (first) Object.assign(view, home());
+  else { view.ox = W / 2 - cx * view.s; view.oy = H / 2 - cy * view.s; }
+  dirty();
+}
+let hover = null; // a node, or a door
+const hit = (px, py) => M.hitAt(px, py, view, W, H);
+const hitBud = (px, py) => M.hitBud(px, py, view, W, H);
+const wordLinkAt = (px, py) => M.wordLinkAt(px, py, view, W, H);
+const viewFor = n => M.viewFor(n, W, H);
+
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = M.theme.ground; ctx.fillRect(0, 0, W, H);
+  M.render(ctx, view, W, H, { hover });
+  drawFade();
+  ctx.globalAlpha = 1;
+}
+
+let raf = 0;
+function dirty() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw(); }); }
+
+// ---------- Moving ----------
+function zoomAt(px, py, k) {
+  const s2 = clamp(view.s * k, minS, MAX_S), kk = s2 / view.s;
+  view.ox = px - (px - view.ox) * kk; view.oy = py - (py - view.oy) * kk; view.s = s2;
+  dirty();
+}
+let flight = null;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function travel(to, done) {
+  const from = { s: view.s, cx: (W / 2 - view.ox) / view.s, cy: (H / 2 - view.oy) / view.s };
+  const dest = { s: to.s, cx: (W / 2 - to.ox) / to.s, cy: (H / 2 - to.oy) / to.s };
+  if (reduce) { Object.assign(view, to); if (done) done(); dirty(); return; }
+  const dur = 700, t0 = performance.now();
+  flight = { stop: false };
+  const me = flight;
+  const step = now => {
+    if (me.stop) return;
+    const t = clamp((now - t0) / dur, 0, 1), e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const s = Math.exp(Math.log(from.s) + (Math.log(dest.s) - Math.log(from.s)) * e);
+    // move the centre in step with the zoom so the target stays in view the whole way; between two views at (nearly)
+    // the same zoom, just slide
+    const k = Math.abs(Math.log(dest.s / from.s)) < 1e-6 ? e : (1 / s - 1 / from.s) / (1 / dest.s - 1 / from.s);
+    const cx = from.cx + (dest.cx - from.cx) * k, cy = from.cy + (dest.cy - from.cy) * k;
+    view.s = s; view.ox = W / 2 - cx * s; view.oy = H / 2 - cy * s;
+    draw();
+    if (t < 1) requestAnimationFrame(step); else if (done) done();
+  };
+  requestAnimationFrame(step);
+}
+const stopFlight = () => { if (flight) flight.stop = true; };
+const goHome = () => travel(home());
+const goTo = n => travel(viewFor(n));
+// A door looks exactly like its node, so the view can jump from the door to the node with nothing on it moving:
+// the node is put on screen where the door is, at the door's size. The old scene fades out over the new one.
+const FADE_MS = 450;
+let FADE = null;
+function swapInto(b) {
+  const img = document.createElement('canvas');
+  img.width = cv.width; img.height = cv.height;
+  img.getContext('2d').drawImage(cv, 0, 0);
+  const s2 = view.s * b.k;
+  view.ox = sx(b.x0) - b.node.x0 * s2; view.oy = sy(b.y0) - b.node.y0 * s2; view.s = s2;
+  FADE = { img, t0: performance.now(), at: { s: view.s, ox: view.ox, oy: view.oy } };
+  hover = null; dirty();
+}
+function drawFade() {
+  if (!FADE) return;
+  const t = (performance.now() - FADE.t0) / FADE_MS;
+  if (t >= 1) { FADE = null; return; }
+  const k = view.s / FADE.at.s;
+  ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * (view.ox - FADE.at.ox * k), dpr * (view.oy - FADE.at.oy * k));
+  ctx.globalAlpha = 1 - t * t * (3 - 2 * t);
+  ctx.drawImage(FADE.img, 0, 0, W, H);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  dirty();
+}
+// Clicking a door flies into it, then steps through to its node; zooming into one steps through once it fills
+// about half the screen.
+const enterBud = b => travel(fitView(b.x0, b.y0, b.w, b.h, 0.12), () => swapInto(b));
+function stepThrough(px, py) {
+  const b = hitBud(px, py);
+  if (b && Math.min(b.w, b.h) * view.s >= 0.45 * Math.min(W, H)) swapInto(b);
+}
+const pointers = new Map();
+let drag = null, pinch = null;
+let moved = false; // once the visitor has moved, a rebuild never moves the view under them
+function quietHint() { hint.classList.add('gone'); moved = true; }
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
+  stopFlight();
+  if (pointers.size === 1) drag = { x: e.offsetX, y: e.offsetY, moved: false };
+  else if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+    drag = null;
+  }
+});
+cv.addEventListener('pointermove', e => {
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
+  if (pinch && pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    view.ox += mx - pinch.mx; view.oy += my - pinch.my;
+    zoomAt(mx, my, d / pinch.d);
+    if (d > pinch.d) stepThrough(mx, my);
+    pinch = { d, mx, my }; quietHint();
+    return;
+  }
+  if (drag) {
+    const dx = e.offsetX - drag.x, dy = e.offsetY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) > 4) { drag.moved = true; cv.classList.add('dragging'); quietHint(); }
+    if (drag.moved) { view.ox += dx; view.oy += dy; drag.x = e.offsetX; drag.y = e.offsetY; dirty(); }
+    return;
+  }
+  // over linked words, the node they lead to is the one lit
+  const w = wordLinkAt(e.offsetX, e.offsetY);
+  const h = w ? (w.node || null) : hit(e.offsetX, e.offsetY);
+  cv.classList.toggle('over', !!w || !!h);
+  if (h !== hover) { hover = h; dirty(); }
+});
+function endPointer(e) {
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinch = null;
+  if (drag && !drag.moved && e.type === 'pointerup') {
+    const w = wordLinkAt(e.offsetX, e.offsetY);
+    if (w && w.href) window.open(w.href, '_blank', 'noopener');
+    else if (w && w.node) { goTo(w.node); quietHint(); }
+    else { const n = hit(e.offsetX, e.offsetY); if (n) { if (n.host) enterBud(n); else goTo(n); quietHint(); } }
+  }
+  drag = null; cv.classList.remove('dragging');
+}
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+cv.addEventListener('pointerleave', () => { if (hover) { hover = null; cv.classList.remove('over'); dirty(); } });
+cv.addEventListener('wheel', e => {
+  e.preventDefault(); stopFlight(); quietHint();
+  const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? H : 1;
+  zoomAt(e.offsetX, e.offsetY, Math.exp(-e.deltaY * unit * (e.ctrlKey ? 0.01 : 0.0015)));
+  if (e.deltaY < 0) stepThrough(e.offsetX, e.offsetY);
+}, { passive: false });
+window.addEventListener('keydown', e => {
+  const step = 80;
+  if (e.key === 'Escape' || e.key === 'Home' || e.key === '0') { goHome(); }
+  else if (e.key === '+' || e.key === '=') { zoomAt(W / 2, H / 2, 1.4); stepThrough(W / 2, H / 2); }
+  else if (e.key === '-' || e.key === '_') zoomAt(W / 2, H / 2, 1 / 1.4);
+  else if (e.key === 'ArrowLeft') { view.ox += step; dirty(); }
+  else if (e.key === 'ArrowRight') { view.ox -= step; dirty(); }
+  else if (e.key === 'ArrowUp') { view.oy += step; dirty(); }
+  else if (e.key === 'ArrowDown') { view.oy -= step; dirty(); }
+  else return;
+  stopFlight(); quietHint();
+});
+
+// ---------- Start ----------
+window.addEventListener('resize', resize);
+const relook = () => {
+  M.build();
+  minS = home().s * 0.6;
+  if (!moved) Object.assign(view, home());
+  dirty();
+};
+window.addEventListener('moneymap-change', dirty); // a picture in the map has loaded
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', relook);
+new MutationObserver(relook).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+M.build(); resize();
+const faces = ['700 40px "Source Serif 4"', '400 40px "Source Sans 3"', '700 40px "Source Sans 3"', 'italic 400 40px "Source Sans 3"'];
+Promise.race([Promise.all(faces.map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 2500))]).then(relook);
+document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', relook);
+window.__map = { view, goTo, goHome, hit, hitBud, wordLinkAt, swapInto, enterBud, fitView, BYID: { get: M.byId }, get WORLD() { return M.world; }, get W() { return W; }, get H() { return H; }, ARROW: M.ARROW, STEER: M.STEER, OUT: M.OUT, get ROBLOX() { return M.ROBLOX; } };
+})();
+</script>
+</body>
+</html>
