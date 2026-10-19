@@ -185,27 +185,28 @@ const TOP = [
 // dated moments, which take places near their pins.
 const CONTENT = {
   // A tug of war between Parker's two futures (2026-10-20): the futures are the two poles, at the top and the foot of
-  // the open years on the left, and the themes hang between them, each anchored at its `at` (shares of the card's
-  // width and height, from its top left), placed by hand from the top down by how far it leans to the second future.
-  // Parker's arguments for a future are themes that `argue` for it: his words as the title, his evidence as the
-  // points, and one arrow into that future. Every other theme is pulled by both futures, `pull` drawn as the weight of
-  // its line to each. A theme is `size` times the usual, by how much it holds; its points sit in the room under its
-  // name, each tinted by its `side` (which platform it is about). Everything sits left of the TikTok line, in the open
-  // years (Parker, 2026-10-20). The card's sentences hang on the lines between (`links`): each a small circle on the
-  // line `between` two things, `along` it from the first, `size` times the usual, holding its points as relations. Two
-  // hang on the rope between the futures: Parker's sentence on the challenges the two share and don't, near the
-  // middle, and the conclusion, that regulation decides. Nothing sits on the graph's lines, names or numbers. The
-  // moments the points name sit along the time axis and on the Roblox line.
+  // the open years on the left, and everything else hangs between them, each theme anchored at its `at` (shares of
+  // the card's width and height, from its top left), placed by hand. Parker's arguments for a future are themes that
+  // `argue` for it: his words as the title (and body), his evidence as the points, and one arrow into that future;
+  // Future 1's side is drawn as rounded rectangles, Future 2's as circles. Down the rope between the futures runs the
+  // harms axis, drawn as squircles: Parker's central sentence on the challenges the two share and don't, with each
+  // harm theme above it when it leans to Future 1 and below when it leans to Future 2; a harm theme is pulled by both
+  // futures, `pull` drawn as the weight of its line to each. A theme is `size` times the usual, by how much it holds;
+  // its points sit in the room under its name, each tinted by its `side` (which platform it is about). Everything sits
+  // left of the TikTok line, in the open years (Parker, 2026-10-20). The card's sentences hang on lines (`links`): each
+  // a small node on the line `between` two things, `along` it from the first, `size` times the usual, holding its
+  // points as relations. Nothing sits on the graph's lines, names or numbers. The moments the points name sit along
+  // the time axis and on the Roblox line.
   social: {
     tug: {
-      // the two futures, in Parker's words from the middle node (`trajectories`), each named by its `label` (his ask)
+      // the two futures, in Parker's words from the central node (`trajectories`), each named by its `label` (his ask)
       poles: {
-        blend: { id: 'future-blend', label: 'Future 1', title: 'Social media and platform games continue to blend into each other', at: [0.27, 0.22], rel: ['converge'] },
-        apart: { id: 'future-apart', label: 'Future 2', title: 'Regulation keeps social media and platform games as separate classes', at: [0.27, 0.83], rel: ['burdens', 'meets'] },
+        blend: { id: 'future-blend', label: 'Future 1', title: 'Social media and platform games continue to blend into each other', at: [0.3, 0.21], rel: ['converge'] },
+        apart: { id: 'future-apart', label: 'Future 2', title: 'Regulation keeps social media and platform games as separate classes', at: [0.3, 0.83], rel: ['burdens', 'meets'] },
       },
       themes: [
         // Parker's three arguments for Future 1, in his words (2026-10-20)
-        { id: 'tug-sociality', title: 'Kids are already using platform games as social media.', argues: 'blend', at: [0.125, 0.38], size: 1.1,
+        { id: 'tug-sociality', title: 'Kids are already using platform games as social media.', argues: 'blend', at: [0.13, 0.37], size: 1.1,
           members: [
             { id: 'parts', side: 'pg', title: 'It has social media’s parts',
               body: 'One avatar, one friends list and chat across every game, with profiles, invites and recommendations by age and interests. Leaving costs you your friends.',
@@ -214,7 +215,7 @@ const CONTENT = {
               body: 'More than half of Roblox’s players are under 17. Gen Z and Gen Alpha grew up meeting their friends there, and are used to how it works.',
               src: 'Annika’s research; Carter, Vekhande & Fifita 2026, citing Statista', rel: ['spend'] },
           ] },
-        { id: 'tug-content', title: 'Social media and platform games are already integrating each other’s functions.', argues: 'blend', at: [0.5, 0.23], size: 1.35,
+        { id: 'tug-content', title: 'Social media and platform games are already integrating each other’s functions.', argues: 'blend', at: [0.53, 0.21], size: 1.35,
           members: [
             { id: 'adding', side: 'sm', title: 'Other platforms are integrating games',
               body: 'Facebook put games in Messenger and the News Feed in 2016. Netflix added games in 2021, TikTok tested them in 2022, and YouTube opened them to everyone in 2024.',
@@ -230,7 +231,7 @@ const CONTENT = {
               body: 'Players scroll short videos of other players’ games, and tapping one takes them into the game it shows. Roblox added it in 2025.',
               src: 'TechCrunch, 2025', events: ['Roblox Moments'] },
           ] },
-        { id: 'tug-money', title: 'Social media and platform games are already sharing monetization strategies.', argues: 'blend', at: [0.47, 0.46], size: 1.35,
+        { id: 'tug-money', title: 'Social media and platform games are already sharing monetization strategies.', argues: 'blend', at: [0.5, 0.42], size: 1.35,
           members: [
             { id: 'paid', side: 'both', title: 'Social media and platform games both earn from ads and from users',
               body: 'Meta made 98% of its 2025 revenue from ads and sells Meta Verified subscriptions. Roblox made nearly all of its 2025 revenue from selling Robux and sells ads inside its games.',
@@ -246,49 +247,52 @@ const CONTENT = {
               body: 'Currently, social media sells advertising and Roblox sells robux for in-game content, but it’s easy to imagine games selling advertising space and platforms have started moving towards selling exclusive content.',
               rel: ['trajectories', 'paid'] },
           ] },
-        // the themes pulled by both futures
-        { id: 'tug-safety', title: 'Safety', pull: { blend: 3, apart: 3 }, at: [0.27, 0.609], size: 0.65,
+        // Parker's two arguments for Future 2, in his words (2026-10-20)
+        { id: 'tug-regulation', title: 'Australian law treats platform games and social media as two classes.', argues: 'apart', at: [0.145, 0.69], size: 1.3,
+          body: 'The under-16 ban only covers the latter. If different legal standards continue to apply to platform games and social media, it’s more likely that platform games will cease attempting to capture users through emulation of social media. However, the same incentives mean that social medias may increase their encroachment into the platform gaming space.',
+          members: [
+            { id: 'ban', side: 'both', title: 'The under-16 ban left games out',
+              body: 'Australia’s ban on social media accounts for under-16s began in December 2025 and leaves out online games. Experts warned it could push children toward Roblox.',
+              src: 'Kavya’s research; Rintoul, 2026', events: ['Under-16 social media ban begins'], rel: ['meet', 'label'] },
+          ] },
+        { id: 'tug-giants', title: 'Heavier rules may cap the size of social media giants, preventing them from expanding into all digital niches.', argues: 'apart', at: [0.47, 0.68], size: 1, rel: ['burdens'] },
+        // the harms, on the rope: above the central sentence when a harm leans to Future 1, below when to Future 2
+        { id: 'tug-tactics', title: 'Manipulative tactics', pull: { blend: 4, apart: 3 }, at: [0.3, 0.345], size: 0.8,
+          members: [
+            { id: 'spend', side: 'pg', title: 'Roblox games push kids to spend',
+              body: 'Sydney researchers played 15 top-earning Roblox games. Nearly all sold paid lucky draws and rushed players with limited-time offers, designs they say are treated as illegal outside games.',
+              src: 'Bella’s research; Carter, Vekhande & Fifita 2026', rel: ['money'] },
+            { id: 'agelimits', side: 'both', title: 'Age limits shape who platforms sell to',
+              body: 'Roblox shows ads only to players aged 13 and over. TikTok sells gift coins only to users aged 18 and over, and Roblox’s terms let only adults buy Robux.',
+              src: 'Roblox newsroom, 2024; TikTok Virtual Items Policy; Roblox Terms of Use, 2026', rel: ['tug-money', 'money'] },
+          ] },
+        { id: 'tug-safety', title: 'Safety', pull: { blend: 2.5, apart: 4 }, at: [0.3, 0.587], size: 0.65,
           members: [
             { id: 'meet', side: 'both', title: 'In a feed the risk is what kids see; in a game, who they meet',
               body: 'Strangers can play, chat and talk beside a child. In August 2026 eSafety found adults on Roblox could still send young children connection requests without a parent’s consent.',
               src: 'Bella’s research; Kavya’s research: Reuters, 2026' },
           ] },
-        { id: 'tug-regulation', title: 'Regulation and governance', pull: { blend: 1.5, apart: 5 }, at: [0.12, 0.7], size: 0.9,
-          members: [
-            { id: 'ban', side: 'both', title: 'The under-16 ban left games out',
-              body: 'Australia’s ban on social media accounts for under-16s began in December 2025 and leaves out online games. Experts warned it could push children toward Roblox.',
-              src: 'Kavya’s research; Rintoul, 2026', events: ['Under-16 social media ban begins'], rel: ['meet'] },
-            { id: 'agelimits', side: 'both', title: 'Age limits shape who platforms sell to',
-              body: 'Roblox shows ads only to players aged 13 and over. TikTok sells gift coins only to users aged 18 and over, and Roblox’s terms let only adults buy Robux.',
-              src: 'Roblox newsroom, 2024; TikTok Virtual Items Policy; Roblox Terms of Use, 2026', rel: ['tug-money', 'money'] },
-          ] },
-        { id: 'tug-tactics', title: 'Manipulative tactics', pull: { blend: 3, apart: 4 }, at: [0.46, 0.78], size: 0.8,
-          members: [
-            { id: 'spend', side: 'pg', title: 'Roblox games push kids to spend',
-              body: 'Sydney researchers played 15 top-earning Roblox games. Nearly all sold paid lucky draws and rushed players with limited-time offers, designs they say are treated as illegal outside games.',
-              src: 'Bella’s research; Carter, Vekhande & Fifita 2026', rel: ['money'] },
-          ] },
       ],
-      // the card's sentences, hung on the lines between
+      // the card's sentences, hung on the rope between the futures
       links: [
-        // near the middle of the rope: Parker's sentence on the challenges (2026-10-20) over his reading of the two
-        // futures (2026-10-19), in his words, related to the challenges and to the ban that the label "game" escaped
-        { id: 'trajectories', between: ['future-blend', 'future-apart'], along: 0.445, size: 1.7, points: ['tug-safety', 'differ', 'ban', 'label'],
+        // the centre of the harms axis: Parker's sentence on the challenges (2026-10-20) over his reading of the two
+        // futures (2026-10-19), in his words, related to the harms and to the ban that the label "game" escaped
+        { id: 'trajectories', between: ['future-blend', 'future-apart'], along: 0.377, size: 1.7, points: ['tug-tactics', 'tug-safety', 'differ', 'ban', 'label'],
           title: 'Social media and platform games share some similar challenges, but also some dissimilar challenges.',
           body: 'However the dissimilarity between the two may be sufficient to generate different future trajectories. Either social media and platform games will continue to blend into each other, or regulation will provide sufficient incentive to keep them as separate classes.' },
-        { id: 'social-end', between: ['future-blend', 'future-apart'], along: 0.879, size: 1.1, points: ['tug-sociality', 'tug-content', 'differ'],
-          title: 'Platform games are taking social media’s place in kids’ lives, and how platform games get regulated will decide whether they become social media.' },
-        { id: 'differ', between: ['tug-money', 'tug-tactics'], along: 0.5, size: 1.15, points: ['paid', 'meet', 'spend'],
+        // a harm that leans to Future 2: the two put kids at risk in different ways
+        { id: 'differ', between: ['future-blend', 'future-apart'], along: 0.842, size: 0.9, points: ['paid', 'meet', 'spend'],
           title: 'Social media earns mostly from ads, and its risk to kids is what they see. Platform games earn mostly from players, and their risk to kids is who they meet and what they spend.' },
       ],
     },
   },
   // the corner under the replace card's argument (x 752 to 1370, y 605 to 918 of its units): the future of platform
-  // games, as two trends, the question of what happens when they meet, and what may follow. Parker's words, as he gave them; keep them
-  // his. Drawn by this page, not by replace-card.js, so regenerating that leaves it be.
+  // games, as two trends, the question of what happens when they meet and what may follow, and what tighter policing
+  // could do to Roblox's economy. Parker's words, as he gave them; keep them his. Drawn by this page, not by
+  // replace-card.js, so regenerating that leaves it be.
   replace: {
     containers: [
-      { id: 'future', box: [752, 605, 1370, 918], scale: 1.38, top: 200, cols: 3, memberTop: 80, memberLines: 6, memberBody: 34, even: true,
+      { id: 'future', box: [752, 605, 1370, 918], scale: 1.38, top: 200, cols: 2, memberTop: 80, memberLines: 6, memberBody: 34, even: true,
         title: 'The future of platform games',
         members: [
           { id: 'converge',
@@ -299,6 +303,10 @@ const CONTENT = {
           { id: 'meets',
             title: 'What happens when an unmovable object meets an unstoppable force?',
             body: 'If regulation prevails, we may see social platforms become more selective about who is allowed to join and interact with others. Depending on how governments decide to regulate addictive software, we might also see a more networked approach to platformization, undoing the trend toward generality of service and insularity of user attention.' },
+          // Parker's words (2026-10-20): the future of platform games as it relates to game platforms
+          { id: 'economics', rel: ['spend', 'money'],
+            title: 'Roblox’s ecosystem may have evolved to be dependent on manipulative monetization techniques targeting minors.',
+            body: 'If regulators continue to increase their policing efforts and efficacy, it might undermine the economic structure of platform gaming. This may lead to alternate forms of platform gaming, or it may result in their diminishing popularity.' },
         ] },
     ],
   },
@@ -402,7 +410,7 @@ const THEMES = [
         src: 'Billboard, 2020; Dezeen, 2021; CNBC, 2021' },
       { id: 'socialplace', title: 'Taking social media’s place',
         body: 'For kids, platform games do much of what social media does, and experts warned the under-16 ban could push more of them there.',
-        src: 'Kavya’s research: Rintoul, 2026', rel: ['^social-end', 'ban', '^socialmedia'] },
+        src: 'Kavya’s research: Rintoul, 2026', rel: ['^tug-sociality', 'ban', '^socialmedia'] },
     ] },
   { id: 'feeds', r: 0.64, at: [0.53, 0.8], title: 'Feeds, sharing, and content discovery', up: ['masthead', 'tug-content'],
     facets: [
@@ -745,15 +753,16 @@ function layoutEvent(n, c) {
 }
 
 // ---------- Text in a circle ----------
-// Words set line by line inside a circle of radius R, each line no wider than the circle is at that line's edge
-// farthest from the centre, every line centred. `parts` stack top to bottom from y0 (y runs down from the centre).
-// Null when a word will not fit.
-function setInCircle(R, parts, y0) {
+// Words set line by line inside a circle of radius R (or the squarer shape of exponent `n`, as `outline` draws it),
+// each line no wider than the shape is at that line's edge farthest from the centre, every line centred. `parts`
+// stack top to bottom from y0 (y runs down from the centre). Null when a word will not fit.
+const halfWidth = (R, d, n) => d >= R ? 0 : R * Math.pow(1 - Math.pow(d / R, n), 1 / n);
+function setInCircle(R, parts, y0, n = 2) {
   const out = [];
   let y = y0;
   for (const p of parts) {
     const lh = p.size * p.lh, lines = [];
-    const room = i => { const d = Math.max(Math.abs(y + i * lh), Math.abs(y + (i + 1) * lh)); return d >= R ? 0 : 2 * Math.sqrt(R * R - d * d); };
+    const room = i => 2 * halfWidth(R, Math.max(Math.abs(y + i * lh), Math.abs(y + (i + 1) * lh)), n);
     const wd = t => unitW(t, p.wt, p.fam, p.it) * p.size;
     let cur = '';
     for (const w of p.text.split(/\s+/)) {
@@ -770,13 +779,13 @@ function setInCircle(R, parts, y0) {
   return { blocks: out, end: y - (parts[parts.length - 1].after || 0) };
 }
 // The largest size (from `max` down) at which `make(size)`'s parts fit between `top` and `bottom` in a circle of
-// radius R, started from the middle of the heights they can start at, so they sit centred in the room they have. The
-// blocks come back placed on a node of radius R0 with its top-left at the origin.
-function fitInCircle(R, R0, make, top, bottom, max, min) {
+// radius R (or the shape of exponent `n`), started from the middle of the heights they can start at, so they sit
+// centred in the room they have. The blocks come back placed on a node of radius R0 with its top-left at the origin.
+function fitInCircle(R, R0, make, top, bottom, max, min, n = 2) {
   for (let size = max; size >= min && size > 0; size *= 0.97) {
     const parts = make(size), ok = [];
     for (let i = 0; i <= 40; i++) {
-      const got = setInCircle(R, parts, top + (bottom - top) * i / 40);
+      const got = setInCircle(R, parts, top + (bottom - top) * i / 40, n);
       if (got && got.end <= bottom) ok.push(got);
     }
     if (!ok.length) continue;
@@ -1179,17 +1188,17 @@ function layoutBuds(h, placed) {
 }
 
 // ---------- The tug of war ----------
-// A grid of `k` cards (`aspect` high to one wide) as large as fits in a circle of radius Ri below the cut at y = cut
-// (y down from the centre), `gap` apart and off the wall: rows of up to two (three from five cards), the last row
-// centred, the whole grid in the middle of the heights it can sit at. Found by halving.
-function gridInRoom(k, Ri, cut, gap, aspect) {
+// A grid of `k` cards (`aspect` high to one wide) as large as fits in a circle of radius Ri (or the shape of exponent
+// `n`) below the cut at y = cut (y down from the centre), `gap` apart and off the wall: rows of up to two (three from
+// five cards), the last row centred, the whole grid in the middle of the heights it can sit at. Found by halving.
+function gridInRoom(k, Ri, cut, gap, aspect, n = 2) {
   const cols = k <= 4 ? Math.min(k, 2) : 3, rows = Math.ceil(k / cols);
   const cells = (w, y0) => [...Array(k)].map((_, i) => {
     const r = Math.floor(i / cols), inRow = r === rows - 1 ? k - cols * (rows - 1) : cols, h = w * aspect;
     return [((i % cols) - (inRow - 1) / 2) * (w + gap), y0 + r * (h + gap)];
   });
   const fits = (w, y0) => cells(w, y0).every(([x, y]) => [[x - w / 2, y], [x + w / 2, y], [x - w / 2, y + w * aspect], [x + w / 2, y + w * aspect]]
-    .every(([px, py]) => Math.hypot(px, py) <= Ri - gap && py >= cut + gap));
+    .every(([px, py]) => Math.pow(Math.pow(Math.abs(px), n) + Math.pow(Math.abs(py), n), 1 / n) <= Ri - gap && py >= cut + gap));
   const tops = w => { const ok = []; for (let i = 0; i <= 80; i++) { const y0 = cut + gap + (Ri - cut) * i / 80; if (fits(w, y0)) ok.push(y0); } return ok; };
   let lo = 0, hi = Ri * 2, best = null;
   for (let i = 0; i < 30; i++) {
@@ -1198,21 +1207,23 @@ function gridInRoom(k, Ri, cut, gap, aspect) {
   }
   return best;
 }
-// A tug node (a theme or a link): its ring, its name (and words) as large as fits above its room, and
-// its points in the room; with no points, its words fill the circle. An argument's words take the larger share.
-function tugNode(d, c, x, y, R, ring, byId, relate, out) {
-  const pts = d.members || [], cut = pts.length ? (d.body ? 0.12 : d.argues ? 0.2 : -0.08) * R : null;
-  const n = node('tug', d, { card: c, w: R * 2, h: R * 2, fixed: true, ringW: R * 0.035, ringColor: ring,
+// A tug node (a theme or a link), in the `shape` of its side (`outline`'s exponent): its ring, its name (and words)
+// as large as fits above its room, and its points in the room; with no points, its words fill it. An argument's words
+// take the larger share. A theme's `rel` names what it relates to, as buds on its rim.
+function tugNode(d, c, x, y, R, ring, byId, relate, out, shape = 2) {
+  const pts = d.members || [], cut = pts.length ? (d.argues ? (d.body ? 0.4 : 0.2) : d.body ? 0.12 : -0.08) * R : null;
+  const n = node('tug', d, { card: c, w: R * 2, h: R * 2, n: shape, fixed: true, ringW: R * 0.035, ringColor: ring,
     room: pts.length ? { Ri: R * 0.9, cut } : null });
   n.x0 = x - R; n.y1 = y + R;
   const tr = R - n.ringW - R * 0.05;
   n.blocks = fitInCircle(tr, R, sz => [
     { text: d.title, wt: 700, fam: T.title, size: sz, lh: 1.06, color: 'ink', after: d.body ? sz * 0.35 : 0 },
-    ...(d.body ? [{ text: d.body, wt: 400, fam: T.body, size: sz * 0.42, lh: 1.3, color: 'ink' }] : []),
-  ], -tr * 0.92, pts.length ? cut - R * 0.05 : tr * 0.92, R * (d.body ? 0.2 : 0.32), R * 0.02).blocks;
+    ...(d.body ? [{ text: d.body, wt: 400, fam: T.body, size: sz * (d.argues ? 0.36 : 0.42), lh: 1.3, color: 'ink' }] : []),
+  ], -tr * 0.92, pts.length ? cut - R * 0.05 : tr * 0.92, R * (d.body ? 0.2 : 0.32), R * 0.02, shape).blocks;
   out.push(n); byId.set(d.id, n);
+  for (const id of d.rel || []) relate.push([n, id, false]);
   if (pts.length) {
-    const Ri = n.room.Ri - n.ringW * 0.5, gp = Ri * 0.06, gr = gridInRoom(pts.length, Ri, cut, gp, 0.72);
+    const Ri = n.room.Ri - n.ringW * 0.5, gp = Ri * 0.06, gr = gridInRoom(pts.length, Ri, cut, gp, 0.72, shape);
     if (gr) pts.forEach((m, i) => {
       const [cx, cy] = gr.cells[i];
       const mn = node('member', m, { card: c, parent: n, fixed: true, w: gr.w, h: gr.h });
@@ -1224,6 +1235,9 @@ function tugNode(d, c, x, y, R, ring, byId, relate, out) {
   }
   return n;
 }
+// Each side has its shape (Parker, 2026-10-20): Future 1 and its arguments rounded rectangles, Future 2 and its
+// arguments circles, the harms between them squircles (`outline`'s exponents).
+const SIDE_SHAPE = { blend: 8, apart: 2, between: 4 };
 // The two futures are the card's poles, the largest nodes on it, fixed where they are put (`at`), each its `label`
 // over its words; each relates to the points elsewhere on the map that say the same (`rel`). The themes start at
 // their anchors (`at`), each `size` times the usual; a theme that `argues` for a future is an argument, its one line an
@@ -1241,13 +1255,13 @@ function placeTug(c, g, tug, room, byId, relate, fixed) {
   const pole = {}, ends = new Map();
   for (const k of ['blend', 'apart']) {
     const d = tug.poles[k];
-    const n = node('pole', d, { card: c, w: Rp * 2, h: Rp * 2, fixed: true, ringW: Rp * 0.06, ringColor: 'ink' });
+    const n = node('pole', d, { card: c, w: Rp * 2, h: Rp * 2, n: SIDE_SHAPE[k], fixed: true, ringW: Rp * 0.06, ringColor: 'ink' });
     setCentre(n, ...cardAt(d.at)); keepIn(n, box);
     const tr = Rp - n.ringW - Rp * 0.06;
     n.blocks = fitInCircle(tr, Rp, sz => [
       { text: d.label, wt: 700, fam: T.body, size: sz, lh: 1.1, color: 'line', after: sz * 0.2 },
       { text: d.title, wt: 700, fam: T.title, size: sz, lh: 1.06, color: 'ink' },
-    ], -tr * 0.8, tr * 0.8, Rp * 0.3, Rp * 0.04).blocks;
+    ], -tr * 0.8, tr * 0.8, Rp * 0.3, Rp * 0.04, SIDE_SHAPE[k]).blocks;
     for (const id of d.rel || []) relate.push([n, id, false]);
     pole[k] = n; out.push(n); byId.set(d.id, n);
     ends.set(d.id, { xy: centre(n), r: Rp, fixed: true });
@@ -1341,7 +1355,7 @@ function placeTug(c, g, tug, room, byId, relate, fixed) {
     if (settle && worst < 1) break;
   }
   const made = new Map([[pole.blend.data.id, pole.blend], [pole.apart.data.id, pole.apart]]);
-  for (const p of ps) made.set(p.d.id, tugNode(p.d, c, p.xy[0], p.xy[1], p.r, 'ink', byId, relate, out));
+  for (const p of ps) made.set(p.d.id, tugNode(p.d, c, p.xy[0], p.xy[1], p.r, 'ink', byId, relate, out, SIDE_SHAPE[p.d.argues || 'between']));
   const pull = (a, b, w, color, arrow) => EDGES.push({ a, b, w: w * c.w * 0.0018, color, arrow, noBuds: true });
   for (const p of ps) {
     const n = made.get(p.d.id);
@@ -1351,7 +1365,7 @@ function placeTug(c, g, tug, room, byId, relate, fixed) {
   // the links, in the themes card's way: a ring on the line between two things, named for what connects them; the
   // rope between the poles is drawn once, under every link that hangs on it
   for (const l of links) {
-    const n = tugNode(l.d, c, l.xy[0], l.xy[1], l.r, 'line', byId, relate, out);
+    const n = tugNode(l.d, c, l.xy[0], l.xy[1], l.r, 'line', byId, relate, out, SIDE_SHAPE.between);
     for (const id of l.d.points || []) relate.push([n, id, false]);
     const [a, b] = l.d.between.map(id => made.get(id)), rope = a.kind === 'pole' && b.kind === 'pole';
     if (!EDGES.some(e => (e.a === a && e.b === b) || (e.a === b && e.b === a))) pull(a, b, rope ? 2.5 : 1.2, rope ? 'ink' : 'line');
@@ -1772,12 +1786,17 @@ function drawCardCopy(c, r, a, s, on) {
   if (c.sub === 'masthead') drawMasthead(c, r, a, s);
   for (const b of c.blocks) drawBlock(b, r.x, r.y, a, s);
 }
-// A room or pocket: the part of a circle of radius R below a level cut (y down from the centre), outlined. Both are
-// screen pixels.
-function drawCut(r, R, cut, a, lw) {
-  const cx = r.x + r.w / 2, cy = r.y + r.h / 2, t = Math.asin(clamp(cut / R, -1, 1));
+// A room or pocket: the part of a circle of radius R (or the shape of exponent `n`) below a level cut (y down from
+// the centre), outlined. Both are screen pixels.
+function drawCut(r, R, cut, a, lw, n = 2) {
+  const cx = r.x + r.w / 2, cy = r.y + r.h / 2, e = 2 / n;
+  const t0 = Math.asin(clamp(Math.sign(cut) * Math.pow(Math.abs(cut / R), n / 2), -1, 1));
   ctx.beginPath();
-  ctx.arc(cx, cy, R, t, Math.PI - t);
+  for (let i = 0; i <= 60; i++) {
+    const t = t0 + (Math.PI - 2 * t0) * i / 60, c = Math.cos(t), s = Math.sin(t);
+    const px = cx + R * Math.sign(c) * Math.pow(Math.abs(c), e), py = cy + R * Math.sign(s) * Math.pow(Math.abs(s), e);
+    if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+  }
   ctx.closePath();
   ctx.strokeStyle = col('line', a); ctx.lineWidth = lw; ctx.stroke();
 }
@@ -1805,7 +1824,7 @@ function drawCopy(n, r, a, s, on, depth = 0) {
     ctx.strokeStyle = col(on ? 'ink' : n.ringColor || 'line', a); ctx.lineWidth = Math.max(0.8, n.ringW * s) * (on ? 1.3 : 1);
     ctx.stroke();
     // its room, or its pocket: bigger context in the first row, what is more specific under it
-    if (n.room) drawCut(r, n.room.Ri * s, n.room.cut * s, a, Math.max(0.6, n.ringW * 0.45 * s));
+    if (n.room) drawCut(r, n.room.Ri * s, n.room.cut * s, a, Math.max(0.6, n.ringW * 0.45 * s), n.n);
     if (n.pocket != null) drawCut(r, (POCKET.R * n.w / 2 - n.ringW * 0.5) * s, n.pocket * s, a * 0.7, Math.max(0.5, n.ringW * 0.35 * s));
   } else {
     ctx.strokeStyle = col(on ? 'line' : inkOf(n), a * (on ? 1 : 0.85));
