@@ -791,13 +791,13 @@ function fitInCircle(R, R0, make, top, bottom, max, min) {
 // category that holds it (a facet with `subs`), and again wherever a lobed node places it: one facet, several
 // drawings, and hovering one lights the rest. Each linked pair of themes is held apart far enough for its link's
 // circle to sit on the line between them, named for how the two connect.
-// The way through is by zoom, up or down, and every door sits in the one pocket under a theme's or facet's name. Its
-// first row is the doors to bigger context: a theme's `up`; for a facet, every pocket it sits in (the one it is drawn
-// in first, then the others; inside a lobed node, every lobe that covers it), then what its `^` relations name. Under
-// that row, a facet's doors to what is more specific (its other relations), or, for a category, its subs. A door is
-// the same size as the other members of its pocket: in a room (a theme's, or a category's) the row of doors up takes
-// a band at the top as deep as a facet in the room is wide, and what the room holds is packed under it; in a facet's
-// pocket every door is one size. finishThemes lays the doors out once the relations are known.
+// The way through is by zoom, up or down, and every door sits in the one pocket under a theme's or facet's name: its
+// doors to bigger context (a theme's `up`; for a facet, every pocket it sits in, the one it is drawn in first, then
+// the others, inside a lobed node every lobe that covers it, then what its `^` relations name), and a facet's doors to
+// what is more specific (its other relations). A theme's or category's pocket is its room, and holds its facets too.
+// A door is a member of its pocket like any other, the size of a facet there: everything in a pocket is packed
+// together as circles and eased apart (packRoom), the doors up starting at the top. finishThemes packs the doors in
+// once the relations are known.
 const LINK_R = 0.3, POCKET = { cut: 0.3, R: 0.86 }, ROOM = { theme: -0.44, cat: -0.26 }, WORDS_TOP = { theme: -0.72, facet: -0.68 };
 let FACET_DRAWINGS = new Map();
 const FACETS = new Map();
@@ -839,18 +839,21 @@ function placeThemes(c) {
   }
   return null;
 }
-// Circles in a room, each `sizes[i]` times a common radius: inside a circle of radius Ri, below the cut at y = cut0
-// (y down from the centre) and the band `band(rf)` under it, `gap` apart and off the walls; the largest common radius
-// that settles, found by halving. They start spread across the room in rows, each row across the room's width at its
-// height.
-function packRoom(sizes, Ri, cut0, gap, band = () => 0) {
-  const k = sizes.length, rows = k <= 3 ? [k] : k === 4 ? [2, 2] : [3, k - 3];
+// Circles in a room, each `sizes[i]` times a common radius: inside a circle of radius Ri, below the cut at y = cut
+// (y down from the centre), `gap` apart and off the walls; the largest common radius that settles, found by halving.
+// They start spread across the room in rows, as many to a row as the room is wide for its depth, the first ones at
+// the top, each row across the room's width at its height, and ease apart from there.
+function packRoom(sizes, Ri, cut, gap) {
+  const wide = (cut < 0 ? 2 * Ri : 2 * Math.sqrt(Math.max(0, Ri * Ri - cut * cut))) / (Ri - cut);
+  const k = sizes.length, nRows = Math.ceil(k / Math.max(1, Math.ceil(Math.sqrt(k * wide)))) || 1;
+  const rows = [...Array(nRows)].map((_, i) => Math.floor(k / nRows) + (i < k % nRows ? 1 : 0));
   const settle = rf => {
-    const p = [], cut = cut0 + band(rf);
+    const p = [];
     rows.forEach((n, r) => {
-      const y = cut + (Ri - cut) * (rows.length === 1 ? 0.4 : [0.3, 0.68][r]), half = Math.sqrt(Math.max(0, Ri * Ri - y * y)) * 0.6;
+      const y = cut + (Ri - cut) * (nRows === 1 ? 0.4 : 0.3 + 0.38 * r / (nRows - 1)), half = Math.sqrt(Math.max(0, Ri * Ri - y * y)) * 0.6;
       for (let i = 0; i < n; i++) p.push([n === 1 ? 0 : -half + 2 * half * i / (n - 1), y]);
     });
+    let was = Infinity;
     for (let it = 0; it < 3000; it++) {
       let worst = 0;
       for (let i = 0; i < k; i++) for (let j = i + 1; j < k; j++) {
@@ -865,19 +868,21 @@ function packRoom(sizes, Ri, cut0, gap, band = () => 0) {
         if (q[1] < cut + gap + r) { worst = Math.max(worst, cut + gap + r - q[1]); q[1] = cut + gap + r; }
       });
       if (worst < Ri * 1e-3) return p;
+      // jammed: the overlap has stopped shrinking
+      if (it % 200 === 199) { if (worst > was * 0.95) return null; was = worst; }
     }
     return null;
   };
-  let lo = 0, hi = Ri, best = null;
-  for (let i = 0; i < 26; i++) { const rf = (lo + hi) / 2, p = settle(rf); if (p) { lo = rf; best = { rf, p, band: band(rf) }; } else hi = rf; }
+  // no larger than lets their areas fill the whole circle
+  let lo = 0, hi = Ri / Math.sqrt(Math.max(1, sizes.reduce((s, z) => s + z * z, 0))), best = null;
+  for (let i = 0; i < 18; i++) { const rf = (lo + hi) / 2, p = settle(rf); if (p) { lo = rf; best = { rf, p }; } else hi = rf; }
   return best;
 }
-// A circle with a name and a room under it: a theme, or a link. `cut` is a share of its radius; with `doors` (a theme
-// with bigger context) the top of its room is a band for its row of doors up. A theme's name starts below the narrow
-// top of its circle, so it keeps to one line where it can.
-function roomedNode(kind, d, c, x, y, R, cut, doors = false) {
+// A circle with a name and a room under it: a theme, or a link. `cut` is a share of its radius. A theme's name starts
+// below the narrow top of its circle, so it keeps to one line where it can.
+function roomedNode(kind, d, c, x, y, R, cut) {
   const ring = R * (kind === 'theme' ? 0.045 : 0.06);
-  const n = node(kind, d, { card: c, w: R * 2, h: R * 2, fixed: true, ringW: ring, room: { Ri: R * 0.9, cut: cut * R, band: 0, doors } });
+  const n = node(kind, d, { card: c, w: R * 2, h: R * 2, fixed: true, ringW: ring, room: { Ri: R * 0.9, cut: cut * R } });
   n.x0 = c.x0 + x - R; n.y1 = c.y1 - y + R;
   const tr = R - ring - R * 0.05;
   n.blocks = fitInCircle(tr, R, sz => [{ text: d.title, wt: 700, fam: T.title, size: sz, lh: 1.06, color: 'ink' }],
@@ -885,24 +890,24 @@ function roomedNode(kind, d, c, x, y, R, cut, doors = false) {
   return n;
 }
 // A facet drawn once more, centred at world (x, y) with radius r, inside `parent`, in the theme `home`. A category
-// (a facet with `subs`) gets a room at its foot, under its name, holding them under the row of its doors up;
-// categories nest no deeper than two.
+// (a facet with `subs`) gets a room at its foot, under its name, holding them and its doors up; categories nest no
+// deeper than two.
 function drawFacet(f, parent, c, x, y, r, home, out, depth = 0) {
   const cat = f.subs && depth < 2;
-  const fn = node('facet', f, { card: c, parent, fixed: true, w: r * 2, h: r * 2, ringW: r * 0.04, home, room: cat ? { Ri: r * 0.88, cut: ROOM.cat * r, band: 0, doors: true } : null });
+  const fn = node('facet', f, { card: c, parent, fixed: true, w: r * 2, h: r * 2, ringW: r * 0.04, home, room: cat ? { Ri: r * 0.88, cut: ROOM.cat * r } : null });
   fn.x0 = x - r; fn.y1 = y + r;
   parent.kids.push(fn); out.push(fn);
   if (!FACET_DRAWINGS.has(f.id)) FACET_DRAWINGS.set(f.id, []);
   FACET_DRAWINGS.get(f.id).push(fn);
   if (cat) fillRoom(fn, f.subs.map(id => FACETS.get(id)).filter(Boolean).map(e => e.f), c, out, home, depth + 1);
 }
-// A roomed node's room filled: facets, and a lobed node (`{ lobed, size }`), as large as the room allows; with doors
-// up, under a band as deep as a facet in it is wide (`rf`, the facets' radius, sizes its doors).
+// A roomed node's room filled: facets, and a lobed node (`{ lobed, size }`), as large as the room allows; `rf` is a
+// facet's radius there.
 function fillRoom(n, items, c, out, home, depth = 0) {
   const Ri = n.room.Ri - n.ringW * 0.5, gap = Ri * 0.05, sizes = items.map(it => it.lobed ? it.size : 1);
-  const pk = packRoom(sizes, Ri, n.room.cut, gap, n.room.doors ? rf => 2 * rf + gap : undefined);
+  const pk = packRoom(sizes, Ri, n.room.cut, gap);
   if (!pk) return;
-  n.room.band = pk.band; n.room.rf = pk.rf;
+  n.room.rf = pk.rf;
   const [cx, cy] = centre(n);
   items.forEach((it, i) => {
     const r = pk.rf * sizes[i], x = cx + pk.p[i][0], y = cy - pk.p[i][1];
@@ -958,7 +963,7 @@ function layoutThemes(c, byId, relate) {
   if (!got) return out;
   const { ps, rl } = got, theme = new Map(), at = new Map(ps.map(t => [t.d.id, t]));
   for (const t of ps) {
-    const n = roomedNode('theme', t.d, c, t.x, t.y, t.r, ROOM.theme, !!t.d.up);
+    const n = roomedNode('theme', t.d, c, t.x, t.y, t.r, ROOM.theme);
     n.ups = (t.d.up || []).map(id => byId.get(id) || CARDS.find(x => x.data.id === id)).filter(Boolean);
     theme.set(t.d.id, n); out.push(n); byId.set(t.d.id, n);
   }
@@ -997,9 +1002,9 @@ const facetWords = f => sz => [
   ...(f.src ? [{ text: f.src, wt: 700, fam: T.body, size: sz * 0.34, lh: 1.25, color: 'line' }] : [])];
 // Once the relations are known: each facet drawing's doors, up (the pocket it sits in, the other pockets it is drawn
 // in, then what its `^` relations name) and down (its other relations, unless it is a category, whose room holds what
-// is more specific); its words above its pocket (or its room); and its doors laid in it, the doors up first.
-// Everything with words in one room (or one lobed node) has them at one size against its own radius, the largest at
-// which its fullest fits. A theme's doors up are its `up`, in the band at the top of its room.
+// is more specific); every room with doors up packed again with them, the outer rooms first; each facet's words above
+// its pocket (or its room), and its doors packed in its pocket. Everything with words in one room (or one lobed node)
+// has them at one size against its own radius, the largest at which its fullest fits. A theme's doors up are its `up`.
 function finishThemes() {
   const door = (host, node, up) => ({ host, node, door: true, up });
   for (const ds of FACET_DRAWINGS.values()) {
@@ -1018,10 +1023,9 @@ function finishThemes() {
       d.doors = [...contexts.map(t => door(d, t, true)), ...(d.room ? [] : downs).map(t => door(d, t, false))];
     }
   }
-  for (const n of NODES) if (n.kind === 'theme') {
-    n.doors = (n.ups || []).map(t => door(n, t, true));
-    layoutDoorsIn(n, [n.doors], n.room.cut, n.room.band, 3, 2 * n.room.rf);
-  }
+  for (const n of NODES) if (n.kind === 'theme') n.doors = (n.ups || []).map(t => door(n, t, true));
+  const depth = n => { let d = 0; for (let p = n.parent; p; p = p.parent) d++; return d; };
+  for (const n of NODES.filter(n => n.room && n.doors && n.doors.length).sort((a, b) => depth(a) - depth(b))) packPocket(n);
   const parents = new Set(NODES.filter(n => n.kind === 'facet' || n.kind === 'lobe').map(n => n.parent));
   for (const p of parents) {
     const fs = p.kids.filter(n => n.kind === 'facet'), ls = p.kids.filter(n => n.kind === 'lobe');
@@ -1035,9 +1039,7 @@ function finishThemes() {
       const share = Math.min(...fs.map(f => fit(f, 0.3).size / (f.w / 2)));
       for (const f of fs) {
         f.blocks = fit(f, share).blocks;
-        const ups = f.doors.filter(b => b.up), downs = f.doors.filter(b => !b.up);
-        if (f.room) layoutDoorsIn(f, [ups], f.room.cut, f.room.band, 4, 2 * f.room.rf);
-        else layoutDoorsIn(f, [ups, downs], f.pocket, null, 4);
+        if (f.pocket != null) packPocket(f);
       }
     }
     if (ls.length) {
@@ -1052,35 +1054,37 @@ function finishThemes() {
     }
   }
 }
-// Doors in a pocket: from the cut at y = from (down from the centre) downwards, each of `groups` in rows of up to
-// `per` of its own, each row centred; every door its target in small with the same longest side, at most `most`, as
-// large as keeps every corner inside the circle and, given a `depth`, the rows within that far under the cut.
-function layoutDoorsIn(n, groups, from, depth, per, most = Infinity) {
-  if (from == null) return;
-  const rows = [];
-  for (const doors of groups) {
-    if (!doors.length) continue;
-    const inRow = Math.ceil(doors.length / Math.ceil(doors.length / per));
-    for (let i = 0; i < doors.length; i += inRow) rows.push(doors.slice(i, i + inRow));
-  }
-  if (!rows.length) return;
-  const r = n.w / 2, R = (n.room ? n.room.Ri : POCKET.R * r) - n.ringW, g = r * 0.04, [cx, cy] = centre(n);
-  for (let D = Math.min(r, most); D > r * 0.01; D *= 0.95) {
-    let y = from + g, ok = true;
-    for (const row of rows) {
-      for (const b of row) { b.k = D / Math.max(b.node.w, b.node.h); b.w = b.node.w * b.k; b.h = b.node.h * b.k; }
-      const rh = Math.max(...row.map(b => b.h));
-      let x = -(row.reduce((s, b) => s + b.w, 0) + g * (row.length - 1)) / 2;
-      for (const b of row) {
-        const top = y + (rh - b.h) / 2;
-        for (const [px, py] of [[x, top], [x + b.w, top], [x, top + b.h], [x + b.w, top + b.h]]) if (Math.hypot(px, py) > R) ok = false;
-        b.x0 = cx + x; b.y1 = cy - top; x += b.w + g;
-      }
-      y += rh + g;
-    }
-    if (depth != null && y - g > from + depth) ok = false;
-    if (ok) return;
-  }
+// A pocket packed: its doors (the doors up first) and, in a room, what the room holds, all as circles eased apart
+// (packRoom), every door the size of a facet there. A door is its target drawn small: a circle as wide as its place,
+// anything else with its corners on its place's rim. What the room holds moves to its new place, scaled with
+// everything inside it.
+function packPocket(n) {
+  const r = n.w / 2, held = n.room ? n.kids.filter(k => k.kind === 'facet' || k.kind === 'lobed') : [];
+  const Ri = n.room ? n.room.Ri - n.ringW * 0.5 : POCKET.R * r - n.ringW, cut = n.room ? n.room.cut : n.pocket;
+  const unit = n.room ? n.room.rf : 1, sizes = [...n.doors.map(() => 1), ...held.map(k => k.w / 2 / unit)];
+  const pk = packRoom(sizes, Ri, cut, Ri * 0.05);
+  if (!pk) return;
+  const [cx, cy] = centre(n), at = i => [cx + pk.p[i][0], cy - pk.p[i][1]];
+  n.doors.forEach((b, i) => {
+    const [x, y] = at(i), t = b.node;
+    b.k = 2 * pk.rf / (t.n === 2 ? Math.max(t.w, t.h) : Math.hypot(t.w, t.h));
+    b.w = t.w * b.k; b.h = t.h * b.k; b.x0 = x - b.w / 2; b.y1 = y + b.h / 2;
+  });
+  held.forEach((k, j) => { const i = n.doors.length + j; moveTree(k, ...at(i), pk.rf * sizes[i] / (k.w / 2)); });
+  if (n.room) n.room.rf = pk.rf;
+}
+// A drawing and everything inside it moved so its centre is at world (x, y), and scaled by s about it.
+function moveTree(m, x, y, s) {
+  const [ox, oy] = centre(m);
+  const walk = q => {
+    const [qx, qy] = centre(q);
+    q.w *= s; q.h *= s; q.x0 = x + (qx - ox) * s - q.w / 2; q.y1 = y + (qy - oy) * s + q.h / 2;
+    if (q.ringW) q.ringW *= s;
+    if (q.room) { q.room.Ri *= s; q.room.cut *= s; if (q.room.rf) q.room.rf *= s; }
+    if (q.text) { q.text.x *= s; q.text.y *= s; q.text.r *= s; }
+    for (const k of q.kids) walk(k);
+  };
+  walk(m);
 }
 
 // ---------- Placing ----------
@@ -1109,11 +1113,10 @@ function lineHit(n, pts, m) {
 const BUD_K = 0.2, BUD_MAX = 0.4;
 const reachAlong = (n, ux, uy) => 1 / Math.pow(Math.pow(Math.abs(ux) / (n.w / 2), n.n) + Math.pow(Math.abs(uy) / (n.h / 2), n.n), 1 / n.n);
 const inside = (b, p) => b.x0 >= p.x0 && b.x0 + b.w <= p.x0 + p.w && b.y1 <= p.y1 && b.y1 - b.h >= p.y1 - p.h;
-// Inside its host's parent: a room (its inner circle, under the cut and the band of doors at its top) for a facet's
-// buds, the box otherwise.
+// Inside its host's parent: a room (its inner circle, under the cut) for a facet's buds, the box otherwise.
 function withinParent(b, p) {
   if (!p.room) return inside(b, p);
-  const [cx, cy] = centre(p), R = p.room.Ri - p.ringW, cutY = cy - p.room.cut - (p.room.band || 0);
+  const [cx, cy] = centre(p), R = p.room.Ri - p.ringW, cutY = cy - p.room.cut;
   for (const [x, y] of [[b.x0, b.y1], [b.x0 + b.w, b.y1], [b.x0, b.y1 - b.h], [b.x0 + b.w, b.y1 - b.h]])
     if (Math.hypot(x - cx, y - cy) > R || y > cutY) return false;
   return true;
