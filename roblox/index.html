@@ -67,7 +67,7 @@ body { background: var(--ground); color: var(--ink); overflow: hidden; }
 #hint.gone { opacity: 0; pointer-events: none; }
 </style>
 
-<canvas id="map" role="img" aria-label="Infomap on the future of platform games: a front page of cards, the thesis and its three arguments in the largest with a QR code to open the map on a phone, a card asking whether platform games will replace game platforms, with a corner for the future of platform games, the Roblox money map, a card asking whether platform games will replace social media, set on a graph comparing Roblox with TikTok, and the map's six themes: the Roblox economy, child safety, regulation and governance, online social life, feeds and content discovery, and a typology of platforms"></canvas>
+<canvas id="map" role="img" aria-label="Infomap on the future of platform games: a front page of cards, the thesis and its three arguments in the largest with a QR code to open the map on a phone, a card asking whether platform games will replace game platforms, ending on the future of platform games: platforms of all sorts trending towards each other's functions, regulatory burdens that may limit social media giants, and what happens when the two meet, the Roblox money map, a card asking whether platform games will replace social media, set on a graph comparing Roblox with TikTok, and the map's six themes: the Roblox economy, child safety, regulation and governance, online social life, feeds and content discovery, and a typology of platforms"></canvas>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
 <script src="map-fonts.js"></script>
 <script src="path-text.js"></script>
@@ -232,11 +232,21 @@ const CONTENT = {
     ],
   },
   // the corner under the replace card's argument (x 752 to 1370, y 605 to 918 of its units): the future of platform
-  // games, a titled card for now and nothing in it yet. Drawn by this page, not by replace-card.js, so regenerating
-  // that leaves it be.
+  // games, as two trends and the question of what happens when they meet. Parker's words, as he gave them; keep them
+  // his. Drawn by this page, not by replace-card.js, so regenerating that leaves it be.
   replace: {
     containers: [
-      { id: 'future', box: [752, 605, 1370, 918], scale: 1.38, top: 200, title: 'The future of platform games', members: [] },
+      { id: 'future', box: [752, 605, 1370, 918], scale: 1.38, top: 200, cols: 3, memberTop: 80, memberLines: 6, memberBody: 34, even: true,
+        title: 'The future of platform games',
+        members: [
+          { id: 'converge',
+            title: 'Platforms of all sorts seem to be trending towards the functions of others',
+            body: 'Platform games are integrating their own social media’s, social media’s are hosting games. This is in an attempt to produce insular spaces which capture user attention and do not lose users to other platforms for any reason.' },
+          { id: 'burdens',
+            title: 'At the same time, increasing regulatory burdens may limit the size of social media giants' },
+          { id: 'meets', top: 110, maxLines: 6,
+            title: 'What happens when an unmovable object meets an unstoppable force?' },
+        ] },
     ],
   },
 };
@@ -1170,25 +1180,37 @@ function build() {
     // the usual size, type included. One given a `box` (its corners, in the units of a card drawn in its own) fills
     // that box instead, members or none.
     for (const d of content.containers || []) {
-      const z = d.scale || 1, M = { w: SHAPE.member.w * z, h: SHAPE.member.h * z };
+      const z = d.scale || 1;
       const cols = d.cols || 2, rows = Math.ceil(d.members.length / cols), gap = 130 * z, pad = 110 * z;
+      let M = { w: SHAPE.member.w * z, h: SHAPE.member.h * z };
       const box = d.box && !g ? [at([d.box[0], d.box[1]]), at([d.box[2], d.box[3]])] : null;
       const w = box ? box[1][0] - box[0][0] : cols * M.w + (cols - 1) * gap + pad * 2;
       const head = fitStatement(d, w - pad * 2, 0, { top: d.top || 76 * z, maxLines: 3, bodyK: 0.3, bodyMax: d.bodyMax || 22 * z });
       const chamber = head.h + pad * 0.8;
       const h = box ? box[0][1] - box[1][1] : pad + chamber + rows * M.h + Math.max(0, rows - 1) * gap + pad;
+      // a box shares the room its title leaves among its members
+      if (box && rows) M = { w: (w - pad * 2 - (cols - 1) * gap) / cols, h: (h - pad * 2 - chamber - (rows - 1) * gap) / rows };
       const n = node('container', d, { card: c, w, h, fixed: true });
       stack(head.blocks, pad, pad, head.gaps); n.blocks = head.blocks;
       if (box) { n.x0 = box[0][0]; n.y1 = box[0][1]; } else { setCentre(n, ...at(d.at)); keepIn(n, room); }
       fixed.push(n); byId.set(d.id, n);
+      // a member's title is as large as `top` (its own, or the container's `memberTop`) and its lines allow
+      const lay = (mn, m, top) => layoutBox(mn, m, { top, maxLines: m.maxLines || d.memberLines || 4, bodyK: 0.42, bodyMax: (d.memberBody || 15) * z });
       d.members.forEach((m, i) => {
         const r = Math.floor(i / cols), k = i % cols;
         const mn = node('member', m, { card: c, parent: n, fixed: true, w: M.w, h: M.h });
         mn.x0 = n.x0 + pad + k * (M.w + gap); mn.y1 = n.y1 - pad - chamber - r * (M.h + gap);
-        mn.blocks = layoutBox(mn, m, { top: 44 * z, maxLines: 4, bodyK: 0.42, bodyMax: (d.memberBody || 15) * z });
+        mn.blocks = lay(mn, m, (m.top || d.memberTop || 44) * z);
         n.kids.push(mn); fixed.push(mn); byId.set(m.id, mn);
         for (const id of m.rel || []) relate.push([mn, id, false]);
       });
+      // `even`: the members without a `top` of their own share the smallest title any of them takes, so none of them
+      // shouts over its neighbours
+      if (d.even) {
+        const peers = n.kids.filter(mn => !mn.data.top && mn.blocks.length);
+        const t = Math.min(...peers.map(mn => mn.blocks[0].size));
+        for (const mn of peers) mn.blocks = lay(mn, mn.data, t);
+      }
     }
     if (content.history) {
       const d = content.history, n = node('heading', d, { card: c, w: d.w, h: d.h, fixed: true });
