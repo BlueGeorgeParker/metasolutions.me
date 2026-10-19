@@ -188,9 +188,9 @@ const CONTENT = {
   // the open years on the left, and the themes hang between them, each anchored at its `at` (shares of the card's
   // width and height, from its top left), placed by hand from the top down in order of how hard the second future
   // pulls it against the first. `pull` is how hard each future pulls a theme, drawn as the weight of its line to that
-  // pole. A theme's points sit in the room under its name, each tinted by its `side` (which platform it is about). The
-  // themes are Parker's, in his words; a `split` theme also holds a pair of halves, each about one platform (`key`),
-  // hung off it by a dashed line, with points of its own. The card's sentences hang on the lines between (`links`):
+  // pole. A theme is `size` times the usual, by how much it holds; its points sit in the room under its name, each
+  // tinted by its `side` (which platform it is about). The themes are Parker's, in his words. Everything sits left of
+  // the TikTok line, in the open years (Parker, 2026-10-20). The card's sentences hang on the lines between (`links`):
   // each a small circle on the line `between` two things, `along` it from the first, `size` times the usual, holding
   // its points as relations. Two hang on the rope between the futures: Parker's reading of the two futures, at the
   // knot, and the conclusion, that regulation decides. Nothing sits on the graph's lines, names or numbers. The
@@ -199,18 +199,18 @@ const CONTENT = {
     tug: {
       // the two futures, in Parker's words from the knot (`trajectories`), each named by its `label` (his ask)
       poles: {
-        blend: { id: 'future-blend', label: 'Future 1', title: 'Social media and platform games continue to blend into each other', at: [0.3, 0.23], rel: ['converge'] },
-        apart: { id: 'future-apart', label: 'Future 2', title: 'Regulation keeps social media and platform games as separate classes', at: [0.3, 0.84], rel: ['burdens', 'meets'] },
+        blend: { id: 'future-blend', label: 'Future 1', title: 'Social media and platform games continue to blend into each other', at: [0.27, 0.22], rel: ['converge'] },
+        apart: { id: 'future-apart', label: 'Future 2', title: 'Regulation keeps social media and platform games as separate classes', at: [0.27, 0.8], rel: ['burdens', 'meets'] },
       },
       themes: [
-        { id: 'tug-regulation', title: 'Regulation and governance', pull: { blend: 1.5, apart: 5 }, at: [0.1, 0.7],
+        { id: 'tug-regulation', title: 'Regulation and governance', pull: { blend: 1.5, apart: 5 }, at: [0.12, 0.68], size: 0.8,
           members: [
             { id: 'ban', side: 'both', title: 'The under-16 ban left games out',
               body: 'Australia’s ban on social media accounts for under-16s began in December 2025 and leaves out online games. Experts warned it could push children toward Roblox.',
               src: 'Kavya’s research; Rintoul, 2026', events: ['Under-16 social media ban begins'], rel: ['meet'] },
           ] },
-        { id: 'tug-safety', title: 'Safety', pull: { blend: 3, apart: 3 }, at: [0.3, 0.533], members: [] },
-        { id: 'tug-sociality', title: 'Sociality and its associated dangers', pull: { blend: 4.5, apart: 2.5 }, at: [0.1, 0.45],
+        { id: 'tug-safety', title: 'Safety', pull: { blend: 3, apart: 3 }, at: [0.27, 0.515], size: 0.65, members: [] },
+        { id: 'tug-sociality', title: 'Sociality and its associated dangers', pull: { blend: 4.5, apart: 2.5 }, at: [0.11, 0.41],
           members: [
             { id: 'parts', side: 'pg', title: 'It has social media’s parts',
               body: 'One avatar, one friends list and chat across every game, with profiles, invites and recommendations by age and interests. Leaving costs you your friends.',
@@ -222,7 +222,7 @@ const CONTENT = {
               body: 'Strangers can play, chat and talk beside a child. In August 2026 eSafety found adults on Roblox could still send young children connection requests without a parent’s consent.',
               src: 'Bella’s research; Kavya’s research: Reuters, 2026' },
           ] },
-        { id: 'tug-content', title: 'Content and its associated dangers', pull: { blend: 5, apart: 1 }, at: [0.48, 0.47],
+        { id: 'tug-content', title: 'Content and its associated dangers', pull: { blend: 5, apart: 1 }, at: [0.47, 0.33],
           members: [
             { id: 'fed', side: 'pg', title: 'Games are adding feeds',
               body: 'Roblox’s recommendations pick which games reach players, and the rest are hidden from their feed. In 2025 it added Moments, a scrolling feed of short gameplay videos.',
@@ -235,24 +235,18 @@ const CONTENT = {
               body: 'KakaoTalk in Korea and LINE in Japan, both chat apps, became game platforms in 2012, where you play against your chat friends. WeChat followed in China in 2017.',
               src: 'TechNode 2012; LINE 2012; Niko Partners 2018; Steinberg 2020', events: ['KakaoTalk and LINE add games', 'WeChat Mini Games'], rel: ['adding'] },
           ] },
-        { id: 'tug-money', title: 'Monetization', pull: { blend: 3.5, apart: 1.5 }, at: [0.79, 0.42],
+        { id: 'tug-money', title: 'Monetization', pull: { blend: 3.5, apart: 1.5 }, at: [0.5, 0.55],
           body: 'Platform games and social media’s currently use different methods of monetization (but there is no reason for this to remain true forever)',
-          split: [{ id: 'tug-ads', title: 'Social media earns mostly from advertisers', key: 'tiktok', at: [0.73, 0.2],
-                    members: [
-                      { id: 'usermoney', side: 'sm', title: 'Social media platforms take money from their users',
-                        body: 'Snapchat passed 25 million paying subscribers in 2026, and Meta began testing a paid Instagram Plus. About a third of YouTube’s 2025 income came from people paying. TikTok, counted with its Chinese version Douyin, was the first non-game app to earn US$6bn in a year from in-app purchases, in 2024.',
-                        src: 'Snap, Jul 2026; TechCrunch, Mar 2026; Sensor Tower via TechCrunch, Feb 2025; YouTube’s share: our calculation from Alphabet 10-K, 2025 (ads) and Alphabet Q4 2025 earnings (over US$60bn in all)', rel: ['paid'] },
-                    ] },
-                  { id: 'tug-players', title: 'Platform games earn mostly from players', key: 'roblox', at: [0.86, 0.26],
-                    members: [
-                      { id: 'gameads', side: 'pg', title: 'Roblox sells ads',
-                        body: 'Roblox has had ads inside games since 2023, video ads since 2024, rewarded video ads sold through Google since 2025, and the Homepage Feature, a brand ad on its home page, since 2026. Ads are “an insignificant amount” of Roblox’s income, and Roblox shows them only to players aged 13 and over.',
-                        src: 'Roblox Developer Forum, 2023; Roblox newsroom, 2024, 2025, 2026; Roblox 10-K, 2025', rel: ['paid', 'money'] },
-                    ] }],
           members: [
             { id: 'paid', side: 'both', title: 'Social media and platform games both earn from ads and from users',
               body: 'Meta made 98% of its 2025 revenue from ads and sells Meta Verified subscriptions. Roblox made nearly all of its 2025 revenue from selling Robux and sells ads inside its games.',
               src: 'Meta 10-K, 2025; Roblox 10-K', rel: ['money'] },
+            { id: 'usermoney', side: 'sm', title: 'Social media platforms take money from their users',
+              body: 'Snapchat passed 25 million paying subscribers in 2026, and Meta began testing a paid Instagram Plus. About a third of YouTube’s 2025 income came from people paying. TikTok, counted with its Chinese version Douyin, was the first non-game app to earn US$6bn in a year from in-app purchases, in 2024.',
+              src: 'Snap, Jul 2026; TechCrunch, Mar 2026; Sensor Tower via TechCrunch, Feb 2025; YouTube’s share: our calculation from Alphabet 10-K, 2025 (ads) and Alphabet Q4 2025 earnings (over US$60bn in all)', rel: ['paid'] },
+            { id: 'gameads', side: 'pg', title: 'Roblox sells ads',
+              body: 'Roblox has had ads inside games since 2023, video ads since 2024, rewarded video ads sold through Google since 2025, and the Homepage Feature, a brand ad on its home page, since 2026. Ads are “an insignificant amount” of Roblox’s income, and Roblox shows them only to players aged 13 and over.',
+              src: 'Roblox Developer Forum, 2023; Roblox newsroom, 2024, 2025, 2026; Roblox 10-K, 2025', rel: ['paid', 'money'] },
             { id: 'agelimits', side: 'both', title: 'Age limits shape who platforms sell to',
               body: 'Roblox shows ads only to players aged 13 and over. TikTok sells gift coins only to users aged 18 and over, and Roblox’s terms let only adults buy Robux.',
               src: 'Roblox newsroom, 2024; TikTok Virtual Items Policy; Roblox Terms of Use, 2026', rel: ['tug-regulation', 'money'] },
@@ -261,7 +255,7 @@ const CONTENT = {
               body: 'Currently, social media sells advertising and Roblox sells robux for in-game content, but it’s easy to imagine games selling advertising space and platforms have started moving towards selling exclusive content.',
               rel: ['trajectories', 'paid'] },
           ] },
-        { id: 'tug-tactics', title: 'Manipulative tactics', pull: { blend: 3, apart: 4 }, at: [0.8, 0.64],
+        { id: 'tug-tactics', title: 'Manipulative tactics', pull: { blend: 3, apart: 4 }, at: [0.46, 0.72], size: 0.8,
           members: [
             { id: 'spend', side: 'pg', title: 'Roblox games push kids to spend',
               body: 'Sydney researchers played 15 top-earning Roblox games. Nearly all sold paid lucky draws and rushed players with limited-time offers, designs they say are treated as illegal outside games.',
@@ -274,14 +268,14 @@ const CONTENT = {
           title: 'Games and social media are growing into each other.' },
         // the knot of the rope: Parker's own reading of the two, in his words (2026-10-19), its two futures related
         // to the blending and to regulation, and to the ban that the label "game" escaped
-        { id: 'trajectories', between: ['future-blend', 'future-apart'], along: 0.18, size: 1.45, points: ['grow', 'tug-regulation', 'ban', 'label'],
+        { id: 'trajectories', between: ['future-blend', 'future-apart'], along: 0.215, size: 1.55, points: ['grow', 'tug-regulation', 'ban', 'label'],
           title: 'Social media and platform games share many similar troubles.',
           body: 'However the dissimilarity between the two may be sufficient to generate different future trajectories. Either social media and platform games will continue to blend into each other, or regulation will provide sufficient incentive to keep them as separate classes.' },
-        { id: 'social-end', between: ['future-blend', 'future-apart'], along: 0.79, size: 1.3, points: ['kids', 'grow', 'differ'],
+        { id: 'social-end', between: ['future-blend', 'future-apart'], along: 0.797, size: 1.4, points: ['kids', 'grow', 'differ'],
           title: 'Platform games are taking social media’s place in kids’ lives, and how platform games get regulated will decide whether they become social media.' },
         { id: 'kids', between: ['tug-sociality', 'future-blend'], along: 0.5, points: ['parts', 'grewup', 'ban'],
           title: 'Kids already use platform games as their social media.' },
-        { id: 'differ', between: ['tug-money', 'tug-tactics'], along: 0.5, size: 1.3, points: ['paid', 'meet', 'spend'],
+        { id: 'differ', between: ['tug-money', 'tug-tactics'], along: 0.5, size: 1.15, points: ['paid', 'meet', 'spend'],
           title: 'Social media earns mostly from ads, and its risk to kids is what they see. Platform games earn mostly from players, and their risk to kids is who they meet and what they spend.' },
       ],
     },
@@ -456,8 +450,6 @@ const THEME_LINKS = [
   { id: 'link-label', a: 'governance', b: 'typology', title: 'The label sets the rules', holds: ['label', 'platformgames'] },
   { id: 'link-merge', a: 'feeds', b: 'typology', title: 'Feeds and games merging', holds: ['socialgames', 'socialmedia'] },
 ];
-// The cards that argue a theme at length, kissing its rim: a door into each from the theme.
-const KISSES = [['economy', 'money'], ['social-life', 'social'], ['typology', 'replace']];
 // Dated moments, for a graph card's points to name by title (`events`); the social card names the last eight. `on`
 // pins one to a line of its card's graph; with no line to sit on, it is pinned to the time axis. `au` marks Australia.
 const EVENTS = [
@@ -703,19 +695,19 @@ const SHAPE = {
   link: { n: 2, lw: 2 },
   lobed: { n: 2, lw: 2 },
   lobe: { n: 2, lw: 2 },
-  // the social card's tug of war: its themes and their halves, and the two futures at its ends
+  // the social card's tug of war: its themes and links, and the two futures at its ends
   tug: { n: 2, lw: 2 },
   pole: { n: 2, lw: 3 },
 };
 function inset(n) { const k = n.n <= 3.5 ? 0.13 : n.n <= 5 ? 0.09 : n.n <= 8 ? 0.06 : 0.05; return Math.max(n.w, n.h) * k + 6; }
-// A key statement leads, as large as `maxLines` allow; what backs it sits small underneath. Returns the blocks and
-// the height used, so a container can size its title chamber to its words.
+// A key statement leads, as large as `maxLines` allow; what backs it sits small underneath, no smaller than `bodyMin`.
+// Returns the blocks and the height used, so a container can size its title chamber to its words.
 function fitStatement(d, iw, ih, o = {}) {
   const top = o.top || 110, maxLines = o.maxLines || 5;
   for (let tf = top; tf >= 9; tf -= 1) {
     const ti = block(d.title, { wt: 700, fam: T.title, size: tf, maxW: iw, color: o.color || 'ink', lh: 1.06 });
     if (ti.lines.length > maxLines || !fits(ti)) continue;
-    const bs = clamp(tf * (o.bodyK || 0.3), 7, o.bodyMax || 26);
+    const bs = clamp(tf * (o.bodyK || 0.3), o.bodyMin || 7, o.bodyMax || 26);
     const blocks = [ti], gaps = [tf * 0.32];
     if (d.body) blocks.push(block(d.body, { wt: 400, fam: T.body, size: bs, maxW: iw, color: 'ink', lh: 1.32 }));
     if (d.src) { gaps.push(bs * 0.6); blocks.push(block(d.src, { wt: 700, fam: T.body, size: bs * 0.82, maxW: iw, color: 'line', lh: 1.25 })); }
@@ -798,15 +790,15 @@ function fitInCircle(R, R0, make, top, bottom, max, min) {
 // again in every theme its `also` names, again in the room of every link that holds it, again in the room of every
 // category that holds it (a facet with `subs`), and again wherever a lobed node places it: one facet, several
 // drawings, and hovering one lights the rest. Each linked pair of themes is held apart far enough for its link's
-// circle to sit on the line between them, named for how the two connect. A theme in KISSES has the card that argues it
-// at length kissing its rim.
+// circle to sit on the line between them, named for how the two connect.
 // The way through is by zoom, up or down, and every door sits in the one pocket under a theme's or facet's name. Its
 // first row is the doors to bigger context: a theme's `up`; for a facet, every pocket it sits in (the one it is drawn
 // in first, then the others; inside a lobed node, every lobe that covers it), then what its `^` relations name. Under
-// that row, a facet's doors to what is more specific (its other relations), or, for a category, its subs. In a room
-// (a theme's, or a category's) the row of doors up takes a band (DOOR_BAND, a share of the radius) at the top of the room,
-// and what the room holds is packed under it. finishThemes lays the doors out once the relations are known.
-const LINK_R = 0.3, POCKET = { cut: 0.3, R: 0.86 }, ROOM = { theme: -0.44, cat: -0.18 }, DOOR_BAND = 0.12, WORDS_TOP = { theme: -0.72, facet: -0.68 };
+// that row, a facet's doors to what is more specific (its other relations), or, for a category, its subs. A door is
+// the same size as the other members of its pocket: in a room (a theme's, or a category's) the row of doors up takes
+// a band at the top as deep as a facet in the room is wide, and what the room holds is packed under it; in a facet's
+// pocket every door is one size. finishThemes lays the doors out once the relations are known.
+const LINK_R = 0.3, POCKET = { cut: 0.3, R: 0.86 }, ROOM = { theme: -0.44, cat: -0.26 }, WORDS_TOP = { theme: -0.72, facet: -0.68 };
 let FACET_DRAWINGS = new Map();
 const FACETS = new Map();
 for (const t of THEMES) for (const f of t.facets) FACETS.set(f.id, { f, owner: t.id });
@@ -847,13 +839,14 @@ function placeThemes(c) {
   }
   return null;
 }
-// Circles in a room, each `sizes[i]` times a common radius: inside a circle of radius Ri, below the cut at y = cut
-// (y down from the centre), `gap` apart and off the walls; the largest common radius that settles, found by halving.
-// They start spread across the room in rows, each row across the room's width at its height.
-function packRoom(sizes, Ri, cut, gap) {
+// Circles in a room, each `sizes[i]` times a common radius: inside a circle of radius Ri, below the cut at y = cut0
+// (y down from the centre) and the band `band(rf)` under it, `gap` apart and off the walls; the largest common radius
+// that settles, found by halving. They start spread across the room in rows, each row across the room's width at its
+// height.
+function packRoom(sizes, Ri, cut0, gap, band = () => 0) {
   const k = sizes.length, rows = k <= 3 ? [k] : k === 4 ? [2, 2] : [3, k - 3];
   const settle = rf => {
-    const p = [];
+    const p = [], cut = cut0 + band(rf);
     rows.forEach((n, r) => {
       const y = cut + (Ri - cut) * (rows.length === 1 ? 0.4 : [0.3, 0.68][r]), half = Math.sqrt(Math.max(0, Ri * Ri - y * y)) * 0.6;
       for (let i = 0; i < n; i++) p.push([n === 1 ? 0 : -half + 2 * half * i / (n - 1), y]);
@@ -876,15 +869,15 @@ function packRoom(sizes, Ri, cut, gap) {
     return null;
   };
   let lo = 0, hi = Ri, best = null;
-  for (let i = 0; i < 26; i++) { const rf = (lo + hi) / 2, p = settle(rf); if (p) { lo = rf; best = { rf, p }; } else hi = rf; }
+  for (let i = 0; i < 26; i++) { const rf = (lo + hi) / 2, p = settle(rf); if (p) { lo = rf; best = { rf, p, band: band(rf) }; } else hi = rf; }
   return best;
 }
-// A circle with a name and a room under it: a theme, or a link. `cut` and `band` are shares of its radius; a theme's
-// band, at the top of its room, holds its row of doors up. A theme's name starts below the narrow top of its circle,
-// so it keeps to one line where it can.
-function roomedNode(kind, d, c, x, y, R, cut, band = 0) {
+// A circle with a name and a room under it: a theme, or a link. `cut` is a share of its radius; with `doors` (a theme
+// with bigger context) the top of its room is a band for its row of doors up. A theme's name starts below the narrow
+// top of its circle, so it keeps to one line where it can.
+function roomedNode(kind, d, c, x, y, R, cut, doors = false) {
   const ring = R * (kind === 'theme' ? 0.045 : 0.06);
-  const n = node(kind, d, { card: c, w: R * 2, h: R * 2, fixed: true, ringW: ring, room: { Ri: R * 0.9, cut: cut * R, band: band * R } });
+  const n = node(kind, d, { card: c, w: R * 2, h: R * 2, fixed: true, ringW: ring, room: { Ri: R * 0.9, cut: cut * R, band: 0, doors } });
   n.x0 = c.x0 + x - R; n.y1 = c.y1 - y + R;
   const tr = R - ring - R * 0.05;
   n.blocks = fitInCircle(tr, R, sz => [{ text: d.title, wt: 700, fam: T.title, size: sz, lh: 1.06, color: 'ink' }],
@@ -892,23 +885,24 @@ function roomedNode(kind, d, c, x, y, R, cut, band = 0) {
   return n;
 }
 // A facet drawn once more, centred at world (x, y) with radius r, inside `parent`, in the theme `home`. A category
-// (a facet with `subs`) gets a room at its foot, under its name, holding them under the band of its doors up;
+// (a facet with `subs`) gets a room at its foot, under its name, holding them under the row of its doors up;
 // categories nest no deeper than two.
 function drawFacet(f, parent, c, x, y, r, home, out, depth = 0) {
   const cat = f.subs && depth < 2;
-  const fn = node('facet', f, { card: c, parent, fixed: true, w: r * 2, h: r * 2, ringW: r * 0.04, home, room: cat ? { Ri: r * 0.88, cut: ROOM.cat * r, band: DOOR_BAND * r } : null });
+  const fn = node('facet', f, { card: c, parent, fixed: true, w: r * 2, h: r * 2, ringW: r * 0.04, home, room: cat ? { Ri: r * 0.88, cut: ROOM.cat * r, band: 0, doors: true } : null });
   fn.x0 = x - r; fn.y1 = y + r;
   parent.kids.push(fn); out.push(fn);
   if (!FACET_DRAWINGS.has(f.id)) FACET_DRAWINGS.set(f.id, []);
   FACET_DRAWINGS.get(f.id).push(fn);
   if (cat) fillRoom(fn, f.subs.map(id => FACETS.get(id)).filter(Boolean).map(e => e.f), c, out, home, depth + 1);
 }
-// A roomed node's room filled, under the band its doors up take: facets, and a lobed node (`{ lobed, size }`), as
-// large as the room allows.
+// A roomed node's room filled: facets, and a lobed node (`{ lobed, size }`), as large as the room allows; with doors
+// up, under a band as deep as a facet in it is wide (`rf`, the facets' radius, sizes its doors).
 function fillRoom(n, items, c, out, home, depth = 0) {
   const Ri = n.room.Ri - n.ringW * 0.5, gap = Ri * 0.05, sizes = items.map(it => it.lobed ? it.size : 1);
-  const pk = packRoom(sizes, Ri, n.room.cut + (n.room.band || 0), gap);
+  const pk = packRoom(sizes, Ri, n.room.cut, gap, n.room.doors ? rf => 2 * rf + gap : undefined);
   if (!pk) return;
+  n.room.band = pk.band; n.room.rf = pk.rf;
   const [cx, cy] = centre(n);
   items.forEach((it, i) => {
     const r = pk.rf * sizes[i], x = cx + pk.p[i][0], y = cy - pk.p[i][1];
@@ -964,9 +958,9 @@ function layoutThemes(c, byId, relate) {
   if (!got) return out;
   const { ps, rl } = got, theme = new Map(), at = new Map(ps.map(t => [t.d.id, t]));
   for (const t of ps) {
-    const n = roomedNode('theme', t.d, c, t.x, t.y, t.r, ROOM.theme, t.d.up ? DOOR_BAND : 0);
+    const n = roomedNode('theme', t.d, c, t.x, t.y, t.r, ROOM.theme, !!t.d.up);
     n.ups = (t.d.up || []).map(id => byId.get(id) || CARDS.find(x => x.data.id === id)).filter(Boolean);
-    n.kiss = []; theme.set(t.d.id, n); out.push(n); byId.set(t.d.id, n);
+    theme.set(t.d.id, n); out.push(n); byId.set(t.d.id, n);
   }
   // a theme's lobed node, its own facets, then those it shares; a facet its lobed node places, or one of its
   // categories holds, is drawn there instead
@@ -992,32 +986,6 @@ function layoutThemes(c, byId, relate) {
     if (i > 0) ds.unshift(...ds.splice(i, 1));
     byId.set(id, ds[0]);
     for (const r of ds[0].data.rel || []) relate.push([ds[0], r, false]);
-  }
-  // the kissing cards: each card's side just touching its theme's rim (ink to ink), slid along that side as far as
-  // there is room, on the side nearest the card it stands for; inside this card and clear of everything else on it,
-  // smaller until it fits
-  const m = 6 * K, placed = [];
-  for (const [tid, cid] of KISSES) {
-    const h = theme.get(tid), card = CARDS.find(x => x.data.id === cid);
-    if (!h || !card) continue;
-    const [hx, hy] = centre(h), [tx, ty] = centre(card), a0 = Math.atan2(ty - hy, tx - hx), R = h.w / 2 + h.ringW * 0.5;
-    const turn = a => Math.abs(Math.atan2(Math.sin(a - a0), Math.cos(a - a0)));
-    for (let k = h.w * 0.62 / Math.max(card.w, card.h); k > h.w * 0.1 / Math.max(card.w, card.h); k *= 0.92) {
-      const w = card.w * k, ht = card.h * k, spots = [];
-      for (let e = -0.4; e <= 0.401; e += 0.1) {
-        spots.push([hx + R, hy + e * ht + ht / 2], [hx - R - w, hy + e * ht + ht / 2]);   // right, left
-        spots.push([hx + e * w - w / 2, hy + R + ht], [hx + e * w - w / 2, hy - R]);      // above, below
-      }
-      const angle = ([x0, y1]) => turn(Math.atan2(y1 - ht / 2 - hy, x0 + w / 2 - hx));
-      spots.sort((p, q) => angle(p) - angle(q));
-      const b = { host: h, node: card, k, w, h: ht, kiss: true }, g = h.ringW;
-      const spot = spots.find(([x0, y1]) => {
-        Object.assign(b, { x0, y1 });
-        return x0 >= c.x0 + m && x0 + w <= c.x0 + c.w - m && y1 <= c.y1 - m && y1 - ht >= c.y1 - c.h + m
-          && !out.some(o => o !== h && (o.kind === 'theme' || o.kind === 'link') && hits(b, o, g)) && !placed.some(o => overlaps(b, o, g));
-      });
-      if (spot) { Object.assign(b, { x0: spot[0], y1: spot[1] }); h.kiss.push(b); placed.push(b); break; }
-    }
   }
   return out;
 }
@@ -1052,7 +1020,7 @@ function finishThemes() {
   }
   for (const n of NODES) if (n.kind === 'theme') {
     n.doors = (n.ups || []).map(t => door(n, t, true));
-    layoutDoorsIn(n, [n.doors], n.room.cut, n.room.band, 3);
+    layoutDoorsIn(n, [n.doors], n.room.cut, n.room.band, 3, 2 * n.room.rf);
   }
   const parents = new Set(NODES.filter(n => n.kind === 'facet' || n.kind === 'lobe').map(n => n.parent));
   for (const p of parents) {
@@ -1068,7 +1036,7 @@ function finishThemes() {
       for (const f of fs) {
         f.blocks = fit(f, share).blocks;
         const ups = f.doors.filter(b => b.up), downs = f.doors.filter(b => !b.up);
-        if (f.room) layoutDoorsIn(f, [ups], f.room.cut, f.room.band, 4);
+        if (f.room) layoutDoorsIn(f, [ups], f.room.cut, f.room.band, 4, 2 * f.room.rf);
         else layoutDoorsIn(f, [ups, downs], f.pocket, null, 4);
       }
     }
@@ -1085,9 +1053,9 @@ function finishThemes() {
   }
 }
 // Doors in a pocket: from the cut at y = from (down from the centre) downwards, each of `groups` in rows of up to
-// `per` of its own, each row centred; every door its target in small with the same longest side, as large as keeps
-// every corner inside the circle and, given a `depth`, the rows within that far under the cut.
-function layoutDoorsIn(n, groups, from, depth, per) {
+// `per` of its own, each row centred; every door its target in small with the same longest side, at most `most`, as
+// large as keeps every corner inside the circle and, given a `depth`, the rows within that far under the cut.
+function layoutDoorsIn(n, groups, from, depth, per, most = Infinity) {
   if (from == null) return;
   const rows = [];
   for (const doors of groups) {
@@ -1097,7 +1065,7 @@ function layoutDoorsIn(n, groups, from, depth, per) {
   }
   if (!rows.length) return;
   const r = n.w / 2, R = (n.room ? n.room.Ri : POCKET.R * r) - n.ringW, g = r * 0.04, [cx, cy] = centre(n);
-  for (let D = r; D > r * 0.01; D *= 0.95) {
+  for (let D = Math.min(r, most); D > r * 0.01; D *= 0.95) {
     let y = from + g, ok = true;
     for (const row of rows) {
       for (const b of row) { b.k = D / Math.max(b.node.w, b.node.h); b.w = b.node.w * b.k; b.h = b.node.h * b.k; }
@@ -1224,7 +1192,7 @@ function gridInRoom(k, Ri, cut, gap, aspect) {
   }
   return best;
 }
-// A tug node (a theme, or half of a split one): its ring, its name (and words) as large as fits above its room, and
+// A tug node (a theme or a link): its ring, its name (and words) as large as fits above its room, and
 // its points in the room; with no points, its words fill the circle.
 function tugNode(d, c, x, y, R, ring, byId, relate, out) {
   const pts = d.members || [], cut = pts.length ? (d.body ? 0.12 : -0.08) * R : null;
@@ -1243,7 +1211,7 @@ function tugNode(d, c, x, y, R, ring, byId, relate, out) {
       const [cx, cy] = gr.cells[i];
       const mn = node('member', m, { card: c, parent: n, fixed: true, w: gr.w, h: gr.h });
       mn.x0 = x + cx - gr.w / 2; mn.y1 = y - cy;
-      mn.blocks = layoutBox(mn, m, { top: gr.w * 0.105, maxLines: 4, bodyK: 0.42, bodyMax: gr.w * 0.05 });
+      mn.blocks = layoutBox(mn, m, { top: gr.w * 0.105, maxLines: 4, bodyK: 0.42, bodyMax: gr.w * 0.05, bodyMin: gr.w * 0.015 });
       n.kids.push(mn); out.push(mn); byId.set(m.id, mn);
       for (const id of m.rel || []) relate.push([mn, id, false]);
     });
@@ -1251,8 +1219,8 @@ function tugNode(d, c, x, y, R, ring, byId, relate, out) {
   return n;
 }
 // The two futures are the card's poles, the largest nodes on it, fixed where they are put (`at`), each its `label`
-// over its words; each relates to the points elsewhere on the map that say the same (`rel`). The themes and the
-// halves of a split one start at their anchors (`at`), and a link sits on the line between its two ends, `along` the
+// over its words; each relates to the points elsewhere on the map that say the same (`rel`). The themes start at
+// their anchors (`at`), each `size` times the usual, and a link sits on the line between its two ends, `along` the
 // stretch between their rims. Then everything that may move eases apart: inside the card but clear of the graph's
 // numbers (its scale on the right, its years along the foot), off the poles, the links, the lines' names and each
 // other, held to its anchor by a spring; linked ends keep room for their links between them, and links keep off each
@@ -1260,7 +1228,7 @@ function tugNode(d, c, x, y, R, ring, byId, relate, out) {
 // line runs under looks joined to it). A last pass leaves nothing overlapping. The pulls are drawn as lines, as heavy
 // as they pull, and a link's line runs under it; a link keeps its points as relations (buds on its rim).
 function placeTug(c, g, tug, room, byId, relate, fixed) {
-  const out = [], Rp = c.w * 0.11, Rt = c.w * 0.075, Rs = c.w * 0.042, Rl = c.w * 0.055, gap = c.w * 0.025;
+  const out = [], Rp = c.w * 0.1, Rt = c.w * 0.07, Rl = c.w * 0.045, gap = c.w * 0.025;
   const box = { x0: room.x0, x1: g.right - gap, y0: g.bottom + gap * 0.5, y1: room.y1 };
   const cardAt = f => [c.x0 + f[0] * c.w, c.y1 - f[1] * c.h];
   const pole = {}, ends = new Map();
@@ -1270,19 +1238,18 @@ function placeTug(c, g, tug, room, byId, relate, fixed) {
     setCentre(n, ...cardAt(d.at)); keepIn(n, box);
     const tr = Rp - n.ringW - Rp * 0.06;
     n.blocks = fitInCircle(tr, Rp, sz => [
-      { text: d.label, wt: 700, fam: T.body, size: sz * 0.62, lh: 1.1, color: 'line', after: sz * 0.25 },
+      { text: d.label, wt: 700, fam: T.body, size: sz, lh: 1.1, color: 'line', after: sz * 0.2 },
       { text: d.title, wt: 700, fam: T.title, size: sz, lh: 1.06, color: 'ink' },
     ], -tr * 0.8, tr * 0.8, Rp * 0.3, Rp * 0.04).blocks;
     for (const id of d.rel || []) relate.push([n, id, false]);
     pole[k] = n; out.push(n); byId.set(d.id, n);
     ends.set(d.id, { xy: centre(n), r: Rp, fixed: true });
   }
-  // the movers: each theme, and each half of a split one
+  // the movers: the themes
   const ps = [];
   for (const d of tug.themes) {
-    const p = { d, r: Rt, home: cardAt(d.at) };
+    const p = { d, r: Rt * (d.size || 1), home: cardAt(d.at) };
     p.xy = [...p.home]; ps.push(p); ends.set(d.id, p);
-    for (const h of d.split || []) { const q = { d: h, r: Rs, half: true, of: p, home: cardAt(h.at) }; q.xy = [...q.home]; ps.push(q); }
   }
   // the lines' names, as boxes nothing may sit on
   const nameBoxes = g.names.map(b => ({ x0: b.x0 - gap * 0.4, x1: b.x0 + b.w + gap * 0.4, y0: b.y1 - b.h - gap * 0.4, y1: b.y1 + gap * 0.4 }));
@@ -1348,16 +1315,11 @@ function placeTug(c, g, tug, room, byId, relate, fixed) {
     };
     for (const p of ps) offGraph(p, (dx, dy) => shift(p, dx, dy));
     for (const l of links) offGraph(l, (dx, dy) => { shift(l.a, dx, dy); shift(l.b, dx, dy); l.xy[0] += dx; l.xy[1] += dy; });
-    // a theme's pulls are segments to the poles (a half's line is to its theme); a mover one would run under is
-    // nudged off it
+    // a theme's pulls are segments to the poles; a mover one would run under is pushed off it
     if (!settle) {
-      const lines = [];
-      for (const q of ps) {
-        if (q.half) lines.push([q, q.xy, q.of.xy]);
-        else lines.push([q, q.xy, centre(pole.blend)], [q, q.xy, centre(pole.apart)]);
-      }
+      const lines = ps.flatMap(q => [[q, q.xy, centre(pole.blend)], [q, q.xy, centre(pole.apart)]]);
       for (const p of ps) for (const [q, a, b] of lines) {
-        if (q === p || (p.half && p.of === q) || (q.half && q.of === p)) continue;
+        if (q === p) continue;
         const bx = b[0] - a[0], by = b[1] - a[1], t = clamp(((p.xy[0] - a[0]) * bx + (p.xy[1] - a[1]) * by) / (bx * bx + by * by || 1), 0, 1);
         const cx = a[0] + bx * t, cy = a[1] + by * t, need = p.r + gap * 0.5;
         const dx = p.xy[0] - cx, dy = p.xy[1] - cy, d = Math.hypot(dx, dy) || 1e-9;
@@ -1370,14 +1332,9 @@ function placeTug(c, g, tug, room, byId, relate, fixed) {
     if (settle && worst < 1) break;
   }
   const made = new Map([[pole.blend.data.id, pole.blend], [pole.apart.data.id, pole.apart]]);
-  // a half's ring wears the colour of the platform it is about (`key`)
-  for (const p of ps) made.set(p.d.id, tugNode(p.d, c, p.xy[0], p.xy[1], p.r, p.half ? p.d.key : 'ink', byId, relate, out));
-  const pull = (a, b, w, color, dash) => EDGES.push({ a, b, w: w * c.w * 0.0018, color, dash: dash ? c.w * 0.006 : 0, noBuds: true });
-  for (const p of ps) {
-    const n = made.get(p.d.id);
-    if (p.half) pull(made.get(p.of.d.id), n, 1.5, 'ink', true);
-    else { pull(n, pole.blend, p.d.pull.blend, 'ink'); pull(n, pole.apart, p.d.pull.apart, 'ink'); }
-  }
+  for (const p of ps) made.set(p.d.id, tugNode(p.d, c, p.xy[0], p.xy[1], p.r, 'ink', byId, relate, out));
+  const pull = (a, b, w, color) => EDGES.push({ a, b, w: w * c.w * 0.0018, color, noBuds: true });
+  for (const p of ps) { const n = made.get(p.d.id); pull(n, pole.blend, p.d.pull.blend, 'ink'); pull(n, pole.apart, p.d.pull.apart, 'ink'); }
   // the links, in the themes card's way: a ring on the line between two things, named for what connects them; the
   // rope between the poles is drawn once, under every link that hangs on it
   for (const l of links) {
@@ -1897,8 +1854,8 @@ const budAlpha = (b, framed) => b.blocked ? 0 : budsShown(b.host) * presence(bud
 let SHOWN = [];
 function drawBuds(list = NODES, layer = 0) {
   for (const h of list) {
-    // a theme's kissing cards and a facet's doors are part of its picture, there at every distance
-    for (const b of [...(h.kiss || []), ...(h.doors || [])]) {
+    // a theme's or facet's doors are part of its picture, there at every distance
+    for (const b of h.doors || []) {
       const r = budRect(b);
       if (!onScreen(r)) continue;
       const ba = presence(r) * presence(rectOf(h));
@@ -1918,8 +1875,8 @@ function drawBuds(list = NODES, layer = 0) {
   }
 }
 // ---------- Frames: zooming in without end ----------
-// ZOOMING INTO A BUD OPENS IT WHERE IT IS. A bud is a thing drawn small on another's rim (or in a facet's pocket, or
-// kissing a theme). Once it fills enough of the screen it becomes a frame: the thing itself, drawn whole at the bud's
+// ZOOMING INTO A BUD OPENS IT WHERE IT IS. A bud is a thing drawn small on another's rim (or in a theme's or facet's
+// pocket). Once it fills enough of the screen it becomes a frame: the thing itself, drawn whole at the bud's
 // place with everything it holds and its own buds, which open the same way, without end. Around it, the layer it was
 // opened from stays drawn, so the way out is the way in: once it shrinks back below that size, the frame closes and
 // the view is exactly the picture it was opened from. A frame's view is in the thing's own world units (where it
