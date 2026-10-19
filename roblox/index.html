@@ -163,7 +163,9 @@ const TOP = [
     // users on an even scale, so a billion looks like a billion; drawn faint behind the argument, across the whole card,
     // with finer steps (`minor`) under 250 million, where Roblox's lines run
     graph: { t0: 2007, t1: 2027, lines: [['roblox', 'daily'], ['roblox', 'monthly'], ['tiktok', 'monthly']], linear: true, vmin: 0, vmax: 1100,
-      grid: [250, 500, 750, 1000], minor: [50, 100, 150, 200], background: true, names: false } },
+      grid: [250, 500, 750, 1000], minor: [50, 100, 150, 200], background: true, names: false,
+      // its scale read from the whole page: three times the size, short (250M, 1B), under the word Users
+      scaleSize: 3, short: true, unit: 'Users' } },
   // the themes that run through the whole map, each a node holding its facets (THEMES, below)
   { id: 'themes', kind: 'themes', rect: [948, 14, 438, 230] },
   // the Roblox money map (roblox-money-map.js), drawn in its card and zoomed into like the rest; it has no statement
@@ -1219,7 +1221,7 @@ function tugNode(d, c, x, y, R, ring, byId, relate, out) {
 // runs under it; a link keeps its points as relations (buds on its rim).
 function placeTug(c, g, tug, room, byId, relate, fixed) {
   const out = [], Rh = c.w * 0.065, Rt = c.w * 0.085, Rs = c.w * 0.045, Rl = c.w * 0.06, gap = c.w * 0.025;
-  const box = { x0: room.x0, x1: g.right, y0: g.bottom + gap * 0.5, y1: room.y1 };
+  const box = { x0: room.x0, x1: g.right - gap, y0: g.bottom + gap * 0.5, y1: room.y1 };
   const cardAt = f => [c.x0 + f[0] * c.w, c.y1 - f[1] * c.h];
   const hub = {}, ends = new Map();
   for (const side of ['sm', 'pg']) {
@@ -1639,16 +1641,21 @@ function drawCard(c) {
 function drawGraph(g) {
   // a background graph keeps its grid and scale faint; its lines (`fl`) stay bold enough to read through the argument
   const lab = 3.6 * K, sp = g.spec, f = sp.background ? 0.45 : 1, fl = sp.background ? 0.85 : 1;
+  // the scale's numbers: `scaleSize` times the axis's, `short` as 250M and 1B, solid enough to read even on a faint
+  // graph, under the `unit` they count
+  const vl = lab * (sp.scaleSize || 1), va = sp.scaleSize ? 0.9 : f;
+  const num = v => sp.short ? (v >= 1000 ? `${v / 1000}B` : `${v}M`) : v >= 1000 ? `${v / 1000} billion` : `${v} million`;
+  if (sp.unit) gtext(sp.unit, g.right + lab * 0.4, g.y(sp.vmax) - vl * 0.1, vl * 0.7, { a: va, wt: 700 });
   for (const v of sp.grid) {
     ctx.strokeStyle = col('rule', 0.9 * f); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(sx(g.left), sy(g.y(v))); ctx.lineTo(sx(g.right), sy(g.y(v))); ctx.stroke();
-    gtext(v >= 1000 ? `${v / 1000} billion` : `${v} million`, g.right + lab * 0.4, g.y(v) - lab * 0.3, lab, { a: f });
+    gtext(num(v), g.right + lab * 0.4, g.y(v) - vl * 0.3, vl, { a: va });
   }
   // the finer steps: lighter lines and smaller labels, so the main scale still leads
   for (const v of sp.minor || []) {
     ctx.strokeStyle = col('rule', 0.55 * f); ctx.lineWidth = 0.75;
     ctx.beginPath(); ctx.moveTo(sx(g.left), sy(g.y(v))); ctx.lineTo(sx(g.right), sy(g.y(v))); ctx.stroke();
-    gtext(`${v} million`, g.right + lab * 0.4, g.y(v) - lab * 0.22, lab * 0.75, { a: f });
+    gtext(num(v), g.right + lab * 0.4, g.y(v) - vl * 0.22, vl * 0.75, { a: va });
   }
   ctx.strokeStyle = col('ink-soft', 0.9 * f); ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(sx(g.left), sy(g.bottom)); ctx.lineTo(sx(g.right), sy(g.bottom)); ctx.stroke();
