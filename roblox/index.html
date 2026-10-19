@@ -67,7 +67,7 @@ body { background: var(--ground); color: var(--ink); overflow: hidden; }
 #hint.gone { opacity: 0; pointer-events: none; }
 </style>
 
-<canvas id="map" role="img" aria-label="Infomap on the future of platform games: a front page of cards, the thesis and its three arguments in the largest with a QR code to open the map on a phone, a card asking whether platform games will replace game platforms, the Roblox money map, a card asking whether platform games will replace social media, set on a graph comparing Roblox with TikTok, and the map's six themes: the Roblox economy, child safety, regulation and governance, online social life, feeds and content discovery, and a typology of platforms"></canvas>
+<canvas id="map" role="img" aria-label="Infomap on the future of platform games: a front page of cards, the thesis and its three arguments in the largest with a QR code to open the map on a phone, a card asking whether platform games will replace game platforms, ending on where platform games are going instead, the Roblox money map, a card asking whether platform games will replace social media, set on a graph comparing Roblox with TikTok, and the map's six themes: the Roblox economy, child safety, regulation and governance, online social life, feeds and content discovery, and a typology of platforms"></canvas>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
 <script src="map-fonts.js"></script>
 <script src="path-text.js"></script>
@@ -172,7 +172,8 @@ const TOP = [
 ];
 
 // ---------- What sits inside each graphic card ----------
-// Positions are on the card's graph: `at` is the centre as [year, users in millions]. Explainers are the large
+// Positions are on the card's graph: `at` is the centre as [year, users in millions]. On the replace card, which has
+// no graph, `at` is the centre in that card's own units (replace-card.js: 1400 x 1020, y down from its top-left). Explainers are the large
 // nodes that say what each platform is, pinned to their line by `pin`. A bridge joins things across, or with no
 // `joins` stands alone (a conclusion). Containers hold their points inside them, `scale` times the usual size; `top`
 // is the largest a container's or bridge's title may be, `memberBody` the largest its points' text may be (before
@@ -228,6 +229,30 @@ const CONTENT = {
     bridges: [
       { id: 'social-end', at: [2011.5, 251], w: 2610, h: 1000, top: 170, maxLines: 5, joins: [],
         title: 'Platform games are taking social media’s place in kids’ lives, but not its business or its dangers, so rules written for feeds won’t fit them.' },
+    ],
+  },
+  // the corner under the replace card's argument (x 752 to 1370, y 605 to 918 of its units): where platform games go
+  // instead of replacing game platforms. Drawn by this page, not by replace-card.js, so regenerating that leaves it be.
+  replace: {
+    containers: [
+      { id: 'future', at: [1061, 761], cols: 4, scale: 1.38, top: 200, bodyMax: 62, memberBody: 21,
+        title: 'The future of platform games',
+        body: 'Not one hub that replaces the others, but a web of platforms joined to each other.',
+        src: 'Annika’s research: Chia et al., 2020',
+        members: [
+          { id: 'everywhere', title: 'Roblox games are going into the stores',
+            body: 'From September 2026 makers can publish their Roblox games as standalone apps in other stores, still on Roblox’s technology and revenue share.',
+            src: 'Game Developer, 2026' },
+          { id: 'studios', title: 'Its studios are moving to Steam',
+            body: 'In 2025 The Gang, a Roblox studio, released a game on Steam and consoles, and plans to bring Roblox hits there too.',
+            src: 'GamesBeat, 2025', rel: ['leave'] },
+          { id: 'fortnite', title: 'Fortnite is becoming a platform game too',
+            body: 'In 2023 Epic opened its editor to makers and began paying them by how much their games are played, as Roblox does.',
+            src: 'Epic Games, 2023; Annika’s research', rel: ['platformgames'] },
+          { id: 'adults-next', title: 'Next, adults',
+            body: 'From June 2026 makers earn 42% more on what age-checked US adults spend in their games, as Roblox reaches past kids.',
+            src: 'Roblox newsroom, 2026; Roblox Q1 2026 shareholder letter', rel: ['adults'] },
+        ] },
     ],
   },
 };
@@ -1135,13 +1160,17 @@ function build() {
   for (const c of CARDS) {
     if (c.sub === 'themes') { c.inner = layoutThemes(c, byId, relate); NODES.push(...c.inner); continue; }
     const content = CONTENT[c.data.id];
-    if (!content || !c.graph) continue;
-    const g = c.graph, at = ([t, v]) => [g.x(t), g.y(v)], fixed = [], movers = [];
+    if (!content || !(c.graph || c.map)) continue;
+    // a graph card places by its graph; a card drawn in its own units (the replace card) by those units, anywhere
+    // under its title band, and has no moments to pin
+    const g = c.graph, fixed = [], movers = [];
+    const at = g ? ([t, v]) => [g.x(t), g.y(v)] : ([u, v]) => [c.map.x0 + u * c.map.k, c.map.y1 - v * c.map.k];
+    const room = g ? g.room : { x0: c.x0, x1: c.x0 + c.w, y0: c.y1 - c.h, y1: c.y1 - c.band };
     // the platforms, each pinned to its line
     for (const d of content.explainers || []) {
       const n = node('explainer', d, { card: c, w: d.w, h: d.h, fixed: true });
       n.blocks = layoutBox(n, d, { top: 150, maxLines: 3, bodyK: 0.26, color: d.key });
-      setCentre(n, ...at(d.at)); keepIn(n, g.room);
+      setCentre(n, ...at(d.at)); keepIn(n, room);
       const s = seriesOf(d.pin[0], d.pin[1]);
       n.pin = [g.x(d.pin[2]), g.y(g.val(s, d.pin[2]))];
       fixed.push(n); byId.set(d.id, n);
@@ -1149,7 +1178,7 @@ function build() {
     for (const d of content.bridges || []) {
       const n = node('bridge', d, { card: c, w: d.w, h: d.h, fixed: true });
       n.blocks = layoutBox(n, d, { top: d.top || 80, maxLines: d.maxLines || 4 });
-      setCentre(n, ...at(d.at)); keepIn(n, g.room);
+      setCentre(n, ...at(d.at)); keepIn(n, room);
       fixed.push(n); byId.set(d.id, n);
       for (const id of d.joins) relate.push([n, id, true]);
     }
@@ -1159,11 +1188,11 @@ function build() {
       const z = d.scale || 1, M = { w: SHAPE.member.w * z, h: SHAPE.member.h * z };
       const cols = d.cols || 2, rows = Math.ceil(d.members.length / cols), gap = 130 * z, pad = 110 * z;
       const w = cols * M.w + (cols - 1) * gap + pad * 2;
-      const head = fitStatement(d, w - pad * 2, 0, { top: d.top || 76 * z, maxLines: 3, bodyK: 0.3, bodyMax: 22 * z });
+      const head = fitStatement(d, w - pad * 2, 0, { top: d.top || 76 * z, maxLines: 3, bodyK: 0.3, bodyMax: d.bodyMax || 22 * z });
       const chamber = head.h + pad * 0.8;
       const n = node('container', d, { card: c, w, h: pad + chamber + rows * M.h + (rows - 1) * gap + pad, fixed: true });
       stack(head.blocks, pad, pad, head.gaps); n.blocks = head.blocks;
-      setCentre(n, ...at(d.at)); keepIn(n, g.room);
+      setCentre(n, ...at(d.at)); keepIn(n, room);
       fixed.push(n); byId.set(d.id, n);
       d.members.forEach((m, i) => {
         const r = Math.floor(i / cols), k = i % cols;
@@ -1177,7 +1206,7 @@ function build() {
     if (content.history) {
       const d = content.history, n = node('heading', d, { card: c, w: d.w, h: d.h, fixed: true });
       n.blocks = layoutBox(n, d, { top: 80, maxLines: 3 });
-      setCentre(n, ...at(d.at)); keepIn(n, g.room);
+      setCentre(n, ...at(d.at)); keepIn(n, room);
       fixed.push(n); byId.set(d.id, n);
     }
     // dated moments: those the members name, and the history's
@@ -1191,16 +1220,16 @@ function build() {
       eventNode.set(e, n); movers.push(n);
       relate.push([n, from, false]);
     };
-    for (const d of content.containers || []) for (const m of d.members) for (const title of m.events || []) {
+    for (const d of content.containers || []) for (const m of d.members) for (const title of g ? m.events || [] : []) {
       const e = EVENTS.find(x => x.title === title); if (e) want(e, m.id);
     }
-    if (content.history) {
+    if (content.history && g) {
       for (const e of HISTORY) want(e, content.history.id);
       for (const title of ['Developer Exchange', 'Fortnite opens its editor to makers', 'Roblox Everywhere']) {
         const e = EVENTS.find(x => x.title === title); if (e) want(e, content.history.id);
       }
     }
-    const names = g.names.map(b => Object.assign({ fixed: true, name: true }, b));
+    const names = (g ? g.names : []).map(b => Object.assign({ fixed: true, name: true }, b));
     // Moments take the nearest free place to their pin, rings out from it, above first; then everything that may
     // move eases apart, off the lines and inside the card.
     const placed = [...fixed, ...names];
@@ -1774,18 +1803,22 @@ function hit(px, py) {
       const r = window.MoneyMap && c.map ? MoneyMap.hit(px, py) : null;
       return !r ? null : r.href ? { kind: 'link', href: r.href } : moneyNode(c, r);
     }
+    // on the replace card, what this page draws there (its corner section) first, then what replace-card.js draws
     if (c.sub === 'replace') {
+      const n = hitBud(px, py) || hitInner(c, px, py);
+      if (n) return n;
       const r = window.ReplaceCard && c.map ? ReplaceCard.hit(px, py) : null;
       return r ? replaceNode(c, r) : null;
     }
-    const b = hitBud(px, py);
-    if (b) return b;
-    // the smallest thing under the pointer answers; a lobed node is only its lobes
-    const top = n => n.kind === 'member' || n.kind === 'facet';
-    const order = [...c.inner.filter(top), ...c.inner.filter(n => !top(n) && n.kind !== 'lobed').sort((p, q) => p.w * p.h - q.w * q.h)];
-    for (const n of order) { const r = rectOf(n); if (insideShape(n, r, px, py) && presence(r) > 0.2) return n; }
-    return null;
+    return hitBud(px, py) || hitInner(c, px, py);
   }
+  return null;
+}
+// the smallest thing on a card under the pointer answers; a lobed node is only its lobes
+function hitInner(c, px, py) {
+  const top = n => n.kind === 'member' || n.kind === 'facet';
+  const order = [...c.inner.filter(top), ...c.inner.filter(n => !top(n) && n.kind !== 'lobed').sort((p, q) => p.w * p.h - q.w * q.h)];
+  for (const n of order) { const r = rectOf(n); if (insideShape(n, r, px, py) && presence(r) > 0.2) return n; }
   return null;
 }
 
