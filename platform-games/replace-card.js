@@ -8,6 +8,8 @@
 //   ReplaceCard.hit(px, py)                   -> the smallest node there, {id, x0, y0, w, h} in card units, measured
 //                                                from the last drawAt; null if none
 //   ReplaceCard.hover(id)                     rings that node on the next draw (null for none)
+//   ReplaceCard.node(id)                      -> that node, {id, x0, y0, w, h} in card units; null if there is none
+// A copy of the card drawn elsewhere passes drawAt a last argument, remember = false, so hit() keeps going by the card.
 // Words large enough to read are drawn as outlines with PathText (as the map draws its own); smaller than that, each
 // line is a bar. Colours are read from the page's theme on every draw, so a theme change shows on the next frame.
 (() => {
@@ -25,8 +27,8 @@
              red: dark ? RED.dark : RED.light };
   }
   const textWidth = (o, PT) => PT ? PT.width(o.s, o.wt, o.fam === 'serif' ? SERIF : SANS, o.it) * o.fs : o.s.length * o.fs * 0.5;
-  function drawAt(c, x, y, s, Wv, Hv, alpha = 1) {
-    last = { x, y, s };
+  function drawAt(c, x, y, s, Wv, Hv, alpha = 1, remember = true) {
+    if (remember) last = { x, y, s };
     const P = palette(), PT = window.PathText || null, col = k => P[k] || k;
     const dpr = Math.hypot(c.getTransform().a, c.getTransform().b) || 1;
     const lw = w => w * (s <= 1 ? s : 1 + (s - 1) * 0.35);   // lines thicken less than everything else past full size
@@ -78,5 +80,9 @@
     for (const n of D.nodes) if (u >= n.x && u <= n.x + n.w && v >= n.y && v <= n.y + n.h && (!best || n.w * n.h < best.w * best.h)) best = n;
     return best && { id: best.id, x0: best.x, y0: best.y, w: best.w, h: best.h };
   }
-  window.ReplaceCard = { size: () => ({ w: D.w, h: D.h, band: D.band }), drawAt, hit, hover(id) { ringed = id ? byId.get(id) || null : null; } };
+  function node(id) {
+    const n = D.nodes.find(q => q.id === id);
+    return n ? { id: n.id, x0: n.x, y0: n.y, w: n.w, h: n.h } : null;
+  }
+  window.ReplaceCard = { size: () => ({ w: D.w, h: D.h, band: D.band }), drawAt, hit, node, hover(id) { ringed = id ? byId.get(id) || null : null; } };
 })();

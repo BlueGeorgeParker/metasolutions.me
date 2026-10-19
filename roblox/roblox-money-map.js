@@ -1139,12 +1139,13 @@ return {
   viewFor(n, w, h) { W = w; H = h; return viewFor(n); },
   fitView(x0, y0, wd, ht, pad, w, h) { W = w; H = h; return fitView(x0, y0, wd, ht, pad); },
   byId: id => BYID.get(id),
-  // ---- for a card on another map
+  // ---- for a card on another map; a copy of it drawn elsewhere passes remember = false, so hit() keeps going by
+  // the card itself
   size() { return { w: WORLD.w, h: WORLD.h }; },
-  drawAt(c, x, y, s, w, h, alpha = 1) {
+  drawAt(c, x, y, s, w, h, alpha = 1, remember = true) {
     readTheme();
     const v = { s, ox: x - WORLD.x0 * s, oy: y - WORLD.y0 * s };
-    lastDraw = { v, w, h };
+    if (remember) lastDraw = { v, w, h };
     c.save();
     ctx = c; use(v, w, h); A0 = alpha; hover = hoverNode;
     drawArrow(); drawOut();

@@ -318,52 +318,34 @@ const CONTENT = {
 // specific; either way a door in the pocket at the facet's foot, the doors up packed first. A facet's `subs` are drawn
 // in a room at its foot instead, packed with its doors up. A theme's `up` are its bigger context, doors packed in its
 // room with its facets. A theme's `lobed` is a node of overlapping lobes in its room (layoutLobed), `size` times a
-// facet's.
+// facet's. A facet given as `{ use }` is something drawn elsewhere on the map, drawn here as a door the size of a
+// facet that zooms into it: a point or argument on the social card by its id, or a piece of the money map
+// (`money:<id>`) or the stores card (`stores:<id>`, the ids replace-card.py gives its nodes). Its `rel` (relations the
+// themes card adds to it) and `also` work as a facet's do. A category's `subs`, a link's `holds` and a lobed node's
+// `overlaps` may name such things directly.
 const THEMES = [
   { id: 'economy', r: 0.84, at: [0.14, 0.32], title: 'The Roblox economy', up: ['masthead'],
     facets: [
-      { id: 'robux', title: 'Kids buy Robux with real money',
-        body: 'Roblox makes nearly all of its money selling Robux, its own currency, to its players, most of them young.',
-        src: 'Roblox 10-K', rel: ['^money', '^paid', 'pushed'] },
-      { id: 'cashout', title: 'Developers are paid in Robux',
-        body: 'Makers earn Robux from their games and can cash out only what they earned, from 30,000 Robux, at a rate Roblox sets.',
-        src: 'Roblox Developer Exchange docs', rel: ['money'] },
-      { id: 'leave', title: 'Developers leave for Steam',
-        body: 'Some who learned to make games on Roblox sold their next ones on Steam: Unturned in 2014 and Lethal Company in 2023.',
-        src: 'PC Gamer, 2017; Push to Talk, 2024', rel: ['^replace'] },
-      { id: 'adults', title: 'Adults are worth more',
-        body: 'Adults spend more each, so from June 2026 makers earn more of what age-checked US adults spend in their games.',
-        src: 'Roblox Q1 2026 shareholder letter', rel: ['faces'] },
+      { use: 'money:s1', rel: ['^paid', 'spend'] },
+      { use: 'money:paycreators' },
+      { use: 'stores:developers-who-left-27' },
+      { use: 'money:adults' },
     ] },
   { id: 'safety', r: 1, at: [0.43, 0.36], title: 'Child safety', up: ['masthead', 'differ', 'tug-safety'],
     // six categories; a category's `subs` are drawn in the room at its foot
     facets: [
-      { id: 'cat-strangers', title: 'Stranger danger', subs: ['strangers', 'grooming'] },
-      { id: 'cat-sales', title: 'Gambling and manipulative sales', subs: ['pushed', 'paytoundo'] },
-      { id: 'cat-peer', title: 'Peer pressure', subs: ['status', 'hangout'] },
-      { id: 'children', title: 'Most players are children',
-        body: 'About 1.7 million Australian children aged 6 to 13, 61% of them, played Roblox in 2025.',
-        src: 'Roy Morgan, 2026', rel: ['grewup'] },
-      { id: 'cat-measures', title: 'Safety measures', subs: ['faces', 'commitments', 'u13'] },
+      { id: 'cat-strangers', title: 'Stranger danger', subs: ['meet', 'grooming'] },
+      { id: 'cat-sales', title: 'Gambling and manipulative sales', subs: ['spend', 'money:song'] },
+      { id: 'cat-peer', title: 'Peer pressure', subs: ['money:kusmawan', 'parts'] },
+      { use: 'money:auskids', rel: ['grewup'] },
+      { id: 'cat-measures', title: 'Safety measures', subs: ['money:agechecks', 'commitments', 'u13'] },
       { id: 'cat-regulation', title: 'Regulation', subs: ['whose', 'threesteps', 'label'] },
-      { id: 'strangers', title: 'Strangers can reach them',
-        body: 'eSafety’s testing earlier in 2026 found adults could still send young children friend requests without a parent’s consent.',
-        src: 'Bella’s research: eSafety, Aug 2026', rel: ['^meet', 'threesteps'] },
+      { use: 'meet', rel: ['threesteps'] },
       { id: 'grooming', title: 'Grooming charges',
         body: 'Reporting on the Minister’s February 2026 letter cited criminal charges over the grooming of hundreds of Australian children across platforms including Roblox.',
         src: 'Newcastle Herald (ACM), 9 Feb 2026' },
-      { id: 'pushed', title: 'Kids are pushed to spend',
-        body: 'Sydney researchers found 14 of 15 top-earning games used at least one deceptive tactic, such as paid lucky draws and countdown offers.',
-        src: 'Carter, Vekhande & Fifita, 2026', rel: ['spend', 'money'], also: ['economy'] },
-      { id: 'paytoundo', title: 'Losing is something you pay to undo',
-        body: 'Researchers played 30 child-friendly Roblox games and found paid respawns, loot boxes, prize wheels, and leaderboards that tie spending to standing.',
-        src: 'Song et al., 2025', rel: ['money'] },
-      { id: 'status', title: 'Rare items are status symbols',
-        body: 'Children buy clothes, accessories and emotes so their avatars look unique and cool, and feel recognised when they show off rare items.',
-        src: 'Annika’s research: Kusmawan, Arifah & Chitra, 2026', rel: ['money'] },
-      { id: 'faces', title: 'Safety now means scanning faces',
-        body: 'To chat, players must pass an age check by face scan or ID. By the end of June 2026 over 70% of daily players in Australia and the US had.',
-        src: 'Roblox, 2025; Roblox Q2 2026 shareholder letter; Bella’s research: Beraldo & Milan, 2019', also: ['governance'] },
+      { use: 'spend', also: ['economy'] },
+      { use: 'money:agechecks', also: ['governance'] },
       { id: 'commitments', title: 'Private by default',
         body: 'In September 2025 Roblox committed to make under-16s’ accounts private by default and to stop adults contacting them without a parent’s consent.',
         src: 'eSafety, 15 Sep 2025', rel: ['threesteps'] },
@@ -402,38 +384,28 @@ const THEMES = [
     ] },
   { id: 'social-life', r: 0.78, at: [0.2, 0.77], title: 'Online social life', up: ['masthead', 'tug-sociality'],
     facets: [
-      { id: 'hangout', title: 'Kids socialise inside games',
-        body: 'One avatar, one friends list and chat across every game. Leaving costs you your friends.',
-        src: 'Kavya’s research; Annika’s research: Barns, 2019', rel: ['^parts', '^platformgames'] },
+      { use: 'parts', rel: ['^platformgames'] },
       { id: 'everyday', title: 'Everyday life is moving in',
         body: 'Lil Nas X’s four shows logged over 33 million visits in 2020, and Gucci and Nike opened their own worlds in 2021.',
         src: 'Billboard, 2020; Dezeen, 2021; CNBC, 2021' },
-      { id: 'socialplace', title: 'Taking social media’s place',
-        body: 'For kids, platform games do much of what social media does, and experts warned the under-16 ban could push more of them there.',
-        src: 'Kavya’s research: Rintoul, 2026', rel: ['^tug-sociality', 'ban', '^socialmedia'] },
+      { use: 'tug-sociality', rel: ['ban', '^socialmedia'] },
     ] },
   { id: 'feeds', r: 0.64, at: [0.53, 0.8], title: 'Feeds, sharing, and content discovery', up: ['masthead', 'tug-content'],
     facets: [
-      { id: 'moments', title: 'Roblox Moments',
-        body: 'A scrolling feed of short gameplay videos, opened in 2025. Tap one to join the game it shows.',
-        src: 'TechCrunch, 2025', rel: ['^fed'] },
-      { id: 'discover', title: 'Finding games',
-        body: 'Players find games through Roblox’s Discover page and charts, which decide which games reach them.',
-        src: 'Kavya’s research', rel: ['^fed'] },
-      { id: 'socialgames', title: 'Social media adds games',
-        body: 'Facebook added games in 2016 and Netflix in 2021. TikTok tested them in 2022, and YouTube opened them to everyone in 2024.',
-        src: 'Engadget, 2016; TechCrunch, 2021 and 2022; iPhone in Canada, 2024', rel: ['adding', 'eastasia'], also: ['typology'] },
+      { use: 'robloxmoments', rel: ['^fed'] },
+      { use: 'fed' },
+      { use: 'adding', also: ['typology'] },
     ] },
   { id: 'typology', r: 0.8, at: [0.82, 0.8], title: 'Local platform typology', up: ['masthead'],
     // three kinds of platform as overlapping lobes, each lobe the facet that says what that kind is; what is two kinds
     // at once sits where two overlap, and Roblox, all three, in the middle
     lobed: { id: 'kinds', lobes: ['platformgames', 'gameplatforms', 'socialmedia'], middle: 'roblox-all',
-      overlaps: [['gameplatforms', 'platformgames', 'minecraft'], ['platformgames', 'socialmedia', 'socialplace'],
-        ['gameplatforms', 'socialmedia', 'socialgames']], size: 2.4 },
+      overlaps: [['gameplatforms', 'platformgames', 'minecraft'], ['platformgames', 'socialmedia', 'tug-sociality'],
+        ['gameplatforms', 'socialmedia', 'adding']], size: 2.4 },
     facets: [
       { id: 'roblox-all', title: 'Roblox',
         body: 'Its own store, tools and servers; games made by its players; and friends, chat and a scrolling feed of videos.',
-        src: 'Stores card; Kavya’s research; TechCrunch, 2025', rel: ['^replace', 'parts', 'moments'] },
+        src: 'Stores card; Kavya’s research; TechCrunch, 2025', rel: ['^replace', 'parts', 'robloxmoments'] },
       { id: 'minecraft', title: 'Minecraft',
         body: 'Players make worlds and mods, and its Marketplace sells worlds and skins for Minecoins.',
         src: 'Microsoft, 2014; PCWorld, 2017', rel: ['^replace'] },
@@ -451,15 +423,15 @@ const THEMES = [
         src: 'Annika’s research: Chia et al., 2020' },
     ] },
 ];
-// The lines between themes. Each carries its own circle, named for how the two connect and holding the facets that
-// connect them (drawn again there).
+// The lines between themes. Each carries its own circle, named for how the two connect and holding what connects
+// them (drawn again there): facets, or things drawn elsewhere on the map.
 const THEME_LINKS = [
-  { id: 'link-pay', a: 'economy', b: 'safety', title: 'Kids pay for it', holds: ['robux', 'pushed'] },
-  { id: 'link-law', a: 'safety', b: 'governance', title: 'From promises to the law', holds: ['strangers', 'threesteps'] },
-  { id: 'link-meet', a: 'social-life', b: 'safety', title: 'Who kids meet', holds: ['hangout', 'strangers'] },
-  { id: 'link-feeds', a: 'social-life', b: 'feeds', title: 'Games turning into feeds', holds: ['moments', 'socialplace'] },
+  { id: 'link-pay', a: 'economy', b: 'safety', title: 'Kids pay for it', holds: ['money:s1', 'spend'] },
+  { id: 'link-law', a: 'safety', b: 'governance', title: 'From promises to the law', holds: ['meet', 'threesteps'] },
+  { id: 'link-meet', a: 'social-life', b: 'safety', title: 'Who kids meet', holds: ['parts', 'meet'] },
+  { id: 'link-feeds', a: 'social-life', b: 'feeds', title: 'Games turning into feeds', holds: ['robloxmoments', 'tug-sociality'] },
   { id: 'link-label', a: 'governance', b: 'typology', title: 'The label sets the rules', holds: ['label', 'platformgames'] },
-  { id: 'link-merge', a: 'feeds', b: 'typology', title: 'Feeds and games merging', holds: ['socialgames', 'socialmedia'] },
+  { id: 'link-merge', a: 'feeds', b: 'typology', title: 'Feeds and games merging', holds: ['adding', 'socialmedia'] },
 ];
 // Dated moments, for a graph card's points to name by title (`events`); the social card names the last eight. `on`
 // pins one to a line of its card's graph; with no line to sit on, it is pinned to the time axis. `au` marks Australia.
@@ -691,6 +663,20 @@ function moneyNode(c, r) {
   MONEY_NODES.set(r.id, n);
   return n;
 }
+// A piece of the money map (`money:<id>`) or the stores card (`stores:<id>`) by name, as such a place; null for any
+// other name, or a piece its card does not have.
+function pieceOf(id) {
+  const m = /^(money|stores):(.+)$/.exec(id);
+  if (!m) return null;
+  const c = CARDS.find(x => x.data.id === (m[1] === 'money' ? 'money' : 'replace'));
+  if (!c || !c.map) return null;
+  if (m[1] === 'money') {
+    const n = window.MoneyMap && MoneyMap.byId(m[2]), o = window.MoneyMap && MoneyMap.world;
+    return n ? moneyNode(c, { id: n.id, x0: n.x0 - o.x0, y0: n.y0 - o.y0, w: n.w, h: n.h }) : null;
+  }
+  const r = window.ReplaceCard && ReplaceCard.node && ReplaceCard.node(m[2]);
+  return r ? replaceNode(c, r) : null;
+}
 
 // ---------- Nodes inside a card ----------
 const SHAPE = {
@@ -812,8 +798,13 @@ function fitInCircle(R, R0, make, top, bottom, max, min, n = 2) {
 // once the relations are known.
 const LINK_R = 0.3, POCKET = { cut: 0.3, R: 0.86 }, ROOM = { theme: -0.44, cat: -0.26 }, WORDS_TOP = { theme: -0.72, facet: -0.68 };
 let FACET_DRAWINGS = new Map();
+// each place on the themes card that holds something drawn elsewhere, by that thing's name: [name, place]
+let BACKLINKS = [];
 const FACETS = new Map();
-for (const t of THEMES) for (const f of t.facets) FACETS.set(f.id, { f, owner: t.id });
+for (const t of THEMES) for (const f of t.facets) if (f.id) FACETS.set(f.id, { f, owner: t.id });
+// what a pocket holds, by name: a facet, or else something drawn elsewhere on the map (`{ use }`)
+const itemOf = id => FACETS.has(id) ? FACETS.get(id).f : { use: id };
+const nameOf = f => f.use || f.id;
 const linkAt = (p, q) => {
   const d = Math.hypot(q.x - p.x, q.y - p.y) || 1e-9, t = (p.r + d - q.r) / 2;
   return [p.x + (q.x - p.x) / d * t, p.y + (q.y - p.y) / d * t];
@@ -911,11 +902,15 @@ function drawFacet(f, parent, c, x, y, r, home, out, depth = 0) {
   parent.kids.push(fn); out.push(fn);
   if (!FACET_DRAWINGS.has(f.id)) FACET_DRAWINGS.set(f.id, []);
   FACET_DRAWINGS.get(f.id).push(fn);
-  if (cat) fillRoom(fn, f.subs.map(id => FACETS.get(id)).filter(Boolean).map(e => e.f), c, out, home, depth + 1);
+  if (cat) fillRoom(fn, f.subs.map(itemOf), c, out, home, depth + 1);
 }
 // A roomed node's room filled: facets, and a lobed node (`{ lobed, size }`), as large as the room allows; `rf` is a
-// facet's radius there.
-function fillRoom(n, items, c, out, home, depth = 0) {
+// facet's radius there. What is drawn elsewhere (`{ use }`) is packed in later as a door (finishThemes), and keeps a
+// way back to this room.
+function fillRoom(n, all, c, out, home, depth = 0) {
+  n.uses = all.filter(it => it.use).map(it => it.use);
+  for (const id of n.uses) BACKLINKS.push([id, n]);
+  const items = all.filter(it => !it.use);
   const Ri = n.room.Ri - n.ringW * 0.5, gap = Ri * 0.05, sizes = items.map(it => it.lobed ? it.size : 1);
   const pk = packRoom(sizes, Ri, n.room.cut, gap);
   if (!pk) return;
@@ -962,15 +957,23 @@ function layoutLobed(spec, parent, c, cx, cy, Rt, home, out) {
     n.lobes.push(ln); n.kids.push(ln); out.push(ln);
     if (typeof l === 'string') { if (!FACET_DRAWINGS.has(l)) FACET_DRAWINGS.set(l, []); FACET_DRAWINGS.get(l).push(ln); }
   });
-  if (spec.middle) drawFacet(FACETS.get(spec.middle).f, n, c, cx, cy, rMid, home, out);
+  // a facet is drawn where it sits; something drawn elsewhere gets a door there (finishThemes), its place kept as
+  // shares of Rt (y down) so it moves with the lobed node, and the lobes that cover it keep a way back to it
+  n.useSlots = [];
+  const put = (id, x, y, r, covers) => {
+    if (FACETS.has(id)) { drawFacet(FACETS.get(id).f, n, c, cx + x, cy - y, r, home, out); return; }
+    n.useSlots.push({ id, u: x / Rt, v: y / Rt, q: r / Rt });
+    for (const i of covers) BACKLINKS.push([id, n.lobes[i]]);
+  };
+  if (spec.middle) put(spec.middle, 0, 0, rMid, n.lobes.map((_, i) => i));
   for (const [a, b, id] of spec.overlaps || []) {
     const i = ids.indexOf(a), j = ids.indexOf(b), o = [0, 1, 2].find(x => x !== i && x !== j);
     const t = largest(-dirs[o][0], -dirs[o][1], [i, j], true);
-    drawFacet(FACETS.get(id).f, n, c, cx + t.x, cy - t.y, t.r, home, out);
+    put(id, t.x, t.y, t.r, [i, j]);
   }
 }
 function layoutThemes(c, byId, relate) {
-  FACET_DRAWINGS = new Map();
+  FACET_DRAWINGS = new Map(); BACKLINKS = [];
   const out = [], got = placeThemes(c);
   if (!got) return out;
   const { ps, rl } = got, theme = new Map(), at = new Map(ps.map(t => [t.d.id, t]));
@@ -985,14 +988,14 @@ function layoutThemes(c, byId, relate) {
     const L = t.d.lobed, used = new Set(L ? [...L.lobes.filter(l => typeof l === 'string'), L.middle, ...(L.overlaps || []).map(o => o[2])] : []);
     for (const f of t.d.facets) for (const id of f.subs || []) used.add(id);
     const shared = THEMES.flatMap(o => o.facets.filter(f => (f.also || []).includes(t.d.id)));
-    const items = [...(L ? [{ lobed: L, size: L.size || 1 }] : []), ...[...t.d.facets, ...shared].filter(f => !used.has(f.id))];
+    const items = [...(L ? [{ lobed: L, size: L.size || 1 }] : []), ...[...t.d.facets, ...shared].filter(f => !used.has(nameOf(f)))];
     fillRoom(theme.get(t.d.id), items, c, out, t.d.id);
   }
   // the links, each on the line between its themes, holding the facets that connect them
   for (const l of THEME_LINKS) {
     const [x, y] = linkAt(at.get(l.a), at.get(l.b)), n = roomedNode('link', l, c, x, y, rl, -0.12);
     out.push(n); byId.set(l.id, n);
-    fillRoom(n, l.holds.map(id => FACETS.get(id)).filter(Boolean).map(e => e.f), c, out, null);
+    fillRoom(n, l.holds.map(itemOf), c, out, null);
     const w = Math.min(theme.get(l.a).ringW, theme.get(l.b).ringW) * 0.7;
     EDGES.push({ a: theme.get(l.a), b: n, quiet: false, noBuds: true, w }, { a: n, b: theme.get(l.b), quiet: false, noBuds: true, w });
   }
@@ -1004,6 +1007,8 @@ function layoutThemes(c, byId, relate) {
     byId.set(id, ds[0]);
     for (const r of ds[0].data.rel || []) relate.push([ds[0], r, false]);
   }
+  // what is drawn from elsewhere brings its own relations, and those the themes card adds to it (`rel`)
+  for (const t of THEMES) for (const f of t.facets) if (f.use) for (const r of f.rel || []) relate.push([f.use, r, false]);
   return out;
 }
 // The words a facet carries: its title, its body under it, its source smallest. A category without a body is its
@@ -1017,12 +1022,13 @@ const facetWords = f => sz => [
 // is more specific); every room with doors up packed again with them, the outer rooms first; each facet's words above
 // its pocket (or its room), and its doors packed in its pocket. Everything with words in one room (or one lobed node)
 // has them at one size against its own radius, the largest at which its fullest fits. A theme's doors up are its `up`.
-function finishThemes() {
+// What a room or a lobed node holds that is drawn elsewhere is a door there too (`resolve` finds it by name).
+function finishThemes(resolve) {
   const door = (host, node, up) => ({ host, node, door: true, up });
   for (const ds of FACET_DRAWINGS.values()) {
     const P = ds[0], ups = [], downs = [];
     for (const e of EDGES) {
-      if (!e.quiet || (e.a !== P && e.b !== P)) continue;
+      if (!e.quiet || e.back || (e.a !== P && e.b !== P)) continue;
       const other = e.a === P ? e.b : e.a, isUp = e.a === P ? e.up : !e.up;
       (isUp ? ups : downs).push(other);
     }
@@ -1036,8 +1042,21 @@ function finishThemes() {
     }
   }
   for (const n of NODES) if (n.kind === 'theme') n.doors = (n.ups || []).map(t => door(n, t, true));
+  // what a room holds that is drawn elsewhere: a door in it, after its doors up
+  for (const n of NODES) if (n.uses && n.uses.length) n.doors = [...(n.doors || []), ...n.uses.map(resolve).filter(Boolean).map(t => door(n, t, false))];
   const depth = n => { let d = 0; for (let p = n.parent; p; p = p.parent) d++; return d; };
   for (const n of NODES.filter(n => n.room && n.doors && n.doors.length).sort((a, b) => depth(a) - depth(b))) packPocket(n);
+  // what a lobed node holds that is drawn elsewhere: a door where it sits, now that the lobed node has its place
+  for (const n of NODES) if (n.useSlots && n.useSlots.length) {
+    const R = n.w / 2, [cx, cy] = centre(n);
+    n.doors = n.useSlots.map(sl => {
+      const t = resolve(sl.id);
+      if (!t) return null;
+      const b = door(n, t, false);
+      fitDoor(b, cx + sl.u * R, cy - sl.v * R, sl.q * R);
+      return b;
+    }).filter(Boolean);
+  }
   const parents = new Set(NODES.filter(n => n.kind === 'facet' || n.kind === 'lobe').map(n => n.parent));
   for (const p of parents) {
     const fs = p.kids.filter(n => n.kind === 'facet'), ls = p.kids.filter(n => n.kind === 'lobe');
@@ -1066,9 +1085,15 @@ function finishThemes() {
     }
   }
 }
+// A door fitted to a circle of radius R centred at world (x, y): its target drawn small, a circle as wide as the
+// circle, anything else with its corners on its rim.
+function fitDoor(b, x, y, R) {
+  const t = b.node;
+  b.k = 2 * R / (t.n === 2 ? Math.max(t.w, t.h) : Math.hypot(t.w, t.h));
+  b.w = t.w * b.k; b.h = t.h * b.k; b.x0 = x - b.w / 2; b.y1 = y + b.h / 2;
+}
 // A pocket packed: its doors (the doors up first) and, in a room, what the room holds, all as circles eased apart
-// (packRoom), every door the size of a facet there. A door is its target drawn small: a circle as wide as its place,
-// anything else with its corners on its place's rim. What the room holds moves to its new place, scaled with
+// (packRoom), every door the size of a facet there (fitDoor). What the room holds moves to its new place, scaled with
 // everything inside it.
 function packPocket(n) {
   const r = n.w / 2, held = n.room ? n.kids.filter(k => k.kind === 'facet' || k.kind === 'lobed') : [];
@@ -1077,11 +1102,7 @@ function packPocket(n) {
   const pk = packRoom(sizes, Ri, cut, Ri * 0.05);
   if (!pk) return;
   const [cx, cy] = centre(n), at = i => [cx + pk.p[i][0], cy - pk.p[i][1]];
-  n.doors.forEach((b, i) => {
-    const [x, y] = at(i), t = b.node;
-    b.k = 2 * pk.rf / (t.n === 2 ? Math.max(t.w, t.h) : Math.hypot(t.w, t.h));
-    b.w = t.w * b.k; b.h = t.h * b.k; b.x0 = x - b.w / 2; b.y1 = y + b.h / 2;
-  });
+  n.doors.forEach((b, i) => fitDoor(b, ...at(i), pk.rf));
   held.forEach((k, j) => { const i = n.doors.length + j; moveTree(k, ...at(i), pk.rf * sizes[i] / (k.w / 2)); });
   if (n.room) n.room.rf = pk.rf;
 }
@@ -1120,8 +1141,8 @@ function lineHit(n, pts, m) {
 }
 
 // ---------- Buds ----------
-// A bud is a copy of a related node at k of its size, just off its host's rim, in the direction of the node it
-// copies. Zooming into one steps through to the node itself.
+// A bud is a copy of a related node at k of its size, a little off its host's rim, in the direction of the node it
+// copies, joined to its host by a line (Parker, 2026-10-20). Zooming into one steps through to the node itself.
 const BUD_K = 0.2, BUD_MAX = 0.4;
 const reachAlong = (n, ux, uy) => 1 / Math.pow(Math.pow(Math.abs(ux) / (n.w / 2), n.n) + Math.pow(Math.abs(uy) / (n.h / 2), n.n), 1 / n.n);
 const inside = (b, p) => b.x0 >= p.x0 && b.x0 + b.w <= p.x0 + p.w && b.y1 <= p.y1 && b.y1 - b.h >= p.y1 - p.h;
@@ -1150,11 +1171,12 @@ function clearOfHost(b, h, m) {
   return true;
 }
 function layoutBuds(h, placed) {
-  const [cx, cy] = centre(h), gap = Math.min(h.w, h.h) * 0.03;
-  // just off the rim, moved out further where a corner of the bud would cut into its host
+  const [cx, cy] = centre(h), gap = Math.min(h.w, h.h) * 0.03, off = gap * 2.5;
+  // a little off the rim, room for the line that joins it, moved out further where a corner of the bud would cut into
+  // its host
   const place = b => {
     const ux = Math.cos(b.a), uy = Math.sin(b.a);
-    let d = reachAlong(h, ux, uy) + gap + reachAlong(b.node, ux, uy) * b.k;
+    let d = reachAlong(h, ux, uy) + off + reachAlong(b.node, ux, uy) * b.k;
     for (let i = 0; i < 40; i++, d += gap) {
       b.x0 = cx + ux * d - b.w / 2; b.y1 = cy + uy * d + b.h / 2;
       if (clearOfHost(b, h, gap)) break;
@@ -1527,22 +1549,33 @@ function build() {
   // shown only as buds on each other's rims. A relation may name a whole card: the point carries the card as a bud,
   // and the card carries nothing back.
   // an id marked `^` names bigger context for the thing that names it (`up` on the edge)
-  for (const [a, ref, drawn] of relate) {
+  // a name is a node, a whole card, or a piece of the money map or the stores card; a relation the themes card adds to
+  // something drawn elsewhere starts from its name
+  const resolve = id => byId.get(id) || CARDS.find(c => c.data.id === id) || pieceOf(id);
+  for (const [from, ref, drawn] of relate) {
+    const a = typeof from === 'string' ? resolve(from) : from;
     const up = typeof ref === 'string' && ref[0] === '^', id = up ? ref.slice(1) : ref;
-    const b = typeof id === 'string' ? byId.get(id) || CARDS.find(c => c.data.id === id) : id;
-    if (!b || a === b) continue;
+    const b = typeof id === 'string' ? resolve(id) : id;
+    if (!a || !b || a === b) continue;
     const loud = drawn || a.kind === 'heading' || b.kind === 'heading';
     if (!EDGES.some(e => (e.a === a && e.b === b) || (e.a === b && e.b === a))) EDGES.push({ a, b, quiet: !loud, up });
+  }
+  // what the themes card draws from elsewhere keeps a way back (`back`) to each place there that holds it
+  for (const [id, place] of BACKLINKS) {
+    const a = resolve(id);
+    if (a && !EDGES.some(e => (e.a === a && e.b === place) || (e.a === place && e.b === a))) EDGES.push({ a, b: place, quiet: true, up: true, back: true });
   }
   for (const n of NODES) n.buds = [];
   // the lines between themes are only lines, and a facet keeps its relations as doors inside it (finishThemes)
   for (const e of EDGES) {
     if (e.noBuds) continue;
-    const inside = n => n.kind === 'card' || n.kind === 'facet' || n.kind === 'lobe';
+    // a piece of the money map or the stores card is drawn by its card, with no rim of its own to carry buds; a way
+    // back is a bud on the thing drawn elsewhere only
+    const inside = n => n.kind === 'card' || n.kind === 'facet' || n.kind === 'lobe' || n.kind === 'money' || n.kind === 'replace';
     if (!inside(e.a)) e.a.buds.push({ host: e.a, node: e.b });
-    if (!inside(e.b)) e.b.buds.push({ host: e.b, node: e.a });
+    if (!inside(e.b) && !e.back) e.b.buds.push({ host: e.b, node: e.a });
   }
-  finishThemes();
+  finishThemes(resolve);
   const placedBuds = [];
   for (const n of [...NODES].sort((p, q) => q.w * q.h - p.w * p.h)) layoutBuds(n, placedBuds);
   Object.assign(WORLD, { x0: 0, y1: SHEET.h * K, w: SHEET.w * K, h: SHEET.h * K });
@@ -1780,7 +1813,7 @@ function drawCardCopy(c, r, a, s, on) {
   const art = c.sub === 'money' ? window.MoneyMap : c.sub === 'replace' ? window.ReplaceCard : null;
   if (art && c.map) {
     ctx.save(); ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, rad); ctx.clip();
-    art.drawAt(ctx, r.x + (c.map.x0 - c.x0) * s, r.y + (c.y1 - c.map.y1) * s, c.map.k * s, W, H, a);
+    art.drawAt(ctx, r.x + (c.map.x0 - c.x0) * s, r.y + (c.y1 - c.map.y1) * s, c.map.k * s, W, H, a, false);
     ctx.restore();
   }
   if (c.sub === 'masthead') drawMasthead(c, r, a, s);
@@ -1800,10 +1833,23 @@ function drawCut(r, R, cut, a, lw, n = 2) {
   ctx.closePath();
   ctx.strokeStyle = col('line', a); ctx.lineWidth = lw; ctx.stroke();
 }
+// A piece of the money map or the stores card drawn small: that part of its card, as its card draws it, framed.
+function drawPieceCopy(n, r, a, s, on) {
+  const c = n.card, art = c.sub === 'money' ? window.MoneyMap : window.ReplaceCard, rad = Math.min(r.w, r.h) * 0.06;
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, rad);
+  ctx.fillStyle = col('card', a); ctx.fill(); ctx.clip();
+  if (art && c.map) art.drawAt(ctx, r.x + (c.map.x0 - n.x0) * s, r.y + (n.y1 - c.map.y1) * s, c.map.k * s, W, H, a, false);
+  ctx.restore();
+  ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, rad);
+  ctx.strokeStyle = col(on ? 'line' : 'ink', a * (on ? 1 : 0.8)); ctx.lineWidth = on ? 2.4 : clamp(Math.min(r.w, r.h) * 0.012, 0.5, 2);
+  ctx.stroke();
+}
 // `depth` counts how far inside other copies this one is drawn: a copy shows the doors in its own pocket too, so a
 // door is the place it leads to drawn small, all the way down to where a door is too small to see.
 function drawCopy(n, r, a, s, on, depth = 0) {
   if (n.kind === 'card') { drawCardCopy(n, r, a, s, on); return; }
+  if (n.kind === 'money' || n.kind === 'replace') { drawPieceCopy(n, r, a, s, on); return; }
   if (n.kind === 'lobed') {
     // its lobes filled together first, so no lobe's fill covers another's ring; then every ring, then their words
     const at = l => ({ x: r.x + (l.x0 - n.x0) * s, y: r.y + (n.y1 - l.y1) * s, w: l.w * s, h: l.h * s });
@@ -1892,6 +1938,15 @@ function seen(n) {
 // a bud fades as the thing it stands for comes into view itself; inside a frame (below) nothing else is in view
 const budAlpha = (b, framed) => b.blocked ? 0 : budsShown(b.host) * presence(budRect(b)) * (framed ? 1 : 1 - seen(b.node));
 let SHOWN = [];
+// the line joining a bud to its host, rim to rim, as faint as the bud and lit with it
+function budLine(h, b, a) {
+  const bud = { x0: b.x0, y1: b.y1, w: b.w, h: b.h, n: b.node.n, kind: b.node.kind };
+  const [hx, hy] = centre(h), [bx, by] = centre(bud), p = exitPt(h, bx, by), q = exitPt(bud, hx, hy);
+  const on = hover === b;
+  ctx.strokeStyle = col(on ? 'line' : 'ink-soft', a * (on ? 1 : 0.9));
+  ctx.lineWidth = clamp(Math.min(b.w, b.h) * view.s * 0.016, 0.8, 2.4) * (on ? 1.5 : 1);
+  ctx.beginPath(); ctx.moveTo(sx(p[0]), sy(p[1])); ctx.lineTo(sx(q[0]), sy(q[1])); ctx.stroke();
+}
 function drawBuds(list = NODES, layer = 0) {
   for (const h of list) {
     // a theme's or facet's doors are part of its picture, there at every distance
@@ -1909,6 +1964,7 @@ function drawBuds(list = NODES, layer = 0) {
       if (b.blocked || !onScreen(r)) continue;
       const ba = budAlpha(b, layer > 0);
       if (ba <= 0.004) continue;
+      budLine(h, b, ba);
       drawCopy(b.node, r, ba, view.s * b.k, hover === b, 1);
       SHOWN.push({ b, a: ba, layer });
     }
@@ -1945,7 +2001,7 @@ function withView(v, fn) {
   Object.assign(view, v);
   try { return fn(); } finally { Object.assign(view, was); }
 }
-// the sheet is layer 0; a frame draws only what it holds
+// the sheet is layer 0; a frame draws only what it holds; a piece of a card, its card seen through the piece's box
 function drawLayer(j) {
   if (!j) {
     for (const c of CARDS) drawCard(c);
@@ -1953,13 +2009,20 @@ function drawLayer(j) {
     return;
   }
   const F = FRAMES[j - 1], list = [...F.nodes];
+  if (F.clip) {
+    const r = rectOf(F.clip);
+    ctx.save(); ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+    drawCard(F.card);
+    ctx.restore();
+    return;
+  }
   if (F.card) drawCard(F.card);
   drawEdges(EDGES.filter(e => F.nodes.has(e.a) && F.nodes.has(e.b)));
   drawPins(false, list); drawNodes(list); drawPins(true, list); drawBuds(list, j);
 }
 function pushFrame(b) {
-  const n = b.node, s2 = view.s * b.k, x = sx(b.x0), y = sy(b.y1);
-  FRAMES.push({ b, nodes: subtreeOf(n), card: n.kind === 'card' ? n : null });
+  const n = b.node, s2 = view.s * b.k, x = sx(b.x0), y = sy(b.y1), piece = n.kind === 'money' || n.kind === 'replace';
+  FRAMES.push({ b, nodes: piece ? new Set() : subtreeOf(n), card: n.kind === 'card' ? n : piece ? n.card : null, clip: piece ? n : null });
   view.ox = x - n.x0 * s2; view.oy = y + n.y1 * s2; view.s = s2;
   framed = true; hover = null; dirty();
 }
@@ -2127,9 +2190,11 @@ function hit(px, py) {
   }
   return null;
 }
-// in a frame: on a card, as on an entered card; else its buds, then what it holds, smallest first
+// in a frame: on a card, as on an entered card (on a piece of one, only inside the piece); else its buds, then what
+// it holds, smallest first
 function hitFrame(j, px, py) {
   const F = FRAMES[j - 1];
+  if (F.clip) return insideRect(rectOf(F.clip), px, py) ? hitCard(F.card, px, py, j) : null;
   if (F.card) return insideRect(rectOf(F.card), px, py) ? hitCard(F.card, px, py, j) : null;
   return hitBud(px, py, j) || hitNodes([...F.nodes], px, py);
 }
