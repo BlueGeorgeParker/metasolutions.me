@@ -92,13 +92,15 @@ const SERIES = [
   { key: 'tiktok', kind: 'monthly', name: 'TikTok, monthly', pts: [[2018.04, 54.7], [2018.96, 271.1], [2019.96, 507.5], [2020.54, 689.1], [2021.71, 1000]] },
 ];
 const seriesOf = (key, kind) => SERIES.find(s => s.key === key && s.kind === kind);
-// A series' value at time t, read along its drawn line (straight on a scale of tens), held at its ends.
-function valueAt(s, t) {
+// A series' value at time t, read along its drawn line (straight on a scale of tens, or on an even scale when
+// `linear`), held at its ends.
+function valueAt(s, t, linear) {
   const p = s.pts;
   if (t <= p[0][0]) return p[0][1];
   if (t >= p[p.length - 1][0]) return p[p.length - 1][1];
   let i = 0; while (p[i + 1][0] < t) i++;
   const u = (t - p[i][0]) / (p[i + 1][0] - p[i][0]);
+  if (linear) return p[i][1] + (p[i + 1][1] - p[i][1]) * u;
   return Math.pow(10, Math.log10(p[i][1]) + (Math.log10(p[i + 1][1]) - Math.log10(p[i][1])) * u);
 }
 
@@ -158,7 +160,9 @@ const TOP = [
     title: 'Will platform games replace game platforms?' },
   { id: 'social', kind: 'graphic', rect: [948, 256, 438, 570],
     title: 'Will platform games replace social media?',
-    graph: { t0: 2007, t1: 2027, lines: [['roblox', 'daily'], ['roblox', 'monthly'], ['tiktok', 'monthly']], vmin: 5, vmax: 2500, grid: [10, 100, 1000] } },
+    // users on an even scale, so a billion looks like a billion; drawn faint behind the argument, across the whole card
+    graph: { t0: 2007, t1: 2027, lines: [['roblox', 'daily'], ['roblox', 'monthly'], ['tiktok', 'monthly']], linear: true, vmin: 0, vmax: 1100,
+      grid: [250, 500, 750, 1000], background: true } },
   // the themes that run through the whole map, each a node holding its facets (THEMES, below)
   { id: 'themes', kind: 'themes', rect: [948, 14, 438, 230] },
   // the Roblox money map (roblox-money-map.js), drawn in its card and zoomed into like the rest; it has no statement
@@ -179,7 +183,7 @@ const CONTENT = {
   // them; the moments they name sit along the time axis and on the Roblox line.
   social: {
     containers: [
-      { id: 'kids', at: [2011.95, 1293], cols: 3, scale: 1.5, top: 200, memberBody: 21,
+      { id: 'kids', at: [2011.5, 983], cols: 3, scale: 1.5, top: 200, memberBody: 21,
         title: 'Kids already use platform games as their social media.',
         members: [
           { id: 'parts', title: 'It has social media’s parts',
@@ -192,7 +196,7 @@ const CONTENT = {
             body: 'Australia’s ban on social media accounts for under-16s began in December 2025 and leaves out online games. Experts warned it could push children toward Roblox.',
             src: 'Kavya’s research; Rintoul, 2026', events: ['Under-16 social media ban begins'], rel: ['meet'] },
         ] },
-      { id: 'grow', at: [2011.95, 302], cols: 3, scale: 1.5, top: 200, memberBody: 21,
+      { id: 'grow', at: [2011.5, 726], cols: 3, scale: 1.5, top: 200, memberBody: 21,
         title: 'Games and social media are growing into each other.',
         members: [
           { id: 'fed', title: 'Games are adding feeds',
@@ -206,7 +210,7 @@ const CONTENT = {
             body: 'KakaoTalk in Korea and LINE in Japan, both chat apps, became game platforms in 2012, where you play against your chat friends. WeChat followed in China in 2017.',
             src: 'TechNode 2012; LINE 2012; Niko Partners 2018; Steinberg 2020', events: ['KakaoTalk and LINE add games', 'WeChat Mini Games'], rel: ['adding'] },
         ] },
-      { id: 'differ', at: [2011.95, 70.5], cols: 3, scale: 1.5, top: 200, memberBody: 21,
+      { id: 'differ', at: [2011.5, 468], cols: 3, scale: 1.5, top: 200, memberBody: 21,
         title: 'But they don’t make money or cause harm the same way.',
         members: [
           { id: 'paid', title: 'Advertisers pay social media; kids pay Roblox',
@@ -221,7 +225,7 @@ const CONTENT = {
         ] },
     ],
     bridges: [
-      { id: 'social-end', at: [2011.95, 20.7], w: 2610, h: 1000, top: 170, maxLines: 5, joins: [],
+      { id: 'social-end', at: [2011.5, 251], w: 2610, h: 1000, top: 170, maxLines: 5, joins: [],
         title: 'Platform games are taking social media’s place in kids’ lives, but not its business or its dangers, so rules written for feeds won’t fit them.' },
     ],
   },
@@ -539,16 +543,21 @@ function layoutBand(c, d) {
   }
   return [];
 }
-// A card's graph: time across (the early years compressed when `split` is set), users up on a scale of tens.
+// A card's graph: time across (the early years compressed when `split` is set), users up on a scale of tens, or on an
+// even scale when `linear`. A `background` graph is drawn faint under the card's argument and keeps only the room its
+// scale's labels need at the right.
 function makeGraph(c, spec) {
-  const padX = c.w * 0.05, labelRoom = c.w * 0.15, axisRoom = 15 * K;
+  const padX = c.w * 0.05, labelRoom = c.w * (spec.background ? 0.07 : 0.15), axisRoom = 15 * K;
   const g = { spec, left: c.x0 + padX, right: c.x0 + c.w - padX - labelRoom, bottom: c.y1 - c.h + padX * 0.6 + axisRoom, top: c.y1 - BAND - padX * 0.6 };
   const W0 = g.right - g.left;
   g.x = spec.split
     ? t => t < spec.split ? g.left + (t - spec.t0) / (spec.split - spec.t0) * W0 * spec.early
                           : g.left + W0 * spec.early + (t - spec.split) / (spec.t1 - spec.split) * W0 * (1 - spec.early)
     : t => g.left + (t - spec.t0) / (spec.t1 - spec.t0) * W0;
-  g.y = v => g.bottom + (Math.log10(v) - Math.log10(spec.vmin)) / (Math.log10(spec.vmax) - Math.log10(spec.vmin)) * (g.top - g.bottom);
+  g.y = spec.linear
+    ? v => g.bottom + (v - spec.vmin) / (spec.vmax - spec.vmin) * (g.top - g.bottom)
+    : v => g.bottom + (Math.log10(v) - Math.log10(spec.vmin)) / (Math.log10(spec.vmax) - Math.log10(spec.vmin)) * (g.top - g.bottom);
+  g.val = (s, t) => valueAt(s, t, spec.linear);
   g.series = spec.lines.map(([k, kind]) => seriesOf(k, kind));
   g.has = (k, kind) => g.series.some(s => s.key === k && s.kind === kind);
   g.nameSize = 3.2 * K;
@@ -557,7 +566,7 @@ function makeGraph(c, spec) {
     const p = s.pts;
     for (let i = 0; i < p.length - 1; i++) for (let k = 0; k <= 20; k++) {
       const t = p[i][0] + (p[i + 1][0] - p[i][0]) * k / 20;
-      g.pts.push([g.x(t), g.y(valueAt(s, t))]);
+      g.pts.push([g.x(t), g.y(g.val(s, t))]);
     }
   }
   g.names = g.series.map(s => {
@@ -1133,7 +1142,7 @@ function build() {
       n.blocks = layoutBox(n, d, { top: 150, maxLines: 3, bodyK: 0.26, color: d.key });
       setCentre(n, ...at(d.at)); keepIn(n, g.room);
       const s = seriesOf(d.pin[0], d.pin[1]);
-      n.pin = [g.x(d.pin[2]), g.y(valueAt(s, d.pin[2]))];
+      n.pin = [g.x(d.pin[2]), g.y(g.val(s, d.pin[2]))];
       fixed.push(n); byId.set(d.id, n);
     }
     for (const d of content.bridges || []) {
@@ -1177,7 +1186,7 @@ function build() {
       const n = node('event', e, { card: c });
       n.blocks = layoutEvent(n, e);
       const s = e.on && g.has(...e.on) ? seriesOf(...e.on) : null;
-      n.pin = [g.x(e.t), s ? g.y(valueAt(s, e.t)) : g.bottom];
+      n.pin = [g.x(e.t), s ? g.y(g.val(s, e.t)) : g.bottom];
       eventNode.set(e, n); movers.push(n);
       relate.push([n, from, false]);
     };
@@ -1358,9 +1367,10 @@ function gtext(text, x, y, size, o = {}) {
   const words = ramp(fs, 5.5, 8.5), f = o.fam || T.body, wt = o.wt || 600;
   const w = unitW(text, wt, f, o.it) * fs, X0 = sx(x) - (o.align === 'center' ? w / 2 : o.align === 'right' ? w : 0), Y0 = sy(y);
   if (X0 > W || X0 + w < 0 || Y0 - fs > H || Y0 + fs < 0) return;
-  if (words < 1) { ctx.fillStyle = col(o.color || 'ink-soft', (1 - words) * 0.38); ctx.fillRect(X0, Y0 - fs * 0.62, w, fs * 0.5); }
+  const a = o.a == null ? 1 : o.a;
+  if (words < 1) { ctx.fillStyle = col(o.color || 'ink-soft', (1 - words) * 0.38 * a); ctx.fillRect(X0, Y0 - fs * 0.62, w, fs * 0.5); }
   if (words > 0.01) {
-    ctx.fillStyle = col(o.color || 'ink-soft', words);
+    ctx.fillStyle = col(o.color || 'ink-soft', words * a);
     if (PT) PT.fill(ctx, text, X0, Y0, fs, wt, f, o.it, dpr);
     else { ctx.font = font(wt, fs, f, o.it); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(text, X0, Y0); }
   }
@@ -1398,13 +1408,13 @@ function drawCard(c) {
   for (const b of c.blocks) drawBlock(b, r.x, r.y, 1);
 }
 function drawGraph(g) {
-  const lab = 3.6 * K, sp = g.spec;
+  const lab = 3.6 * K, sp = g.spec, f = sp.background ? 0.45 : 1;
   for (const v of sp.grid) {
-    ctx.strokeStyle = col('rule', 0.9); ctx.lineWidth = 1;
+    ctx.strokeStyle = col('rule', 0.9 * f); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(sx(g.left), sy(g.y(v))); ctx.lineTo(sx(g.right), sy(g.y(v))); ctx.stroke();
-    gtext(v >= 1000 ? `${v / 1000} billion` : `${v} million`, g.right + lab * 0.4, g.y(v) - lab * 0.3, lab);
+    gtext(v >= 1000 ? `${v / 1000} billion` : `${v} million`, g.right + lab * 0.4, g.y(v) - lab * 0.3, lab, { a: f });
   }
-  ctx.strokeStyle = col('ink-soft', 0.9); ctx.lineWidth = 1.2;
+  ctx.strokeStyle = col('ink-soft', 0.9 * f); ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(sx(g.left), sy(g.bottom)); ctx.lineTo(sx(g.right), sy(g.bottom)); ctx.stroke();
   // ticks: every year where the years are spread out, every five where they are compressed
   for (let y = sp.t0; y <= sp.t1; y++) {
@@ -1412,11 +1422,11 @@ function drawGraph(g) {
     if (y % every) continue;
     ctx.beginPath(); ctx.moveTo(sx(g.x(y)), sy(g.bottom)); ctx.lineTo(sx(g.x(y)), sy(g.bottom) + Math.max(2, lab * 0.35 * view.s)); ctx.stroke();
     const label = late ? (y < sp.t1 && y % 2 === 1) : y % 10 === 0;
-    if (label) gtext(String(y), late ? g.x(y + 0.5) : g.x(y), g.bottom - lab * 1.3, lab, { align: 'center' });
+    if (label) gtext(String(y), late ? g.x(y + 0.5) : g.x(y), g.bottom - lab * 1.3, lab, { align: 'center', a: f });
   }
   if (sp.split) {
     // where the axis changes pace
-    ctx.setLineDash([4, 4]); ctx.strokeStyle = col('rule', 0.9); ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = col('rule', 0.9 * f); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(sx(g.x(sp.split)), sy(g.bottom)); ctx.lineTo(sx(g.x(sp.split)), sy(g.top)); ctx.stroke();
     ctx.setLineDash([]);
   }
@@ -1424,20 +1434,20 @@ function drawGraph(g) {
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   for (const s of g.series) {
     ctx.setLineDash(s.kind === 'monthly' ? [cw * 2.4, cw * 1.6] : []);
-    ctx.strokeStyle = col(s.key, 1); ctx.lineWidth = cw * (s.kind === 'monthly' ? 0.75 : 1);
+    ctx.strokeStyle = col(s.key, f); ctx.lineWidth = cw * (s.kind === 'monthly' ? 0.75 : 1);
     ctx.beginPath(); s.pts.forEach((p, i) => { const x = sx(g.x(p[0])), y = sy(g.y(p[1])); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = col(s.key, 1);
+    ctx.fillStyle = col(s.key, f);
     for (const p of s.pts) { ctx.beginPath(); ctx.arc(sx(g.x(p[0])), sy(g.y(p[1])), cw * 0.9, 0, Math.PI * 2); ctx.fill(); }
     if (s.est) {
       const end = s.pts[s.pts.length - 1], [t, v] = s.est;
-      ctx.setLineDash([cw * 0.4, cw * 1.6]); ctx.strokeStyle = col(s.key, 0.85); ctx.lineWidth = cw * 0.6;
+      ctx.setLineDash([cw * 0.4, cw * 1.6]); ctx.strokeStyle = col(s.key, 0.85 * f); ctx.lineWidth = cw * 0.6;
       ctx.beginPath(); ctx.moveTo(sx(g.x(end[0])), sy(g.y(end[1]))); ctx.lineTo(sx(g.x(t)), sy(g.y(v))); ctx.stroke();
       ctx.setLineDash([]); ctx.lineWidth = cw * 0.5;
-      ctx.beginPath(); ctx.arc(sx(g.x(t)), sy(g.y(v)), cw * 1.3, 0, Math.PI * 2); ctx.fillStyle = col('card', 1); ctx.fill(); ctx.strokeStyle = col(s.key, 1); ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx(g.x(t)), sy(g.y(v)), cw * 1.3, 0, Math.PI * 2); ctx.fillStyle = col('card', 1); ctx.fill(); ctx.strokeStyle = col(s.key, f); ctx.stroke();
     }
   }
-  for (const n of g.names) gtext(n.text, n.x, n.y, g.nameSize, { color: n.s.key, wt: 700 });
+  for (const n of g.names) gtext(n.text, n.x, n.y, g.nameSize, { color: n.s.key, wt: 700, a: f });
 }
 function drawEdges() {
   for (const e of EDGES) {
