@@ -1042,8 +1042,11 @@ function finishThemes(resolve) {
     }
   }
   for (const n of NODES) if (n.kind === 'theme') n.doors = (n.ups || []).map(t => door(n, t, true));
-  // what a room holds that is drawn elsewhere: a door in it, after its doors up
-  for (const n of NODES) if (n.uses && n.uses.length) n.doors = [...(n.doors || []), ...n.uses.map(resolve).filter(Boolean).map(t => door(n, t, false))];
+  // what a room holds that is drawn elsewhere: a door in it, after its doors up (once: not again if it is one of them)
+  for (const n of NODES) if (n.uses && n.uses.length) {
+    const has = new Set((n.doors || []).map(b => b.node));
+    n.doors = [...(n.doors || []), ...n.uses.map(resolve).filter(t => t && !has.has(t)).map(t => door(n, t, false))];
+  }
   const depth = n => { let d = 0; for (let p = n.parent; p; p = p.parent) d++; return d; };
   for (const n of NODES.filter(n => n.room && n.doors && n.doors.length).sort((a, b) => depth(a) - depth(b))) packPocket(n);
   // what a lobed node holds that is drawn elsewhere: a door where it sits, now that the lobed node has its place
@@ -1199,11 +1202,16 @@ function layoutBuds(h, placed) {
     }
     if (!clash) break;
   }
-  // a member's buds stay inside its container, clear of its neighbours; anyone else's stay clear of every node
-  for (const b of h.buds) {
+  // a member's buds stay inside its container, clear of its neighbours; anyone else's stay clear of every node. A way
+  // back into the themes card (`main`) takes its room first, smaller where it finds none at its size.
+  for (const b of [...h.buds].sort((p, q) => (q.main ? 1 : 0) - (p.main ? 1 : 0))) {
     const a0 = b.a, free = () => !NODES.some(n => n !== h && n !== h.parent && hits(b, n, gap)) && !placed.some(o => overlaps(b, o, gap))
       && (!h.parent || withinParent(b, h.parent));
-    for (let i = 1; i <= 60 && !free(); i++) { b.a = a0 + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.05; place(b); }
+    for (let tries = b.main ? 4 : 1; tries > 0; tries--) {
+      for (let i = 1; i <= 60 && !free(); i++) { b.a = a0 + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.05; place(b); }
+      if (free() || tries === 1) break;
+      b.k *= 0.6; b.w = b.node.w * b.k; b.h = b.node.h * b.k; b.a = a0; place(b);
+    }
     b.blocked = !free();
     if (!b.blocked) placed.push(b);
   }
@@ -1560,19 +1568,24 @@ function build() {
     const loud = drawn || a.kind === 'heading' || b.kind === 'heading';
     if (!EDGES.some(e => (e.a === a && e.b === b) || (e.a === b && e.b === a))) EDGES.push({ a, b, quiet: !loud, up });
   }
-  // what the themes card draws from elsewhere keeps a way back (`back`) to each place there that holds it
+  // what the themes card draws from elsewhere stays joined (`back`) to each place there that holds it; one of them is
+  // its way back (`main`), a bud on its own rim: the place in the theme that lists it, or else the first
+  const owner = new Map();
+  for (const t of THEMES) for (const f of t.facets) if (f.use && !owner.has(f.use)) owner.set(f.use, t.id);
+  const themeOf = p => p.kind === 'theme' ? p.data.id : p.home, mainOf = new Map();
+  for (const [id, place] of BACKLINKS) if (!mainOf.has(id) || (themeOf(place) === owner.get(id) && themeOf(mainOf.get(id)) !== owner.get(id))) mainOf.set(id, place);
   for (const [id, place] of BACKLINKS) {
     const a = resolve(id);
-    if (a && !EDGES.some(e => (e.a === a && e.b === place) || (e.a === place && e.b === a))) EDGES.push({ a, b: place, quiet: true, up: true, back: true });
+    if (a && !EDGES.some(e => (e.a === a && e.b === place) || (e.a === place && e.b === a))) EDGES.push({ a, b: place, quiet: true, up: true, back: true, main: mainOf.get(id) === place });
   }
   for (const n of NODES) n.buds = [];
   // the lines between themes are only lines, and a facet keeps its relations as doors inside it (finishThemes)
   for (const e of EDGES) {
     if (e.noBuds) continue;
-    // a piece of the money map or the stores card is drawn by its card, with no rim of its own to carry buds; a way
-    // back is a bud on the thing drawn elsewhere only
+    // a piece of the money map or the stores card is drawn by its card, with no rim of its own to carry buds; of the
+    // places a thing drawn elsewhere is joined to, only its way back is a bud, on its own rim
     const inside = n => n.kind === 'card' || n.kind === 'facet' || n.kind === 'lobe' || n.kind === 'money' || n.kind === 'replace';
-    if (!inside(e.a)) e.a.buds.push({ host: e.a, node: e.b });
+    if (!inside(e.a) && (!e.back || e.main)) e.a.buds.push({ host: e.a, node: e.b, main: !!e.main });
     if (!inside(e.b) && !e.back) e.b.buds.push({ host: e.b, node: e.a });
   }
   finishThemes(resolve);
