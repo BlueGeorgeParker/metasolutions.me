@@ -1202,9 +1202,11 @@ function layoutBuds(h, placed) {
     }
     if (!clash) break;
   }
-  // a member's buds stay inside its container, clear of its neighbours; anyone else's stay clear of every node. A way
-  // back into the themes card (`main`) takes its room first, smaller where it finds none at its size.
-  for (const b of [...h.buds].sort((p, q) => (q.main ? 1 : 0) - (p.main ? 1 : 0))) {
+  // a member's buds stay inside its container, clear of its neighbours; anyone else's stay clear of every node. The
+  // dated moments a point names take their room first, then its way back into the themes card (`main`), smaller where
+  // it finds none at its size, then the rest.
+  const first = b => b.node.kind === 'event' ? 2 : b.main ? 1 : 0;
+  for (const b of [...h.buds].sort((p, q) => first(q) - first(p))) {
     const a0 = b.a, free = () => !NODES.some(n => n !== h && n !== h.parent && hits(b, n, gap)) && !placed.some(o => overlaps(b, o, gap))
       && (!h.parent || withinParent(b, h.parent));
     for (let tries = b.main ? 4 : 1; tries > 0; tries--) {
