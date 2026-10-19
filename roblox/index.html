@@ -279,7 +279,7 @@ const CONTENT = {
           members: [
             { id: 'spend', side: 'pg', title: 'Roblox games push kids to spend',
               body: 'Sydney researchers played 15 top-earning Roblox games. Nearly all sold paid lucky draws and rushed players with limited-time offers, designs they say are treated as illegal outside games.',
-              src: 'Bella’s research; Carter, Vekhande & Fifita 2026', rel: ['money'] },
+              src: 'Bella’s research; Carter, Vekhande & Fifita 2026', rel: ['money', 'stores:manipulative-monetization-targeting-minors'] },
           ] },
         { id: 'ch-rated', challenge: 'dissimilar', title: 'Rated as a game, not as social media', at: [0.245, 0.705], size: 0.5, rel: ['label', 'rating', 'ban'] },
         { id: 'ch-live', challenge: 'dissimilar', title: 'Moderating live play as it happens', at: [0.355, 0.71], size: 0.5, rel: ['stores:they-moderate-live'] },
@@ -335,7 +335,7 @@ const THEMES = [
     // six categories; a category's `subs` are drawn in the room at its foot
     facets: [
       { id: 'cat-strangers', title: 'Stranger danger', subs: ['meet', 'grooming'] },
-      { id: 'cat-sales', title: 'Gambling and manipulative sales', subs: ['spend', 'money:song'] },
+      { id: 'cat-sales', title: 'Gambling and manipulative sales', subs: ['spend', 'money:song', 'stores:manipulative-monetization-targeting-minors'] },
       { id: 'cat-peer', title: 'Peer pressure', subs: ['money:kusmawan', 'parts'] },
       { use: 'money:auskids', rel: ['grewup'] },
       { id: 'cat-measures', title: 'Safety measures', subs: ['money:agechecks', 'commitments', 'u13'] },
@@ -1597,6 +1597,16 @@ function build() {
     if (!inside(e.b) && !e.back) e.b.buds.push({ host: e.b, node: e.a });
   }
   finishThemes(resolve);
+  // the stores card's doors: replace-card.py keeps a cell beside a card for each thing it opens onto, named as a
+  // relation is (ReplaceCard.doors()); each door is that thing drawn small, as large as fits its cell, in the middle of
+  // it. The card draws them over its own picture (drawCard)
+  for (const c of CARDS) if (c.sub === 'replace') c.doors = !c.map || !window.ReplaceCard || !ReplaceCard.doors ? [] : ReplaceCard.doors().map(d => {
+    const t = resolve(d.to), k = c.map.k;
+    if (!t) return null;
+    const q = Math.min(d.w / t.w, d.h / t.h) * k, b = { host: c, node: t, door: true, k: q, w: t.w * q, h: t.h * q };
+    b.x0 = c.map.x0 + (d.x + d.w / 2) * k - b.w / 2; b.y1 = c.map.y1 - (d.y + d.h / 2) * k + b.h / 2;
+    return b;
+  }).filter(Boolean);
   const placedBuds = [];
   for (const n of [...NODES].sort((p, q) => q.w * q.h - p.w * p.h)) layoutBuds(n, placedBuds);
   Object.assign(WORLD, { x0: 0, y1: SHEET.h * K, w: SHEET.w * K, h: SHEET.h * K });
@@ -1732,6 +1742,13 @@ function drawCard(c) {
     ctx.beginPath(); ctx.moveTo(sx(c.x0 + pad), y); ctx.lineTo(sx(c.x0 + c.w - pad), y); ctx.stroke();
     ctx.save(); ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, rad); ctx.clip();
     ReplaceCard.drawAt(ctx, sx(c.map.x0), sy(c.map.y1), c.map.k * view.s, W, H, 1);
+    // its doors, each in the cell the card keeps for it; they answer in the layer being drawn, as buds do
+    for (const b of c.doors || []) {
+      const dr = budRect(b), ba = presence(dr);
+      if (ba <= 0.004 || !onScreen(dr)) continue;
+      drawCopy(b.node, dr, ba, view.s * b.k, hover === b, 1);
+      SHOWN.push({ b, a: ba, layer: LAYER });
+    }
     ctx.restore();
   }
   if (c.sub === 'graphic') {
@@ -2022,8 +2039,11 @@ function withView(v, fn) {
   Object.assign(view, v);
   try { return fn(); } finally { Object.assign(view, was); }
 }
-// the sheet is layer 0; a frame draws only what it holds; a piece of a card, its card seen through the piece's box
+// the sheet is layer 0; a frame draws only what it holds; a piece of a card, its card seen through the piece's box.
+// LAYER is the layer being drawn, for what a card draws to answer in (the stores card's doors)
+let LAYER = 0;
 function drawLayer(j) {
+  LAYER = j;
   if (!j) {
     for (const c of CARDS) drawCard(c);
     drawEdges(); drawPins(false); drawNodes(); drawPins(true); drawBuds();
