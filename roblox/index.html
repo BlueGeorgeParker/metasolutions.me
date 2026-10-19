@@ -186,12 +186,13 @@ const CONTENT = {
   // line from one hub to the other the theme sits, and the weight of its line to each hub. `across` only spreads the
   // themes out to the left of that line (a share of the card's width); they then ease apart until none overlap. A
   // theme's points sit in the room under its name, each tinted by its `side`. The themes are Parker's, in his words;
-  // a `split` theme pulls through its own pair of halves, one to each hub. The moments its points name sit along the
-  // time axis and on the Roblox line.
+  // a `split` theme pulls through its own pair of halves, one to each hub. The card's earlier argument stays whole
+  // beside them (`claims`, `verdict`). Nothing sits on the graph's lines or numbers. The moments its points name sit
+  // along the time axis and on the Roblox line.
   social: {
     tug: {
-      hubs: { sm: { id: 'hub-sm', title: 'Social media', key: 'tiktok', on: ['tiktok', 'monthly', 2021.71] },
-              pg: { id: 'hub-pg', title: 'Platform games', key: 'roblox', on: ['roblox', 'daily', 2025.625] } },
+      hubs: { sm: { id: 'hub-sm', title: 'Social media', key: 'tiktok', on: ['tiktok', 'monthly', 2021.71], beside: [1, 0] },
+              pg: { id: 'hub-pg', title: 'Platform games', key: 'roblox', on: ['roblox', 'daily', 2025.625], beside: [0, 1] } },
       themes: [
         { id: 'tug-regulation', title: 'Regulation and governance', pull: { sm: 4, pg: 2.5 }, across: 1.05,
           members: [
@@ -240,6 +241,18 @@ const CONTENT = {
               src: 'Bella’s research; Carter, Vekhande & Fifita 2026', rel: ['money'] },
           ] },
       ],
+      // the card's argument from before the tug of war, kept whole: its three branches down the open years on the
+      // left, where they stood before, each holding its points as relations, and the conclusion they lead to
+      claims: [
+        { id: 'kids', at: [0.22, 0.47], points: ['parts', 'grewup', 'ban'],
+          title: 'Kids already use platform games as their social media.' },
+        { id: 'grow', at: [0.2, 0.2], points: ['fed', 'adding', 'eastasia'],
+          title: 'Games and social media are growing into each other.' },
+        { id: 'differ', at: [0.24, 0.66], points: ['paid', 'meet', 'spend'],
+          title: 'But they don’t make money or cause harm the same way.' },
+      ],
+      verdict: { id: 'social-end', from: ['kids', 'grow', 'differ'],
+        title: 'Platform games are taking social media’s place in kids’ lives, but not its business or its dangers, so rules written for feeds won’t fit them.' },
     },
   },
   // the corner under the replace card's argument (x 752 to 1370, y 605 to 918 of its units): the future of platform
@@ -285,7 +298,7 @@ const THEMES = [
         body: 'Adults spend more each, so from June 2026 makers earn more of what age-checked US adults spend in their games.',
         src: 'Roblox Q1 2026 shareholder letter', rel: ['faces'] },
     ] },
-  { id: 'safety', r: 1, at: [0.43, 0.36], title: 'Child safety', up: ['masthead', 'tug-safety'],
+  { id: 'safety', r: 1, at: [0.43, 0.36], title: 'Child safety', up: ['masthead', 'differ', 'tug-safety'],
     // six categories; a category's `subs` are drawn in the room at its foot
     facets: [
       { id: 'cat-strangers', title: 'Stranger danger', subs: ['strangers', 'grooming'] },
@@ -350,7 +363,7 @@ const THEMES = [
         body: 'Turkey blocked Roblox in August 2024 over child-abuse concerns. Russia blocked it in December 2025 and let it back in June 2026.',
         src: 'Bloomberg, 2024; Roblox Q1 and Q2 2026 shareholder letters' },
     ] },
-  { id: 'social-life', r: 0.78, at: [0.2, 0.77], title: 'Online social life', up: ['masthead', 'tug-sociality'],
+  { id: 'social-life', r: 0.78, at: [0.2, 0.77], title: 'Online social life', up: ['masthead', 'kids', 'tug-sociality'],
     facets: [
       { id: 'hangout', title: 'Kids socialise inside games',
         body: 'One avatar, one friends list and chat across every game. Leaving costs you your friends.',
@@ -360,9 +373,9 @@ const THEMES = [
         src: 'Billboard, 2020; Dezeen, 2021; CNBC, 2021' },
       { id: 'socialplace', title: 'Taking social media’s place',
         body: 'For kids, platform games do much of what social media does, and experts warned the under-16 ban could push more of them there.',
-        src: 'Kavya’s research: Rintoul, 2026', rel: ['^social', 'ban', '^socialmedia'] },
+        src: 'Kavya’s research: Rintoul, 2026', rel: ['^social-end', 'ban', '^socialmedia'] },
     ] },
-  { id: 'feeds', r: 0.64, at: [0.53, 0.8], title: 'Feeds, sharing, and content discovery', up: ['masthead', 'tug-content'],
+  { id: 'feeds', r: 0.64, at: [0.53, 0.8], title: 'Feeds, sharing, and content discovery', up: ['masthead', 'grow', 'tug-content'],
     facets: [
       { id: 'moments', title: 'Roblox Moments',
         body: 'A scrolling feed of short gameplay videos, opened in 2025. Tap one to join the game it shows.',
@@ -1194,26 +1207,31 @@ function tugNode(d, c, x, y, R, ring, byId, relate, out) {
   }
   return n;
 }
-// The hubs sit on their lines; each theme starts at its share of the way from one hub to the other (by its pulls),
-// moved `across` to the left of that line, and a split theme's halves start beside their hubs. Then everything that
-// may move eases apart, inside the card and off the hubs, held to where its pulls put it by a spring, and nudged
-// off other themes' pulls (a theme a line runs under looks joined to it); a last pass leaves nothing overlapping. The
-// pulls are drawn as lines, as heavy as they pull.
+// The hubs sit beside their lines' points (`beside`, a direction), pinned to them, so the data stays in view. Each
+// theme starts at its share of the way from one hub to the other (by its pulls), moved `across` to the left of that
+// line; a split theme's halves start beside their hubs; an argument starts at its `at` (shares of the card's width
+// and height, from its top left), and the conclusion in the lower left. Then everything that may move eases apart: inside the card but clear of the graph's
+// numbers (its scale on the right, its years along the foot), off the hubs, each other and the graph's lines, held
+// to where it started by a spring and nudged off other themes' pulls (a theme a line runs under looks joined to it);
+// a last pass leaves nothing overlapping. The pulls are drawn as lines, as heavy as they pull; an argument keeps its
+// points, and the conclusion its arguments, as relations (buds on their rims).
 function placeTug(c, g, tug, room, byId, relate, fixed) {
-  const out = [], Rh = c.w * 0.07, Rt = c.w * 0.1, Rs = c.w * 0.055, gap = c.w * 0.03;
+  const out = [], Rh = c.w * 0.065, Rt = c.w * 0.09, Rs = c.w * 0.05, gap = c.w * 0.025;
+  const box = { x0: room.x0, x1: g.right, y0: g.bottom + gap * 0.5, y1: room.y1 };
   const hub = {};
   for (const side of ['sm', 'pg']) {
-    const d = tug.hubs[side], s = seriesOf(d.on[0], d.on[1]);
-    const n = node('hub', d, { card: c, w: Rh * 2, h: Rh * 2, fixed: true, ringW: Rh * 0.08, ringColor: d.key });
-    setCentre(n, g.x(d.on[2]), g.y(g.val(s, d.on[2]))); keepIn(n, room);
+    const d = tug.hubs[side], s = seriesOf(d.on[0], d.on[1]), px = g.x(d.on[2]), py = g.y(g.val(s, d.on[2]));
+    const n = node('hub', d, { card: c, w: Rh * 2, h: Rh * 2, fixed: true, ringW: Rh * 0.08, ringColor: d.key, pin: [px, py] });
+    setCentre(n, px + d.beside[0] * (Rh + gap), py + d.beside[1] * (Rh + gap)); keepIn(n, box);
     const tr = Rh - n.ringW - Rh * 0.06;
     n.blocks = fitInCircle(tr, Rh, sz => [{ text: d.title, wt: 700, fam: T.title, size: sz, lh: 1.06, color: d.key }], -tr * 0.8, tr * 0.8, Rh * 0.32, Rh * 0.04).blocks;
     hub[side] = n; out.push(n); byId.set(d.id, n);
   }
-  const [Sx, Sy] = centre(hub.sm), [Px, Py] = centre(hub.pg), L = Math.hypot(Px - Sx, Py - Sy) || 1;
+  const hubs = [hub.sm, hub.pg].map(n => ({ xy: centre(n), r: Rh }));
+  const [Sx, Sy] = hubs[0].xy, [Px, Py] = hubs[1].xy, L = Math.hypot(Px - Sx, Py - Sy) || 1;
   const ux = (Px - Sx) / L, uy = (Py - Sy) / L, vx = -Math.abs(uy), vy = ux * Math.sign(uy || 1), wa = c.w * 0.55;
   const at = (t, across) => [Sx + ux * t * L + vx * across * wa, Sy + uy * t * L + vy * across * wa];
-  // the movers: each theme, and each half of a split one
+  // the movers: circles (`r`) for the themes and their halves, boxes (`w`, `h`) for the arguments and the conclusion
   const ps = [];
   for (const d of tug.themes) {
     const home = at(d.pull.pg / (d.pull.sm + d.pull.pg), d.across || 0), p = { d, r: Rt, home, xy: [...home] };
@@ -1223,41 +1241,85 @@ function placeTug(c, g, tug, room, byId, relate, fixed) {
       ps.push({ d: h, r: Rs, half: true, of: p, home: hh, xy: [...hh] });
     }
   }
-  const lim = (p, r) => { p[0] = clamp(p[0], room.x0 + r, room.x1 - r); p[1] = clamp(p[1], room.y0 + r, room.y1 - r); };
+  for (const d of tug.claims || []) {
+    const w = c.w * 0.25, h = c.w * 0.085, home = [c.x0 + d.at[0] * c.w, c.y1 - d.at[1] * c.h];
+    ps.push({ d, w, h, claim: true, home, xy: [...home] });
+  }
+  if (tug.verdict) {
+    const w = c.w * 0.36, h = c.w * 0.12, home = [box.x0 + w / 2, box.y0 + h / 2];
+    ps.push({ d: tug.verdict, w, h, verdict: true, home, xy: [...home] });
+  }
+  const halfW = p => p.r != null ? p.r : p.w / 2, halfH = p => p.r != null ? p.r : p.h / 2;
+  // how far p and q overlap with `m` between them, and the direction from p to q: circles, boxes, or one of each
+  const overlap = (p, q, m) => {
+    const [px, py] = p.xy, [qx, qy] = q.xy;
+    if (p.r != null && q.r != null) { const dx = qx - px, dy = qy - py, d = Math.hypot(dx, dy) || 1e-9; return [p.r + q.r + m - d, dx / d, dy / d]; }
+    if (p.r == null && q.r == null) {
+      const ox = (p.w + q.w) / 2 + m - Math.abs(qx - px), oy = (p.h + q.h) / 2 + m - Math.abs(qy - py);
+      if (ox <= 0 || oy <= 0) return [0, 0, 0];
+      return ox < oy ? [ox, Math.sign(qx - px) || 1, 0] : [oy, 0, Math.sign(qy - py) || 1];
+    }
+    const flip = p.r != null, b = flip ? q : p, o = flip ? p : q;
+    const nx = clamp(o.xy[0], b.xy[0] - b.w / 2, b.xy[0] + b.w / 2), ny = clamp(o.xy[1], b.xy[1] - b.h / 2, b.xy[1] + b.h / 2);
+    let dx = o.xy[0] - nx, dy = o.xy[1] - ny, e; const d = Math.hypot(dx, dy);
+    if (d > 1e-9) { e = o.r + m - d; dx /= d; dy /= d; }
+    else {   // the circle's centre is inside the box: out by the nearer side
+      const ex = b.w / 2 - Math.abs(o.xy[0] - b.xy[0]), ey = b.h / 2 - Math.abs(o.xy[1] - b.xy[1]);
+      if (ex < ey) { dx = Math.sign(o.xy[0] - b.xy[0]) || 1; dy = 0; e = ex + o.r + m; } else { dx = 0; dy = Math.sign(o.xy[1] - b.xy[1]) || 1; e = ey + o.r + m; }
+    }
+    return flip ? [e, -dx, -dy] : [e, dx, dy];
+  };
+  const lim = p => { p.xy[0] = clamp(p.xy[0], box.x0 + halfW(p), box.x1 - halfW(p)); p.xy[1] = clamp(p.xy[1], box.y0 + halfH(p), box.y1 - halfH(p)); };
   for (let it = 0; it < 2400; it++) {
     const settle = it >= 2000;   // the last pass: no spring, no nudging, only overlaps
     let worst = 0;
-    if (!settle) for (const p of ps) { p.xy[0] += (p.home[0] - p.xy[0]) * 0.03; p.xy[1] += (p.home[1] - p.xy[1]) * 0.03; }
-    const apart = (p, q, need, wp) => {
-      let dx = q[0] - p[0], dy = q[1] - p[1]; const d = Math.hypot(dx, dy) || 1e-9;
-      if (d >= need) return;
-      worst = Math.max(worst, need - d); dx /= d; dy /= d;
-      const e = need - d; p[0] -= dx * e * wp; p[1] -= dy * e * wp; q[0] += dx * e * (1 - wp); q[1] += dy * e * (1 - wp);
+    const push = (p, q, m, wp) => {
+      const [e, dx, dy] = overlap(p, q, m);
+      if (e <= 0) return;
+      worst = Math.max(worst, e);
+      p.xy[0] -= dx * e * wp; p.xy[1] -= dy * e * wp;
+      if (wp < 1) { q.xy[0] += dx * e * (1 - wp); q.xy[1] += dy * e * (1 - wp); }
     };
-    for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) apart(ps[i].xy, ps[j].xy, ps[i].r + ps[j].r + gap, 0.5);
-    for (const p of ps) for (const h of [hub.sm, hub.pg]) apart(centre(h), p.xy, Rh + p.r + gap, 0);
-    // each pull is a segment from a mover to a hub (or a split theme to its half); a mover it would run under is
-    // pushed off it
-    const lines = [];
-    for (const q of ps) {
-      if (q.half) lines.push([q, q.xy, centre(hub[q.d.to])], [q, q.xy, q.of.xy]);
-      else if (!q.d.split) lines.push([q, q.xy, centre(hub.sm)], [q, q.xy, centre(hub.pg)]);
+    if (!settle) for (const p of ps) { p.xy[0] += (p.home[0] - p.xy[0]) * 0.03; p.xy[1] += (p.home[1] - p.xy[1]) * 0.03; }
+    for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) push(ps[i], ps[j], gap, 0.5);
+    for (const p of ps) for (const h of hubs) push(p, h, gap, 1);
+    // the graph's lines, as the points they are drawn through
+    for (const p of ps) {
+      const m = gap * 0.4, hw = halfW(p) + m, hh = halfH(p) + m;
+      for (const pt of g.pts) if (Math.abs(pt[0] - p.xy[0]) < hw && Math.abs(pt[1] - p.xy[1]) < hh) push(p, { xy: pt, r: 0 }, m, 1);
     }
-    if (!settle) for (const p of ps) for (const [q, a, b] of lines) {
-      if (q === p || (p.half && p.of === q) || (q.half && q.of === p)) continue;
-      const bx = b[0] - a[0], by = b[1] - a[1], t = clamp(((p.xy[0] - a[0]) * bx + (p.xy[1] - a[1]) * by) / (bx * bx + by * by || 1), 0, 1);
-      const cx = a[0] + bx * t, cy = a[1] + by * t, need = p.r + gap * 0.5;
-      let dx = p.xy[0] - cx, dy = p.xy[1] - cy; const d = Math.hypot(dx, dy) || 1e-9;
-      if (t <= 0 || t >= 1 || d >= need) continue;
-      p.xy[0] += dx / d * (need - d) * 0.15; p.xy[1] += dy / d * (need - d) * 0.15;
+    // each pull is a segment from a theme to a hub (or a split theme to its half); a mover it would run under is
+    // nudged off it
+    if (!settle) {
+      const lines = [];
+      for (const q of ps) {
+        if (q.half) lines.push([q, q.xy, centre(hub[q.d.to])], [q, q.xy, q.of.xy]);
+        else if (q.r != null && !q.d.split) lines.push([q, q.xy, centre(hub.sm)], [q, q.xy, centre(hub.pg)]);
+      }
+      for (const p of ps) for (const [q, a, b] of lines) {
+        if (q === p || (p.half && p.of === q) || (q.half && q.of === p)) continue;
+        const bx = b[0] - a[0], by = b[1] - a[1], t = clamp(((p.xy[0] - a[0]) * bx + (p.xy[1] - a[1]) * by) / (bx * bx + by * by || 1), 0, 1);
+        const cx = a[0] + bx * t, cy = a[1] + by * t, need = Math.min(halfW(p), halfH(p)) + gap * 0.5;
+        const dx = p.xy[0] - cx, dy = p.xy[1] - cy, d = Math.hypot(dx, dy) || 1e-9;
+        if (t <= 0 || t >= 1 || d >= need) continue;
+        p.xy[0] += dx / d * (need - d) * 0.15; p.xy[1] += dy / d * (need - d) * 0.15;
+      }
     }
-    for (const p of ps) { const [x, y] = p.xy; lim(p.xy, p.r); worst = Math.max(worst, Math.abs(x - p.xy[0]), Math.abs(y - p.xy[1])); }
+    for (const p of ps) { const [x, y] = p.xy; lim(p); worst = Math.max(worst, Math.abs(x - p.xy[0]), Math.abs(y - p.xy[1])); }
     if (settle && worst < 1) break;
   }
   const made = new Map();
-  for (const p of ps) made.set(p.d, tugNode(p.d, c, p.xy[0], p.xy[1], p.r, p.half ? tug.hubs[p.d.to].key : 'ink', byId, relate, out));
+  for (const p of ps) {
+    if (p.r != null) { made.set(p.d, tugNode(p.d, c, p.xy[0], p.xy[1], p.r, p.half ? tug.hubs[p.d.to].key : 'ink', byId, relate, out)); continue; }
+    const n = node('bridge', p.d, { card: c, w: p.w, h: p.h, fixed: true });
+    n.blocks = layoutBox(n, p.d, { top: c.w * (p.verdict ? 0.024 : 0.022), maxLines: p.verdict ? 5 : 4 });
+    setCentre(n, p.xy[0], p.xy[1]);
+    out.push(n); byId.set(p.d.id, n);
+    for (const id of p.d.points || p.d.from || []) relate.push([n, id, false]);
+  }
   const pull = (a, b, w, color, dash) => EDGES.push({ a, b, w: w * c.w * 0.0018, color, dash: dash ? c.w * 0.006 : 0, noBuds: true });
   for (const p of ps) {
+    if (p.r == null) continue;
     const n = made.get(p.d);
     if (p.half) { pull(n, hub[p.d.to], p.d.pull, tug.hubs[p.d.to].key); pull(made.get(p.of.d), n, 1.5, 'ink', true); }
     else if (!p.d.split) { pull(n, hub.sm, p.d.pull.sm, 'tiktok'); pull(n, hub.pg, p.d.pull.pg, 'roblox'); }
@@ -1744,16 +1806,16 @@ function drawNodes() {
 function drawPins(dots) {
   for (const n of NODES) {
     if (!n.pin) continue;
-    const on = hover === n || nodeLit(n), c = n.kind === 'explainer' ? n.data.key : 'ink';
+    const on = hover === n || nodeLit(n), keyed = n.kind === 'explainer' || n.kind === 'hub', c = keyed ? n.data.key : 'ink';
     const [x, y] = n.pin, [px, py] = exitPt(n, x, y);
     if (dots) {
       ctx.fillStyle = col(on ? 'line' : c, 1);
-      const rr = n.kind === 'explainer' ? clamp(40 * view.s, 2, 12) : clamp(14 * view.s, 1.2, on ? 7 : 5);
+      const rr = keyed ? clamp(40 * view.s, 2, 12) : clamp(14 * view.s, 1.2, on ? 7 : 5);
       ctx.beginPath(); ctx.arc(sx(x), sy(y), rr, 0, Math.PI * 2); ctx.fill();
       continue;
     }
-    ctx.strokeStyle = col(on ? 'line' : c, on ? 1 : n.kind === 'explainer' ? 0.9 : 0.55);
-    ctx.lineWidth = n.kind === 'explainer' ? clamp(14 * view.s, 1, 4) : on ? 2 : clamp(1.2 * view.s * 4, 0.4, 1.2);
+    ctx.strokeStyle = col(on ? 'line' : c, on ? 1 : keyed ? 0.9 : 0.55);
+    ctx.lineWidth = keyed ? clamp(14 * view.s, 1, 4) : on ? 2 : clamp(1.2 * view.s * 4, 0.4, 1.2);
     ctx.beginPath(); ctx.moveTo(sx(px), sy(py)); ctx.lineTo(sx(x), sy(y)); ctx.stroke();
   }
 }
