@@ -181,27 +181,29 @@ const TOP = [
 // names other atoms a point relates to, or a whole card by its id: they appear on its rim as buds. `events` names
 // dated moments, which take places near their pins.
 const CONTENT = {
-  // A tug of war (Parker, 2026-10-19): social media and platform games are hubs, each pinned to its own line on the
-  // graph, and every theme sits where the two pull it. `pull` is how hard each side pulls: it sets how far along the
-  // line from one hub to the other the theme sits, and the weight of its line to each hub. `across` only spreads the
-  // themes out to the left of that line (a share of the card's width); they then ease apart until none overlap. A
-  // theme's points sit in the room under its name, each tinted by its `side`. The themes are Parker's, in his words;
-  // a `split` theme pulls through its own pair of halves, one to each hub. The card's earlier argument stays whole
-  // beside them (`claims`, `verdict`). Nothing sits on the graph's lines or numbers. The moments its points name sit
-  // along the time axis and on the Roblox line.
+  // A tug of war (Parker, 2026-10-19): social media and platform games are hubs, each beside its own line's point on
+  // the graph and pinned to it, and the themes hang between them. A theme is anchored at its `at` (shares of the
+  // card's width and height, from its top left), nearer the hub that pulls it harder, in a crescent down the open
+  // years on the left; `pull` is how hard each side pulls, drawn as the weight of its line to each hub. A theme's
+  // points sit in the room under its name, each tinted by its `side`. The themes are Parker's, in his words; a
+  // `split` theme pulls through its own pair of halves, one beside each hub. The card's earlier argument hangs on the
+  // lines between (`links`): each of its sentences a small circle on the line `between` two of them, `along` it from
+  // the first, holding its points as relations. Two hang on the rope between the hubs: that the two are growing into
+  // each other, in the middle, and the conclusion, nearer the side it says is winning. Nothing sits on the graph's
+  // lines or numbers. The moments the points name sit along the time axis and on the Roblox line.
   social: {
     tug: {
       hubs: { sm: { id: 'hub-sm', title: 'Social media', key: 'tiktok', on: ['tiktok', 'monthly', 2021.71], beside: [1, 0] },
               pg: { id: 'hub-pg', title: 'Platform games', key: 'roblox', on: ['roblox', 'daily', 2025.625], beside: [0, 1] } },
       themes: [
-        { id: 'tug-regulation', title: 'Regulation and governance', pull: { sm: 4, pg: 2.5 }, across: 1.05,
+        { id: 'tug-regulation', title: 'Regulation and governance', pull: { sm: 4, pg: 2.5 }, at: [0.2, 0.3],
           members: [
             { id: 'ban', side: 'both', title: 'The under-16 ban left games out',
               body: 'Australia’s ban on social media accounts for under-16s began in December 2025 and leaves out online games. Experts warned it could push children toward Roblox.',
               src: 'Kavya’s research; Rintoul, 2026', events: ['Under-16 social media ban begins'], rel: ['meet'] },
           ] },
-        { id: 'tug-safety', title: 'Safety', pull: { sm: 3, pg: 3 }, across: 0.95, members: [] },
-        { id: 'tug-sociality', title: 'Sociality and its associated dangers', pull: { sm: 3, pg: 4.5 }, across: 0.45,
+        { id: 'tug-safety', title: 'Safety', pull: { sm: 3, pg: 3 }, at: [0.13, 0.53], members: [] },
+        { id: 'tug-sociality', title: 'Sociality and its associated dangers', pull: { sm: 3, pg: 4.5 }, at: [0.22, 0.82],
           members: [
             { id: 'parts', side: 'pg', title: 'It has social media’s parts',
               body: 'One avatar, one friends list and chat across every game, with profiles, invites and recommendations by age and interests. Leaving costs you your friends.',
@@ -213,7 +215,7 @@ const CONTENT = {
               body: 'Strangers can play, chat and talk beside a child. In August 2026 eSafety found adults on Roblox could still send young children connection requests without a parent’s consent.',
               src: 'Bella’s research; Kavya’s research: Reuters, 2026' },
           ] },
-        { id: 'tug-content', title: 'Content and its associated dangers', pull: { sm: 5, pg: 1.5 }, across: 0.5,
+        { id: 'tug-content', title: 'Content and its associated dangers', pull: { sm: 5, pg: 1.5 }, at: [0.46, 0.21],
           members: [
             { id: 'fed', side: 'pg', title: 'Games are adding feeds',
               body: 'Roblox’s recommendations pick which games reach players, and the rest are hidden from their feed. In 2025 it added Moments, a scrolling feed of short gameplay videos.',
@@ -226,33 +228,33 @@ const CONTENT = {
               body: 'KakaoTalk in Korea and LINE in Japan, both chat apps, became game platforms in 2012, where you play against your chat friends. WeChat followed in China in 2017.',
               src: 'TechNode 2012; LINE 2012; Niko Partners 2018; Steinberg 2020', events: ['KakaoTalk and LINE add games', 'WeChat Mini Games'], rel: ['adding'] },
           ] },
-        { id: 'tug-money', title: 'Monetization', pull: { sm: 2, pg: 2 }, across: -0.3,
+        { id: 'tug-money', title: 'Monetization', pull: { sm: 2, pg: 2 }, at: [0.4, 0.68],
           body: 'Platform games and social media’s currently use different methods of monetization (but there is no reason for this to remain true forever)',
-          split: [{ id: 'tug-ads', title: 'Advertisers pay', to: 'sm', pull: 4 }, { id: 'tug-players', title: 'Players pay', to: 'pg', pull: 4 }],
+          split: [{ id: 'tug-ads', title: 'Advertisers pay', to: 'sm', pull: 4, at: [0.69, 0.33] },
+                  { id: 'tug-players', title: 'Players pay', to: 'pg', pull: 4, at: [0.7, 0.64] }],
           members: [
             { id: 'paid', side: 'both', title: 'Advertisers pay social media; kids pay Roblox',
               body: 'Meta made 98% of its 2025 revenue from ads. Roblox makes nearly all of its money selling Robux to its players, most of them young.',
               src: 'Meta 10-K, 2025; Roblox 10-K', rel: ['money'] },
           ] },
-        { id: 'tug-tactics', title: 'Manipulative tactics', pull: { sm: 3.5, pg: 3.5 }, across: 0.2,
+        { id: 'tug-tactics', title: 'Manipulative tactics', pull: { sm: 3.5, pg: 3.5 }, at: [0.4, 0.43],
           members: [
             { id: 'spend', side: 'pg', title: 'And what they spend',
               body: 'Sydney researchers played 15 top-earning Roblox games. Nearly all sold paid lucky draws and rushed players with limited-time offers, designs they say are treated as illegal outside games.',
               src: 'Bella’s research; Carter, Vekhande & Fifita 2026', rel: ['money'] },
           ] },
       ],
-      // the card's argument from before the tug of war, kept whole: its three branches down the open years on the
-      // left, where they stood before, each holding its points as relations, and the conclusion they lead to
-      claims: [
-        { id: 'kids', at: [0.22, 0.47], points: ['parts', 'grewup', 'ban'],
-          title: 'Kids already use platform games as their social media.' },
-        { id: 'grow', at: [0.2, 0.2], points: ['fed', 'adding', 'eastasia'],
+      // the card's argument from before the tug of war, kept whole and under its old ids, hung on the lines between
+      links: [
+        { id: 'grow', between: ['hub-sm', 'hub-pg'], along: 0.42, points: ['fed', 'adding', 'eastasia'],
           title: 'Games and social media are growing into each other.' },
-        { id: 'differ', at: [0.24, 0.66], points: ['paid', 'meet', 'spend'],
+        { id: 'social-end', between: ['hub-sm', 'hub-pg'], along: 0.82, big: true, points: ['kids', 'grow', 'differ'],
+          title: 'Platform games are taking social media’s place in kids’ lives, but not its business or its dangers, so rules written for feeds won’t fit them.' },
+        { id: 'kids', between: ['tug-sociality', 'hub-pg'], along: 0.25, points: ['parts', 'grewup', 'ban'],
+          title: 'Kids already use platform games as their social media.' },
+        { id: 'differ', between: ['tug-tactics', 'tug-money'], along: 0.5, points: ['paid', 'meet', 'spend'],
           title: 'But they don’t make money or cause harm the same way.' },
       ],
-      verdict: { id: 'social-end', from: ['kids', 'grow', 'differ'],
-        title: 'Platform games are taking social media’s place in kids’ lives, but not its business or its dangers, so rules written for feeds won’t fit them.' },
     },
   },
   // the corner under the replace card's argument (x 752 to 1370, y 605 to 918 of its units): the future of platform
@@ -1207,18 +1209,19 @@ function tugNode(d, c, x, y, R, ring, byId, relate, out) {
   }
   return n;
 }
-// The hubs sit beside their lines' points (`beside`, a direction), pinned to them, so the data stays in view. Each
-// theme starts at its share of the way from one hub to the other (by its pulls), moved `across` to the left of that
-// line; a split theme's halves start beside their hubs; an argument starts at its `at` (shares of the card's width
-// and height, from its top left), and the conclusion in the lower left. Then everything that may move eases apart: inside the card but clear of the graph's
-// numbers (its scale on the right, its years along the foot), off the hubs, each other and the graph's lines, held
-// to where it started by a spring and nudged off other themes' pulls (a theme a line runs under looks joined to it);
-// a last pass leaves nothing overlapping. The pulls are drawn as lines, as heavy as they pull; an argument keeps its
-// points, and the conclusion its arguments, as relations (buds on their rims).
+// The hubs sit beside their lines' points (`beside`, a direction), pinned to them, so the data stays in view. The
+// themes and the halves of a split one start at their anchors (`at`), and a link sits on the line between its two
+// ends, `along` the stretch between their rims. Then everything that may move eases apart: inside the card but clear
+// of the graph's numbers (its scale on the right, its years along the foot), off the hubs, the links and each other,
+// held to its anchor by a spring; linked ends keep room for their links between them; nothing, links included,
+// sits on the graph's lines; and a theme is nudged off other themes' pulls (a theme a line runs under looks joined to
+// it). A last pass leaves nothing overlapping. The pulls are drawn as lines, as heavy as they pull, and a link's line
+// runs under it; a link keeps its points as relations (buds on its rim).
 function placeTug(c, g, tug, room, byId, relate, fixed) {
-  const out = [], Rh = c.w * 0.065, Rt = c.w * 0.09, Rs = c.w * 0.05, gap = c.w * 0.025;
+  const out = [], Rh = c.w * 0.065, Rt = c.w * 0.085, Rs = c.w * 0.045, Rl = c.w * 0.06, gap = c.w * 0.025;
   const box = { x0: room.x0, x1: g.right, y0: g.bottom + gap * 0.5, y1: room.y1 };
-  const hub = {};
+  const cardAt = f => [c.x0 + f[0] * c.w, c.y1 - f[1] * c.h];
+  const hub = {}, ends = new Map();
   for (const side of ['sm', 'pg']) {
     const d = tug.hubs[side], s = seriesOf(d.on[0], d.on[1]), px = g.x(d.on[2]), py = g.y(g.val(s, d.on[2]));
     const n = node('hub', d, { card: c, w: Rh * 2, h: Rh * 2, fixed: true, ringW: Rh * 0.08, ringColor: d.key, pin: [px, py] });
@@ -1226,103 +1229,93 @@ function placeTug(c, g, tug, room, byId, relate, fixed) {
     const tr = Rh - n.ringW - Rh * 0.06;
     n.blocks = fitInCircle(tr, Rh, sz => [{ text: d.title, wt: 700, fam: T.title, size: sz, lh: 1.06, color: d.key }], -tr * 0.8, tr * 0.8, Rh * 0.32, Rh * 0.04).blocks;
     hub[side] = n; out.push(n); byId.set(d.id, n);
+    ends.set(d.id, { xy: centre(n), r: Rh, fixed: true });
   }
-  const hubs = [hub.sm, hub.pg].map(n => ({ xy: centre(n), r: Rh }));
-  const [Sx, Sy] = hubs[0].xy, [Px, Py] = hubs[1].xy, L = Math.hypot(Px - Sx, Py - Sy) || 1;
-  const ux = (Px - Sx) / L, uy = (Py - Sy) / L, vx = -Math.abs(uy), vy = ux * Math.sign(uy || 1), wa = c.w * 0.55;
-  const at = (t, across) => [Sx + ux * t * L + vx * across * wa, Sy + uy * t * L + vy * across * wa];
-  // the movers: circles (`r`) for the themes and their halves, boxes (`w`, `h`) for the arguments and the conclusion
+  // the movers: each theme, and each half of a split one
   const ps = [];
   for (const d of tug.themes) {
-    const home = at(d.pull.pg / (d.pull.sm + d.pull.pg), d.across || 0), p = { d, r: Rt, home, xy: [...home] };
-    ps.push(p);
-    for (const h of d.split || []) {
-      const hh = at(h.to === 'sm' ? 0.12 : 0.88, (d.across || 0) * 0.6);
-      ps.push({ d: h, r: Rs, half: true, of: p, home: hh, xy: [...hh] });
-    }
+    const p = { d, r: Rt, home: cardAt(d.at) };
+    p.xy = [...p.home]; ps.push(p); ends.set(d.id, p);
+    for (const h of d.split || []) { const q = { d: h, r: Rs, half: true, of: p, home: cardAt(h.at) }; q.xy = [...q.home]; ps.push(q); }
   }
-  for (const d of tug.claims || []) {
-    const w = c.w * 0.25, h = c.w * 0.085, home = [c.x0 + d.at[0] * c.w, c.y1 - d.at[1] * c.h];
-    ps.push({ d, w, h, claim: true, home, xy: [...home] });
-  }
-  if (tug.verdict) {
-    const w = c.w * 0.36, h = c.w * 0.12, home = [box.x0 + w / 2, box.y0 + h / 2];
-    ps.push({ d: tug.verdict, w, h, verdict: true, home, xy: [...home] });
-  }
-  const halfW = p => p.r != null ? p.r : p.w / 2, halfH = p => p.r != null ? p.r : p.h / 2;
-  // how far p and q overlap with `m` between them, and the direction from p to q: circles, boxes, or one of each
-  const overlap = (p, q, m) => {
-    const [px, py] = p.xy, [qx, qy] = q.xy;
-    if (p.r != null && q.r != null) { const dx = qx - px, dy = qy - py, d = Math.hypot(dx, dy) || 1e-9; return [p.r + q.r + m - d, dx / d, dy / d]; }
-    if (p.r == null && q.r == null) {
-      const ox = (p.w + q.w) / 2 + m - Math.abs(qx - px), oy = (p.h + q.h) / 2 + m - Math.abs(qy - py);
-      if (ox <= 0 || oy <= 0) return [0, 0, 0];
-      return ox < oy ? [ox, Math.sign(qx - px) || 1, 0] : [oy, 0, Math.sign(qy - py) || 1];
-    }
-    const flip = p.r != null, b = flip ? q : p, o = flip ? p : q;
-    const nx = clamp(o.xy[0], b.xy[0] - b.w / 2, b.xy[0] + b.w / 2), ny = clamp(o.xy[1], b.xy[1] - b.h / 2, b.xy[1] + b.h / 2);
-    let dx = o.xy[0] - nx, dy = o.xy[1] - ny, e; const d = Math.hypot(dx, dy);
-    if (d > 1e-9) { e = o.r + m - d; dx /= d; dy /= d; }
-    else {   // the circle's centre is inside the box: out by the nearer side
-      const ex = b.w / 2 - Math.abs(o.xy[0] - b.xy[0]), ey = b.h / 2 - Math.abs(o.xy[1] - b.xy[1]);
-      if (ex < ey) { dx = Math.sign(o.xy[0] - b.xy[0]) || 1; dy = 0; e = ex + o.r + m; } else { dx = 0; dy = Math.sign(o.xy[1] - b.xy[1]) || 1; e = ey + o.r + m; }
-    }
-    return flip ? [e, -dx, -dy] : [e, dx, dy];
+  // the links, each placed on the line between its ends whenever they move
+  const links = (tug.links || []).map(d => ({ d, a: ends.get(d.between[0]), b: ends.get(d.between[1]), r: d.big ? Rl * 1.3 : Rl, xy: [0, 0] }));
+  const onLine = l => {
+    const [ax, ay] = l.a.xy, [bx, by] = l.b.xy, d = Math.hypot(bx - ax, by - ay) || 1e-9, free = d - l.a.r - l.b.r, t = l.a.r + l.d.along * free;
+    l.xy = [ax + (bx - ax) / d * t, ay + (by - ay) / d * t];
   };
-  const lim = p => { p.xy[0] = clamp(p.xy[0], box.x0 + halfW(p), box.x1 - halfW(p)); p.xy[1] = clamp(p.xy[1], box.y0 + halfH(p), box.y1 - halfH(p)); };
+  const shift = (end, dx, dy) => { if (!end.fixed) { end.xy[0] += dx; end.xy[1] += dy; } };
+  const lim = p => { p.xy[0] = clamp(p.xy[0], box.x0 + p.r, box.x1 - p.r); p.xy[1] = clamp(p.xy[1], box.y0 + p.r, box.y1 - p.r); };
   for (let it = 0; it < 2400; it++) {
-    const settle = it >= 2000;   // the last pass: no spring, no nudging, only overlaps
+    const settle = it >= 2000;   // the last pass: no spring, no nudging
     let worst = 0;
+    // how far p and q (circles) overlap with `m` between them; p moves by `wp` of it, q by the rest
     const push = (p, q, m, wp) => {
-      const [e, dx, dy] = overlap(p, q, m);
+      let dx = q.xy[0] - p.xy[0], dy = q.xy[1] - p.xy[1]; const d = Math.hypot(dx, dy) || 1e-9, e = p.r + q.r + m - d;
       if (e <= 0) return;
-      worst = Math.max(worst, e);
-      p.xy[0] -= dx * e * wp; p.xy[1] -= dy * e * wp;
-      if (wp < 1) { q.xy[0] += dx * e * (1 - wp); q.xy[1] += dy * e * (1 - wp); }
+      worst = Math.max(worst, e); dx /= d; dy /= d;
+      shift(p, -dx * e * wp, -dy * e * wp); shift(q, dx * e * (1 - wp), dy * e * (1 - wp));
     };
     if (!settle) for (const p of ps) { p.xy[0] += (p.home[0] - p.xy[0]) * 0.03; p.xy[1] += (p.home[1] - p.xy[1]) * 0.03; }
     for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) push(ps[i], ps[j], gap, 0.5);
-    for (const p of ps) for (const h of hubs) push(p, h, gap, 1);
-    // the graph's lines, as the points they are drawn through
-    for (const p of ps) {
-      const m = gap * 0.4, hw = halfW(p) + m, hh = halfH(p) + m;
-      for (const pt of g.pts) if (Math.abs(pt[0] - p.xy[0]) < hw && Math.abs(pt[1] - p.xy[1]) < hh) push(p, { xy: pt, r: 0 }, m, 1);
+    for (const p of ps) for (const h of [hub.sm, hub.pg]) push(p, ends.get(h.data.id), gap, 1);
+    // linked ends keep room for their links between their rims
+    for (const l of links) {
+      const [ax, ay] = l.a.xy, [bx, by] = l.b.xy, d = Math.hypot(bx - ax, by - ay) || 1e-9, need = l.a.r + l.b.r + 2 * l.r + 2 * gap;
+      if (d >= need) continue;
+      const e = need - d, k = l.a.fixed ? 0 : l.b.fixed ? 1 : 0.5; worst = Math.max(worst, e);
+      shift(l.a, -(bx - ax) / d * e * k, -(by - ay) / d * e * k); shift(l.b, (bx - ax) / d * e * (1 - k), (by - ay) / d * e * (1 - k));
     }
-    // each pull is a segment from a theme to a hub (or a split theme to its half); a mover it would run under is
+    links.forEach(onLine);
+    for (const l of links) for (const p of ps) if (p !== l.a && p !== l.b) push(p, { xy: l.xy, r: l.r, fixed: true }, gap, 1);
+    // the graph's lines, as the points they are drawn through: a mover steps off them, a link takes its ends with it
+    const offGraph = (q, move) => {
+      const m = gap * 0.4;
+      for (const pt of g.pts) {
+        if (Math.abs(pt[0] - q.xy[0]) > q.r + m || Math.abs(pt[1] - q.xy[1]) > q.r + m) continue;
+        let dx = q.xy[0] - pt[0], dy = q.xy[1] - pt[1]; const d = Math.hypot(dx, dy) || 1e-9, e = q.r + m - d;
+        if (e <= 0) continue;
+        worst = Math.max(worst, e); move(dx / d * e, dy / d * e);
+      }
+    };
+    for (const p of ps) offGraph(p, (dx, dy) => shift(p, dx, dy));
+    for (const l of links) offGraph(l, (dx, dy) => { shift(l.a, dx, dy); shift(l.b, dx, dy); l.xy[0] += dx; l.xy[1] += dy; });
+    // a theme's pulls are segments to the hubs (a half's to its hub and its theme); a mover one would run under is
     // nudged off it
     if (!settle) {
       const lines = [];
       for (const q of ps) {
         if (q.half) lines.push([q, q.xy, centre(hub[q.d.to])], [q, q.xy, q.of.xy]);
-        else if (q.r != null && !q.d.split) lines.push([q, q.xy, centre(hub.sm)], [q, q.xy, centre(hub.pg)]);
+        else if (!q.d.split) lines.push([q, q.xy, centre(hub.sm)], [q, q.xy, centre(hub.pg)]);
       }
       for (const p of ps) for (const [q, a, b] of lines) {
         if (q === p || (p.half && p.of === q) || (q.half && q.of === p)) continue;
         const bx = b[0] - a[0], by = b[1] - a[1], t = clamp(((p.xy[0] - a[0]) * bx + (p.xy[1] - a[1]) * by) / (bx * bx + by * by || 1), 0, 1);
-        const cx = a[0] + bx * t, cy = a[1] + by * t, need = Math.min(halfW(p), halfH(p)) + gap * 0.5;
+        const cx = a[0] + bx * t, cy = a[1] + by * t, need = p.r + gap * 0.5;
         const dx = p.xy[0] - cx, dy = p.xy[1] - cy, d = Math.hypot(dx, dy) || 1e-9;
         if (t <= 0 || t >= 1 || d >= need) continue;
-        p.xy[0] += dx / d * (need - d) * 0.15; p.xy[1] += dy / d * (need - d) * 0.15;
+        shift(p, dx / d * (need - d) * 0.15, dy / d * (need - d) * 0.15);
       }
     }
     for (const p of ps) { const [x, y] = p.xy; lim(p); worst = Math.max(worst, Math.abs(x - p.xy[0]), Math.abs(y - p.xy[1])); }
+    links.forEach(onLine);
     if (settle && worst < 1) break;
   }
-  const made = new Map();
-  for (const p of ps) {
-    if (p.r != null) { made.set(p.d, tugNode(p.d, c, p.xy[0], p.xy[1], p.r, p.half ? tug.hubs[p.d.to].key : 'ink', byId, relate, out)); continue; }
-    const n = node('bridge', p.d, { card: c, w: p.w, h: p.h, fixed: true });
-    n.blocks = layoutBox(n, p.d, { top: c.w * (p.verdict ? 0.024 : 0.022), maxLines: p.verdict ? 5 : 4 });
-    setCentre(n, p.xy[0], p.xy[1]);
-    out.push(n); byId.set(p.d.id, n);
-    for (const id of p.d.points || p.d.from || []) relate.push([n, id, false]);
-  }
+  const made = new Map([['hub-sm', hub.sm], ['hub-pg', hub.pg]]);
+  for (const p of ps) made.set(p.d.id, tugNode(p.d, c, p.xy[0], p.xy[1], p.r, p.half ? tug.hubs[p.d.to].key : 'ink', byId, relate, out));
   const pull = (a, b, w, color, dash) => EDGES.push({ a, b, w: w * c.w * 0.0018, color, dash: dash ? c.w * 0.006 : 0, noBuds: true });
   for (const p of ps) {
-    if (p.r == null) continue;
-    const n = made.get(p.d);
-    if (p.half) { pull(n, hub[p.d.to], p.d.pull, tug.hubs[p.d.to].key); pull(made.get(p.of.d), n, 1.5, 'ink', true); }
+    const n = made.get(p.d.id);
+    if (p.half) { pull(n, hub[p.d.to], p.d.pull, tug.hubs[p.d.to].key); pull(made.get(p.of.d.id), n, 1.5, 'ink', true); }
     else if (!p.d.split) { pull(n, hub.sm, p.d.pull.sm, 'tiktok'); pull(n, hub.pg, p.d.pull.pg, 'roblox'); }
+  }
+  // the links, in the themes card's way: a ring on the line between two things, named for what connects them; the
+  // rope between the hubs is drawn once, under both links that hang on it
+  for (const l of links) {
+    const n = tugNode(l.d, c, l.xy[0], l.xy[1], l.r, 'line', byId, relate, out);
+    for (const id of l.d.points || []) relate.push([n, id, false]);
+    const [a, b] = l.d.between.map(id => made.get(id));
+    if (!EDGES.some(e => (e.a === a && e.b === b) || (e.a === b && e.b === a))) pull(a, b, a.kind === 'hub' && b.kind === 'hub' ? 2.5 : 1.2, a.kind === 'hub' && b.kind === 'hub' ? 'ink' : 'line');
   }
   fixed.push(...out);
 }
