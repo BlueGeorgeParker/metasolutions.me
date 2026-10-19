@@ -1525,7 +1525,7 @@ function resize() {
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
   HOME = homeView(); minS = HOME.s;
   if (first || atHome) Object.assign(view, HOME);
-  else { view.s = Math.max(minS, HOME.s * rel); view.ox = W / 2 - cx * view.s; view.oy = H / 2 + cy * view.s; }
+  else { if (!FRAMES.length) view.s = Math.max(minS, HOME.s * rel); view.ox = W / 2 - cx * view.s; view.oy = H / 2 + cy * view.s; }
   dirty();
 }
 // A card is one thing until it fills most of the screen: 60% one way and 40% the other, as on adoptic.online.
@@ -1692,8 +1692,8 @@ function drawGraph(g) {
   }
   for (const n of g.names) gtext(n.text, n.x, n.y, g.nameSize, { color: n.s.key, wt: 700, a: fl });
 }
-function drawEdges() {
-  for (const e of EDGES) {
+function drawEdges(list = EDGES) {
+  for (const e of list) {
     if (e.quiet) continue;
     const on = edgeLit(e);
     const ac = centre(e.a), bc = centre(e.b);
@@ -1792,9 +1792,9 @@ function drawInside(n, r, a, s, depth) {
     if (Math.min(dr.w, dr.h) >= 3 && onScreen(dr)) drawCopy(b.node, dr, a * presence(dr), s * b.k, false, depth + 1);
   }
 }
-function drawNodes() {
+function drawNodes(list = NODES) {
   // containers and themes first, so their members and facets draw over them
-  for (const pass of [false, true]) for (const n of NODES) {
+  for (const pass of [false, true]) for (const n of list) {
     if ((n.kind === 'member' || n.kind === 'facet') !== pass || n.kind === 'lobe') continue;
     const r = rectOf(n);
     if (!onScreen(r)) continue;
@@ -1803,8 +1803,8 @@ function drawNodes() {
   }
 }
 // Pins: a moment to its date, a platform's explainer to its line, in the platform's colour.
-function drawPins(dots) {
-  for (const n of NODES) {
+function drawPins(dots, list = NODES) {
+  for (const n of list) {
     if (!n.pin) continue;
     const on = hover === n || nodeLit(n), keyed = n.kind === 'explainer' || n.kind === 'hub', c = keyed ? n.data.key : 'ink';
     const [x, y] = n.pin, [px, py] = exitPt(n, x, y);
@@ -1827,11 +1827,11 @@ function seen(n) {
   const ix = clamp(Math.min(r.x + r.w, W) - Math.max(r.x, 0), 0, r.w), iy = clamp(Math.min(r.y + r.h, H) - Math.max(r.y, 0), 0, r.h);
   return ramp(ix * iy / (r.w * r.h), 0.3, 0.8) * ramp(Math.min(r.w, r.h), 30, 80);
 }
-const budAlpha = b => b.blocked ? 0 : budsShown(b.host) * presence(budRect(b)) * (1 - seen(b.node));
+// a bud fades as the thing it stands for comes into view itself; inside a frame (below) nothing else is in view
+const budAlpha = (b, framed) => b.blocked ? 0 : budsShown(b.host) * presence(budRect(b)) * (framed ? 1 : 1 - seen(b.node));
 let SHOWN = [];
-function drawBuds() {
-  SHOWN = [];
-  for (const h of NODES) {
+function drawBuds(list = NODES, layer = 0) {
+  for (const h of list) {
     // a theme's kissing cards and a facet's doors are part of its picture, there at every distance
     for (const b of [...(h.kiss || []), ...(h.doors || [])]) {
       const r = budRect(b);
@@ -1839,30 +1839,90 @@ function drawBuds() {
       const ba = presence(r) * presence(rectOf(h));
       if (ba <= 0.004) continue;
       drawCopy(b.node, r, ba, view.s * b.k, hover === b, 1);
-      SHOWN.push({ b, a: ba });
+      SHOWN.push({ b, a: ba, layer });
     }
     if (budsShown(h) <= 0.004) continue;
     for (const b of h.buds) {
       const r = budRect(b);
       if (b.blocked || !onScreen(r)) continue;
-      const ba = budAlpha(b);
+      const ba = budAlpha(b, layer > 0);
       if (ba <= 0.004) continue;
       drawCopy(b.node, r, ba, view.s * b.k, hover === b, 1);
-      SHOWN.push({ b, a: ba });
+      SHOWN.push({ b, a: ba, layer });
     }
+  }
+}
+// ---------- Frames: zooming in without end ----------
+// ZOOMING INTO A BUD OPENS IT WHERE IT IS. A bud is a thing drawn small on another's rim (or in a facet's pocket, or
+// kissing a theme). Once it fills enough of the screen it becomes a frame: the thing itself, drawn whole at the bud's
+// place with everything it holds and its own buds, which open the same way, without end. Around it, the layer it was
+// opened from stays drawn, so the way out is the way in: once it shrinks back below that size, the frame closes and
+// the view is exactly the picture it was opened from. A frame's view is in the thing's own world units (where it
+// really sits on the sheet), so the numbers stay small however deep the visitor goes; frameViews() works back out to
+// the view of each layer around it. Nothing ever moves the visitor to where a thing really sits on the map.
+const FRAME_IN = 0.32, FRAME_OUT = 0.3;   // shares of the screen's smaller side: a bud opens above one, closes below the other
+let FRAMES = [];
+// what a frame draws: the thing and everything it holds; a card, everything on it
+function subtreeOf(n) {
+  if (n.kind === 'card') return new Set(NODES.filter(x => x.card === n));
+  const out = new Set(), add = x => { out.add(x); for (const k of x.kids || []) add(k); };
+  add(n);
+  return out;
+}
+// the view of every layer, from the sheet's out to the innermost frame's (the view itself)
+function frameViews() {
+  const vs = [{ s: view.s, ox: view.ox, oy: view.oy }];
+  for (let j = FRAMES.length - 1; j >= 0; j--) {
+    const b = FRAMES[j].b, v = vs[0], s = v.s / b.k;
+    vs.unshift({ s, ox: b.node.x0 * v.s + v.ox - b.x0 * s, oy: -b.node.y1 * v.s + v.oy + b.y1 * s });
+  }
+  return vs;
+}
+function withView(v, fn) {
+  const was = { s: view.s, ox: view.ox, oy: view.oy };
+  Object.assign(view, v);
+  try { return fn(); } finally { Object.assign(view, was); }
+}
+// the sheet is layer 0; a frame draws only what it holds
+function drawLayer(j) {
+  if (!j) {
+    for (const c of CARDS) drawCard(c);
+    drawEdges(); drawPins(false); drawNodes(); drawPins(true); drawBuds();
+    return;
+  }
+  const F = FRAMES[j - 1], list = [...F.nodes];
+  if (F.card) drawCard(F.card);
+  drawEdges(EDGES.filter(e => F.nodes.has(e.a) && F.nodes.has(e.b)));
+  drawPins(false, list); drawNodes(list); drawPins(true, list); drawBuds(list, j);
+}
+function pushFrame(b) {
+  const n = b.node, s2 = view.s * b.k, x = sx(b.x0), y = sy(b.y1);
+  FRAMES.push({ b, nodes: subtreeOf(n), card: n.kind === 'card' ? n : null });
+  view.ox = x - n.x0 * s2; view.oy = y + n.y1 * s2; view.s = s2;
+  framed = true; hover = null; dirty();
+}
+// back out to layer j, the picture unchanged
+function popTo(j) {
+  if (FRAMES.length <= j) return;
+  Object.assign(view, frameViews()[j]);
+  FRAMES.length = j; hover = null; dirty();
+}
+// a frame closes once what it opened is too small, or gone from the screen
+function checkFrames() {
+  while (FRAMES.length) {
+    const r = rectOf(FRAMES[FRAMES.length - 1].b.node);
+    if (Math.min(r.w, r.h) >= FRAME_OUT * Math.min(W, H) && onScreen(r)) break;
+    popTo(FRAMES.length - 1);
   }
 }
 function draw() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.globalAlpha = 1;
   ctx.fillStyle = T.ground; ctx.fillRect(0, 0, W, H);
-  for (const c of CARDS) drawCard(c);
-  drawEdges();
-  drawPins(false);
-  drawNodes();
-  drawPins(true);
-  drawBuds();
-  drawFade();
+  SHOWN = [];
+  // the innermost layers only: further out, a layer is so large that what shows of it is its ground
+  const vs = frameViews();
+  for (let j = Math.max(0, vs.length - 3); j < vs.length; j++) withView(vs[j], () => drawLayer(j));
   ctx.globalAlpha = 1;
 }
 let raf = 0;
@@ -1893,15 +1953,24 @@ function homingAnchor(px, py) {
 }
 let lastZoomOut = false;
 function zoomAt(px, py, k) {
-  const s2 = clamp(view.s * k, minS, MAX_S), kk = s2 / view.s;
+  // inside a frame, going out has no floor and no homing: the frame closes on its own and hands back to the layer
+  // it was opened from
+  const deep = FRAMES.length > 0;
+  const s2 = clamp(view.s * k, deep ? 0 : minS, MAX_S), kk = s2 / view.s;
   if (kk !== 1) { lastZoomOut = kk < 1; framed = false; }
-  if (kk < 1) {
+  if (kk < 1 && !deep) {
     if (s2 <= HOME.s * (1 + 1e-9)) { Object.assign(view, HOME); moved(); dirty(); return; }
     [px, py] = homingAnchor(px, py);
   }
   view.ox = px - (px - view.ox) * kk; view.oy = py - (py - view.oy) * kk; view.s = s2;
-  clampPan(); moved();
+  if (deep) checkFrames(); else clampPan();
+  moved();
   dirty();
+}
+function panBy(dx, dy) {
+  view.ox += dx; view.oy += dy; framed = false;
+  if (FRAMES.length) checkFrames(); else clampPan();
+  moved(); dirty();
 }
 // ONCE STILL, IT SETTLES. A zoom out that comes to rest within SNAP_OUT of the full view finishes the journey by
 // itself. Otherwise: fully zoomed out the sheet sits centred; a side larger than the screen closes any gap at its
@@ -1927,6 +1996,7 @@ function settleTick(now) {
   settleRaf = 0;
   const busy = flight && !flight.stop && !flight.done || pointers.size > 0;
   if (busy || now - lastMove < SETTLE_AFTER) { settleT = now; settleRaf = requestAnimationFrame(settleTick); return; }
+  if (FRAMES.length) return;   // inside a frame nothing settles: the visitor is where they put themselves
   if (lastZoomOut && view.s > HOME.s * 1.0001 && view.s < HOME.s * SNAP_OUT) { lastZoomOut = false; travel(HOME); return; }
   if (framed) return;
   const dt = Math.min(50, now - (settleT || now)) || 16; settleT = now;
@@ -1954,80 +2024,77 @@ function travel(to, done) {
     const cx = from.cx + (dest.cx - from.cx) * k, cy = from.cy + (dest.cy - from.cy) * k;
     view.s = s; view.ox = W / 2 - cx * s; view.oy = H / 2 + cy * s;
     draw();
-    if (t < 1) requestAnimationFrame(step); else { me.done = true; lastZoomOut = false; framed = true; if (done) done(); moved(); }
+    if (t < 1) requestAnimationFrame(step); else { me.done = true; lastZoomOut = false; framed = true; if (done) done(); else checkFrames(); moved(); }
   };
   requestAnimationFrame(step);
 }
 const stopFlight = () => { if (flight) flight.stop = true; };
-const goHome = () => travel(HOME);
+const goHome = () => { popTo(0); travel(HOME); };
 // Going to anything frames it whole, in the middle of the screen: a card, a contest, a point, a node of the money map.
 function viewFor(n) {
   return fitView(n.x0, n.y1, n.w, n.h, n.kind === 'card' ? 0.03 : n.kind === 'money' || n.kind === 'replace' ? 0.05 : 0.1);
 }
 const goTo = n => travel(viewFor(n));
-const FADE_MS = 450;
-let FADE = null;
-function swapInto(b) {
-  const img = document.createElement('canvas');
-  img.width = cv.width; img.height = cv.height;
-  img.getContext('2d').drawImage(cv, 0, 0);
-  const s2 = view.s * b.k;
-  view.ox = sx(b.x0) - b.node.x0 * s2; view.oy = sy(b.y1) + b.node.y1 * s2; view.s = s2;
-  FADE = { img, t0: performance.now(), at: { s: view.s, ox: view.ox, oy: view.oy } };
-  framed = true; hover = null; dirty();
-}
-function drawFade() {
-  if (!FADE) return;
-  const t = (performance.now() - FADE.t0) / FADE_MS;
-  if (t >= 1) { FADE = null; return; }
-  const k = view.s / FADE.at.s;
-  ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * (view.ox - FADE.at.ox * k), dpr * (view.oy - FADE.at.oy * k));
-  ctx.globalAlpha = 1 - t * t * (3 - 2 * t);
-  ctx.drawImage(FADE.img, 0, 0, W, H);
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  dirty();
-}
-const enterBud = b => travel(fitView(b.x0, b.y1, b.w, b.h, 0.1), () => swapInto(b));
+// a click on a bud glides to it and opens it there; zooming in on one opens it once it is large enough
+const enterBud = b => travel(fitView(b.x0, b.y1, b.w, b.h, 0.1), () => pushFrame(b));
 function stepThrough(px, py) {
-  const b = hitBud(px, py);
-  if (b) { const r = budRect(b); if (Math.min(r.w, r.h) >= 0.45 * Math.min(W, H)) swapInto(b); }
+  const b = hitBud(px, py, FRAMES.length);
+  if (b) { const r = budRect(b); if (Math.min(r.w, r.h) >= FRAME_IN * Math.min(W, H)) pushFrame(b); }
 }
 const insideShape = (n, r, px, py) => Math.pow(Math.abs(px - r.x - r.w / 2) / (r.w / 2), n.n) + Math.pow(Math.abs(py - r.y - r.h / 2) / (r.h / 2), n.n) <= 1;
 const insideRect = (r, px, py) => px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
-function hitBud(px, py) {
-  for (const { b, a } of SHOWN) if (a >= 0.5 && insideShape(b.node, budRect(b), px, py)) return b;
+function hitBud(px, py, layer = 0) {
+  for (const { b, a, layer: l } of SHOWN) if (l === layer && a >= 0.5 && insideShape(b.node, budRect(b), px, py)) return b;
   return null;
 }
-// Over a card that is not yet entered, the card answers for everything on it. Inside an entered card: buds, then
-// members (they sit on top of their containers), then everything else.
+// The innermost layer answers first, then the ones around it; HIT_LAYER says which answered.
+let HIT_LAYER = 0;
 function hit(px, py) {
-  for (const c of CARDS) {
-    if (c.sub === 'empty' || !insideRect(rectOf(c), px, py)) continue;
-    if (!entered(c)) return c;
-    // inside the main card, its argument boxes; anywhere else on it, the card, so a click frames it
-    if (c.sub === 'masthead') {
-      const r = rectOf(c), s = view.s;
-      return c.args.find(b => insideRect({ x: r.x + b.x * s, y: r.y + b.y * s, w: b.w * s, h: b.h * s }, px, py)) || c;
-    }
-    if (c.sub === 'money') {
-      const r = window.MoneyMap && c.map ? MoneyMap.hit(px, py) : null;
-      return !r ? null : r.href ? { kind: 'link', href: r.href } : moneyNode(c, r);
-    }
-    // on the replace card, what this page draws there (its corner section) first, then what replace-card.js draws
-    if (c.sub === 'replace') {
-      const n = hitBud(px, py) || hitInner(c, px, py);
-      if (n) return n;
-      const r = window.ReplaceCard && c.map ? ReplaceCard.hit(px, py) : null;
-      return r ? replaceNode(c, r) : null;
-    }
-    return hitBud(px, py) || hitInner(c, px, py);
+  const vs = frameViews();
+  for (let j = vs.length - 1; j >= Math.max(0, vs.length - 3); j--) {
+    const r = withView(vs[j], () => j ? hitFrame(j, px, py) : hitSheet(px, py));
+    if (r) { HIT_LAYER = j; return r; }
   }
   return null;
 }
-// the smallest thing on a card under the pointer answers; a lobed node is only its lobes
-function hitInner(c, px, py) {
+// in a frame: on a card, as on an entered card; else its buds, then what it holds, smallest first
+function hitFrame(j, px, py) {
+  const F = FRAMES[j - 1];
+  if (F.card) return insideRect(rectOf(F.card), px, py) ? hitCard(F.card, px, py, j) : null;
+  return hitBud(px, py, j) || hitNodes([...F.nodes], px, py);
+}
+// Over a card that is not yet entered, the card answers for everything on it. Inside an entered card: buds, then
+// members (they sit on top of their containers), then everything else.
+function hitSheet(px, py) {
+  for (const c of CARDS) {
+    if (c.sub === 'empty' || !insideRect(rectOf(c), px, py)) continue;
+    return entered(c) ? hitCard(c, px, py, 0) : c;
+  }
+  return null;
+}
+function hitCard(c, px, py, layer) {
+  // inside the main card, its argument boxes; anywhere else on it, the card, so a click frames it
+  if (c.sub === 'masthead') {
+    const r = rectOf(c), s = view.s;
+    return c.args.find(b => insideRect({ x: r.x + b.x * s, y: r.y + b.y * s, w: b.w * s, h: b.h * s }, px, py)) || c;
+  }
+  if (c.sub === 'money') {
+    const r = window.MoneyMap && c.map ? MoneyMap.hit(px, py) : null;
+    return !r ? null : r.href ? { kind: 'link', href: r.href } : moneyNode(c, r);
+  }
+  // on the replace card, what this page draws there (its corner section) first, then what replace-card.js draws
+  if (c.sub === 'replace') {
+    const n = hitBud(px, py, layer) || hitNodes(c.inner, px, py);
+    if (n) return n;
+    const r = window.ReplaceCard && c.map ? ReplaceCard.hit(px, py) : null;
+    return r ? replaceNode(c, r) : null;
+  }
+  return hitBud(px, py, layer) || hitNodes(c.inner, px, py);
+}
+// the smallest thing under the pointer answers; a lobed node is only its lobes
+function hitNodes(list, px, py) {
   const top = n => n.kind === 'member' || n.kind === 'facet';
-  const order = [...c.inner.filter(top), ...c.inner.filter(n => !top(n) && n.kind !== 'lobed').sort((p, q) => p.w * p.h - q.w * q.h)];
+  const order = [...list.filter(top), ...list.filter(n => !top(n) && n.kind !== 'lobed').sort((p, q) => p.w * p.h - q.w * q.h)];
   for (const n of order) { const r = rectOf(n); if (insideShape(n, r, px, py) && presence(r) > 0.2) return n; }
   return null;
 }
@@ -2061,7 +2128,7 @@ cv.addEventListener('pointermove', e => {
   if (drag) {
     const dx = e.offsetX - drag.x, dy = e.offsetY - drag.y;
     if (!drag.moved && Math.hypot(dx, dy) > 4) { drag.moved = true; cv.classList.add('dragging'); quietHint(); }
-    if (drag.moved) { view.ox += dx; view.oy += dy; drag.x = e.offsetX; drag.y = e.offsetY; framed = false; clampPan(); moved(); dirty(); }
+    if (drag.moved) { drag.x = e.offsetX; drag.y = e.offsetY; panBy(dx, dy); }
     return;
   }
   const h = hit(e.offsetX, e.offsetY);
@@ -2078,6 +2145,8 @@ function endPointer(e) {
   if (drag && !drag.moved && e.type === 'pointerup') {
     const n = hit(e.offsetX, e.offsetY);
     if (n) {
+      // a thing in a layer around the innermost frame: back out to that layer first, the picture unchanged
+      popTo(HIT_LAYER);
       if (n.kind === 'link') window.open(n.href, '_blank', 'noopener');
       else if (n.kind === 'arg') {
         // an argument goes to the card or the theme that makes it
@@ -2106,10 +2175,10 @@ window.addEventListener('keydown', e => {
   if (e.key === 'Escape' || e.key === 'Home' || e.key === '0') { stopFlight(); quietHint(); goHome(); return; }
   else if (e.key === '+' || e.key === '=') { zoomAt(W / 2, H / 2, 1.4); stepThrough(W / 2, H / 2); }
   else if (e.key === '-' || e.key === '_') zoomAt(W / 2, H / 2, 1 / 1.4);
-  else if (e.key === 'ArrowLeft') { view.ox += step; framed = false; clampPan(); moved(); dirty(); }
-  else if (e.key === 'ArrowRight') { view.ox -= step; framed = false; clampPan(); moved(); dirty(); }
-  else if (e.key === 'ArrowUp') { view.oy += step; framed = false; clampPan(); moved(); dirty(); }
-  else if (e.key === 'ArrowDown') { view.oy -= step; framed = false; clampPan(); moved(); dirty(); }
+  else if (e.key === 'ArrowLeft') panBy(step, 0);
+  else if (e.key === 'ArrowRight') panBy(-step, 0);
+  else if (e.key === 'ArrowUp') panBy(0, step);
+  else if (e.key === 'ArrowDown') panBy(0, -step);
   else return;
   stopFlight(); quietHint();
 });
@@ -2119,6 +2188,7 @@ window.addEventListener('resize', resize);
 const relook = () => {
   readTheme(); build();
   HOME = homeView(); minS = HOME.s;
+  if (FRAMES.length) { FRAMES = []; Object.assign(view, HOME); }
   if (!movedByVisitor) Object.assign(view, HOME);
   dirty();
 };
@@ -2129,7 +2199,7 @@ build(); resize();
 const faces = ['700 40px "Source Serif 4"', '400 40px "Source Sans 3"', '700 40px "Source Sans 3"', 'italic 400 40px "Source Sans 3"'];
 Promise.race([Promise.all(faces.map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 2500))]).then(relook);
 document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', relook);
-window.__map = { get HOME() { return HOME; }, zoomAt, view, goTo, viewFor, goHome, hit, fitView, entered, budAlpha, get SHOWN() { return SHOWN; }, get CARDS() { return CARDS; }, get NODES() { return NODES; }, get EDGES() { return EDGES; }, WORLD, get hover() { return hover; }, set hover(h) { hover = h; dirty(); } };
+window.__map = { get HOME() { return HOME; }, zoomAt, view, goTo, viewFor, goHome, hit, fitView, entered, budAlpha, get SHOWN() { return SHOWN; }, get FRAMES() { return FRAMES; }, frameViews, popTo, get CARDS() { return CARDS; }, get NODES() { return NODES; }, get EDGES() { return EDGES; }, WORLD, get hover() { return hover; }, set hover(h) { hover = h; dirty(); } };
 })();
 </script>
 <script src="hand-control.js"></script>
