@@ -1438,7 +1438,7 @@ function drawGraph(g) {
     ctx.beginPath(); ctx.moveTo(sx(g.x(sp.split)), sy(g.bottom)); ctx.lineTo(sx(g.x(sp.split)), sy(g.top)); ctx.stroke();
     ctx.setLineDash([]);
   }
-  const cw = clamp(0.9 * K * view.s, 1.5, 7) * (sp.background ? 1.8 : 1);
+  const cw = clamp(0.9 * K * view.s, 1.5, 7) * (sp.background ? 3 : 1);
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   for (const s of g.series) {
     ctx.setLineDash(s.kind === 'monthly' ? [cw * 2.4, cw * 1.6] : []);
