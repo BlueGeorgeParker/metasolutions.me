@@ -1,0 +1,878 @@
+<title>Roblox Infomap V2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: one full-window canvas. The thesis is a big circle in the top-left corner; the reasons, themes and events
+   fan out from it down and to the right, each step smaller and squarer: circle, squircle, rounded rectangle, rectangle. */
+:root {
+  --ground: #F2E9DD;
+  --card: #FFF8F0;
+  --ink: #1B263F;
+  --ink-soft: #55627A;
+  --rule: #C7B8A3;
+  --line: #3F6FA3;
+  --local: #2E7A57;
+  --thesis: #1B263F;
+  --thesis-ink: #FFF8F0;
+  --font-title: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #11151D; --card: #1E2533; --ink: #ECE4D7; --ink-soft: #A4AEC0; --rule: #3A4357;
+    --line: #86B2E3; --local: #5BC795; --thesis: #ECE4D7; --thesis-ink: #11151D;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #11151D; --card: #1E2533; --ink: #ECE4D7; --ink-soft: #A4AEC0; --rule: #3A4357;
+  --line: #86B2E3; --local: #5BC795; --thesis: #ECE4D7; --thesis-ink: #11151D;
+  color-scheme: dark;
+}
+html, body { height: 100%; margin: 0; }
+body { background: var(--ground); color: var(--ink); overflow: hidden; }
+#map { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+#map.dragging { cursor: grabbing; }
+#map.over { cursor: pointer; }
+#hint {
+  position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  font: 14px/1.3 var(--font-body); color: var(--ink-soft);
+  background: var(--card); border: 1px solid var(--rule); border-radius: 6px;
+  padding: 8px 12px; max-width: calc(100% - 56px); transition: opacity .8s;
+}
+#hint.gone { opacity: 0; pointer-events: none; }
+</style>
+
+<canvas id="map" role="img" aria-label="Infomap of Roblox: our thesis in the top-left corner, with the reasons for it, the themes and the events fanning out from it"></canvas>
+<div id="hint">Scroll or pinch to zoom · drag to move · click anything to go there · Esc for the whole map</div>
+
+<script>
+(() => {
+'use strict';
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// ---------- Content ----------
+// The thesis, at the root of the map. Both lines are Parker's own words.
+const THESIS = {
+  title: 'Platformization in games will be a continuing phenomenon.',
+  note: 'The young generation of people will move on from Roblox, but they will carry with them the structures of platformization, so even though Roblox may decline, digital third spaces and social platforms will continue to prosper.',
+};
+// Why we think that: the strings of the argument, in Parker's words. `themes`: the themes each one runs down to
+// (Claude's matches, for checking). Only what hangs from the thesis is drawn; link a theme here to bring it onto the map.
+// Hand moves for nodes the layout puts too close: [right, up] in world units (the graph is 6200 wide).
+const NUDGE = {
+  'Game, not social media': [0, -520],
+  'Child safety: who is responsible?': [480, 0],
+};
+// Events drawn bigger, as waypoints at ground level: Claude's picks, one per theme; change freely.
+const FEATURED = ['Lil Nas X concert', 'Gucci Garden', 'Left out of the under-16 ban', 'Bloomberg investigation'];
+const ARGUMENT = [
+  { title: 'Digital worlds replacing physical worlds', body: 'Digital world integrating more functions that were previously contained only in the physical: (1) birthday parties (2) concerts (3) commerce and consumerism (4) find others',
+    themes: ['Third place', 'Robux and digital consumerism'] },
+  { title: 'Digital worlds are unlike social media', body: 'Perhaps more social, able to fulfill different social needs, because in social media you are mostly interacting with content and the trail of humans whereas in digital worlds you are interacting with people in real time, like streams almost.',
+    themes: ['Game, not social media'] },
+  { title: 'Does platform logic break down in the context of kids?', body: 'Because Roblox is aimed at kids, it’s much easier to view the platform as responsible for harmful interactions.',
+    themes: ['Child safety: who is responsible?'] },
+];
+
+// Events, one card each. A theme's `events` names the ones it runs down to.
+const EVENTS = [
+  { t: 2004.5, date: '2004', title: 'Founded', body: 'David Baszucki and Erik Cassel start the company that becomes Roblox.', src: 'TechCrunch, 2019' },
+  { t: 2006.67, date: 'Sep 2006', title: 'Opens to the public', body: 'Roblox launches on PC for anyone to play.', src: 'Wikipedia: Roblox Corporation' },
+  { t: 2008.5, date: '2008', title: 'Every game user-made', body: 'Roblox stops making its own games. From here, players and creators make all of them.', src: 'Wikipedia: Roblox Corporation' },
+  { t: 2012.95, date: 'Dec 2012', title: 'iPhone and iPad', body: 'Roblox arrives on iOS.', src: 'VentureBeat, 2014' },
+  { t: 2013.5, date: '2013', title: 'Developer Exchange', body: 'Creators can cash the Robux their games earn out for real money.', src: 'Roblox newsroom' },
+  { t: 2014.54, date: 'Jul 2014', title: 'Android', body: 'Roblox arrives on Android phones.', src: 'VentureBeat, 2014' },
+  { t: 2016.07, date: 'Jan 2016', title: 'Xbox One', body: 'Roblox reaches its first games console.', src: 'Xbox Wire, 2016' },
+  { t: 2019.6, date: 'Aug 2019', title: '100 million a month', body: 'Roblox passes 100 million monthly players.', src: 'TechCrunch, 2019' },
+  { t: 2020.87, date: 'Nov 2020', title: 'Lil Nas X concert', body: 'Four shows over one weekend log more than 33 million visits.', src: 'Billboard, 2020' },
+  { t: 2020.88, date: 'Nov 2020', title: 'Calls itself a platform', body: 'Its stock-market filing describes a "human co-experience platform" and mentions the metaverse.', src: 'Roblox S-1, SEC' },
+  { t: 2021.19, date: 'Mar 2021', title: 'Goes public', body: 'Lists on the New York Stock Exchange, worth about $38 billion at the first close.', src: 'CNBC, 2021' },
+  { t: 2021.4, date: 'May 2021', title: 'Gucci Garden', body: 'A two-week virtual Gucci exhibition runs inside Roblox.', src: 'Dezeen, 2021' },
+  { t: 2021.63, date: 'Aug 2021', title: 'Young developers investigation', body: 'People Make Games (YouTube) reports on Roblox taking a 75% cut and its $1,000 cash-out minimum.', src: 'NME, 2021' },
+  { t: 2021.88, date: 'Nov 2021', title: 'Nikeland', body: 'Nike opens a permanent world modelled on its headquarters.', src: 'CNBC, 2021' },
+  { t: 2024.55, date: 'Jul 2024', title: 'Bloomberg investigation', body: 'Bloomberg Businessweek reports on predators finding children through Roblox.', src: 'Bloomberg, 2024' },
+  { t: 2024.6, date: 'Aug 2024', title: 'Turkey blocks Roblox', body: 'A Turkish court blocks the platform over child-abuse concerns.', src: 'Bloomberg, 2024' },
+  { t: 2024.77, date: 'Oct 2024', title: 'Short-seller report', body: 'Hindenburg Research alleges inflated user numbers and child-safety failures.', src: 'Sherwood News, 2024' },
+  { t: 2024.88, date: 'Nov 2024', title: 'Under-13 messaging limits', body: 'Under-13s can no longer message people outside games. Parents get controls from their own accounts.', src: 'TechCrunch, 2024' },
+  { t: 2025.47, date: 'Jun 2025', title: 'Grow a Garden', body: 'One player-made game reaches about 21.6 million players at once, beating Fortnite’s record.', src: 'NBC / AP, 2025' },
+  { t: 2025.625, date: 'Jul–Sep 2025', title: 'The peak', body: '151.5 million daily players on average, up 70% on a year earlier.', src: 'Roblox Q3 2025 results' },
+  { t: 2025.68, date: 'Sep 2025', title: 'Moments', body: 'A TikTok-style feed of gameplay clips opens in beta for over-13s. A clip leads straight into its game.', src: 'TechCrunch, 2025' },
+  { t: 2025.7, au: true, date: 'Sep 2025', title: 'Commitments to eSafety', body: 'Roblox makes nine commitments, including private-by-default accounts for under-16s.', src: 'eSafety Commissioner, 2025' },
+  { t: 2025.92, date: 'Dec 2025', title: 'Russia blocks Roblox', body: 'A national ban takes Russian players off the platform.', src: 'Roblox Q1 2026 letter' },
+  { t: 2025.93, au: true, date: 'Dec 2025', title: 'Age checks start here', body: 'Chat now needs a face or ID age check, first in Australia, New Zealand and the Netherlands.', src: 'Roblox newsroom, 2026' },
+  { t: 2025.94, au: true, date: 'Dec 2025', title: 'Left out of the under-16 ban', body: 'Australia’s social media ban starts. Roblox is not covered because it counts as a game.', src: 'ABC News, 2025' },
+  { t: 2026.05, date: 'Jan 2026', title: 'Age checks go global', body: 'The chat age check is now required everywhere.', src: 'Roblox newsroom, 2026' },
+  { t: 2026.12, au: true, date: 'Feb 2026', title: 'eSafety puts Roblox on notice', body: 'Australia’s online safety regulator formally warns Roblox.', src: 'ABC News, 2026' },
+  { t: 2026.45, date: 'Jun 2026', title: 'Russia unblocks Roblox', body: 'Roblox returns in Russia late in the quarter.', src: 'Roblox Q2 2026 letter' },
+  { t: 2026.63, au: true, date: 'Aug 2026', title: 'Court-enforceable undertaking', body: 'eSafety gives Roblox three months to fix problems, checked by an independent audit.', src: 'ABC News, 2026' },
+];
+// Themes: the analysis. "Our note" lines are Parker's own words.
+const IDEAS = [
+  { pages: 'Kusmawan et al. 2026, pp. 20–21', title: 'Third place', events: ['Lil Nas X concert', 'Grow a Garden'], stories: [['8 Apr 2020', 'CNBC'], ['15 Apr 2020', 'Bloomberg'], ['20 Jul 2020', 'TechCrunch'], ['10 Nov 2020', 'TechCrunch'], ['10 Nov 2023', 'ABC'], ['13 Nov 2024', 'Conversation']],
+    paper: 'Roblox works as a digital third place: somewhere outside home and school where young people hang out, hold birthdays and go to concerts.',
+    note: 'Videogame platforms do things that social media platforms tend not to anymore, they give a space to be, they are perhaps more inherently social than "social" media, which has become more about lonely people interacting with content rather than actually interacting with other people',
+    read: 'Steinkuehler & Williams 2006 (online games as third places). Meta’s own antitrust-trial chart: time on friends’ posts fell from 22% to 17% on Facebook and 11% to 7% on Instagram, 2023–2025.' },
+  { pages: 'Kusmawan et al. 2026, pp. 18, 21', title: 'Users make the culture', events: ['Every game user-made', 'Developer Exchange', 'Grow a Garden'], stories: [['22 Aug 2011', 'VentureBeat'], ['30 Jul 2025', 'AP'], ['2025', 'AOL'], ['2025', 'Aftermath']],
+    paper: 'Audiences take part in making popular culture rather than only consuming it. Roblox has no single story, just thousands of user-made games from around the world, in a space without borders.',
+    note: 'Pop culture used to be created by large companies and is now created by users on platforms -- geographically boundless is an important element too.' },
+  { pages: 'Kusmawan et al. 2026, pp. 19–20', title: 'Robux and digital consumerism', events: ['Developer Exchange', 'Gucci Garden', 'Nikeland'], stories: [['15 Jun 2018', '6abc'], ['3 May 2021', 'Four Corners'], ['26 May 2021', 'FashionUnited'], ['17 Dec 2024', 'Sky'], ['23 Mar 2025', 'Conversation']],
+    paper: 'Robux drives a digital economy among children and teenagers, and social norms and values move from the physical world to the digital one.',
+    note: 'Big theme, the digital taking over more aspects of normative reality, in covid people thought the metaverse would be big, and maybe it will be, we predicted that digital spaces would become more and more popular among people, and I think this will eventually happen' },
+  { pages: 'Kusmawan et al. 2026, p. 20', title: 'Child safety: who is responsible?', events: ['Bloomberg investigation', 'Turkey blocks Roblox', 'Under-13 messaging limits', 'Commitments to eSafety', 'Russia blocks Roblox', 'Age checks start here', 'Age checks go global', 'Court-enforceable undertaking'], stories: [['20 Nov 2020', 'Vice'], ['13 Mar 2025', 'BBC'], ['13 Aug 2025', 'Tubefilter'], ['20 Aug 2026', 'eSafety']],
+    paper: 'Children meet inappropriate content and adult predators, and neither they nor their parents have the digital literacy to spot the risks. Protection needs developers, parents and regulators working together.',
+    note: 'This is interesting because it reflects issues of platform governance, who is responsible for preventing harm: the individual or the platform?',
+    read: 'Gorwa 2019, p. 855: governance by platforms vs governance of platforms.' },
+  { pages: 'Kusmawan et al. 2026, pp. 18–19', title: 'Brainrot and addiction', events: ['Grow a Garden'], stories: [['2025', 'AOL']],
+    paper: 'Heavy use and short attention spans, which young people themselves call brainrot.',
+    note: '' },
+  { pages: 'Morreale & Rosa 2024, pp. 4282, 4291', title: 'Learning by joining in', events: ['Every game user-made', 'Developer Exchange', 'Young developers investigation'], stories: [['28 Jan 2014', 'Re/code'], ['1 May 2014', 'VentureBeat'], ['29 May 2019', 'TechCrunch'], ['19 Aug 2021', 'People Make Games'], ['9 Jan 2022', 'Guardian']],
+    paper: 'Roblox is an affinity space (Gee 2007): people gather around a shared interest and learn from each other. Newcomers start at the edges and move toward the centre, which Lave and Wenger (1991) call legitimate peripheral participation. Like Froebel’s kindergarten, it teaches through re-creation.',
+    note: 'In line with this, I wonder if just as social media is able to shape opinion, if digital spaces like Roblox will be able to shape unconscious social scripts.' },
+  { pages: 'Gillespie 2010, p. 348', title: 'Game, not social media', events: ['Calls itself a platform', 'Left out of the under-16 ban', 'Age checks start here', 'eSafety puts Roblox on notice', 'Court-enforceable undertaking'],
+    stories: [['20 Nov 2020', 'Vice'], ['13 Nov 2024', 'Conversation'], ['14 Oct 2025', 'ABC News', 'Inman Grant'], ['5 Nov 2025', 'AAP'], ['18 Nov 2025', 'Nightly'], ['10 Feb 2026', 'ABC'], ['17 Feb 2026', 'ABC Behind']],
+    paper: 'Companies choose the word "platform" to position themselves: to chase profit and keep the legal protections they want while avoiding the obligations they don’t.',
+    note: "One news story talked about unrated games which is interesting in the Australian context, it's also interesting that Roblox dodged the social-media bans because it's a videogame not a social media",
+    read: 'Gorwa 2019, pp. 862–864: self-, external and co-governance.' },
+  { pages: 'Kusmawan et al. 2026, p. 21', title: 'Moments: video brought home', events: ['Moments'],
+    paper: 'Moments, a TikTok-style clip feed, keeps the making and watching of Roblox videos inside Roblox, and a clip leads straight into its game.',
+    note: '' },
+];
+
+// Roblox's average daily players (millions), from its SEC filings.
+// 2018 and 2019 are full-year averages (S-1); Q3 2020 is derived from the S-1's nine-month average.
+const PLAYERS = [
+  [2018.5, 12.0], [2019.5, 17.6],
+  [2020.125, 23.6], [2020.375, 33.4], [2020.625, 36.2], [2020.875, 37.1],
+  [2021.125, 42.1], [2021.375, 43.2], [2021.625, 47.3], [2021.875, 49.5],
+  [2022.125, 54.1], [2022.375, 52.2], [2022.625, 58.8], [2022.875, 58.8],
+  [2023.125, 66.1], [2023.375, 65.5], [2023.625, 70.2], [2023.875, 71.5],
+  [2024.125, 77.7], [2024.375, 79.5], [2024.625, 88.9], [2024.875, 85.3],
+  [2025.125, 97.8], [2025.375, 111.8], [2025.625, 151.5], [2025.875, 144.0],
+  [2026.125, 132.0], [2026.375, 123.0],
+];
+const LAUNCHED = 2006.67, PMAX = 160;
+const PEAK = PLAYERS.reduce((a, b) => (b[1] > a[1] ? b : a)), LASTP = PLAYERS[PLAYERS.length - 1];
+// Monotone cubic through the measured points, so the drawn curve never invents a higher peak.
+const SLOPES = (() => {
+  const n = PLAYERS.length, d = [], m = new Array(n);
+  for (let i = 0; i < n - 1; i++) d[i] = (PLAYERS[i + 1][1] - PLAYERS[i][1]) / (PLAYERS[i + 1][0] - PLAYERS[i][0]);
+  m[0] = d[0]; m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    const a = m[i] / d[i], b = m[i + 1] / d[i], s = a * a + b * b;
+    if (s > 9) { const k = 3 / Math.sqrt(s); m[i] = k * a * d[i]; m[i + 1] = k * b * d[i]; }
+  }
+  return m;
+})();
+// Daily players at time t: the curve where it was measured, a straight dashed run from launch before that, level after.
+function playersAt(t) {
+  const f = PLAYERS[0];
+  if (t <= LAUNCHED) return 0;
+  if (t <= f[0]) return f[1] * (t - LAUNCHED) / (f[0] - LAUNCHED);
+  if (t >= LASTP[0]) return LASTP[1];
+  let i = 0; while (PLAYERS[i + 1][0] < t) i++;
+  const p = PLAYERS[i], q = PLAYERS[i + 1], h = q[0] - p[0], u = (t - p[0]) / h, u2 = u * u, u3 = u2 * u;
+  return (2 * u3 - 3 * u2 + 1) * p[1] + (u3 - 2 * u2 + u) * h * SLOPES[i] + (-2 * u3 + 3 * u2) * q[1] + (u3 - u2) * h * SLOPES[i + 1];
+}
+
+// ---------- Theme + type ----------
+const T = {};
+function readTheme() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['ground', 'card', 'ink', 'ink-soft', 'rule', 'line', 'local', 'thesis', 'thesis-ink']) T[k] = cs.getPropertyValue('--' + k).trim();
+  T.title = cs.getPropertyValue('--font-title').trim() || 'serif';
+  T.body = cs.getPropertyValue('--font-body').trim() || 'sans-serif';
+}
+readTheme();
+const mctx = document.createElement('canvas').getContext('2d');
+const font = (wt, px, fam, it) => `${it ? 'italic ' : ''}${wt} ${px}px ${fam}`;
+function unitW(text, wt, fam, it) { mctx.font = font(wt, 100, fam, it); return mctx.measureText(text).width / 100; }
+function wrap(text, wt, fam, size, maxW, it) {
+  const words = text.split(/\s+/), out = [];
+  let cur = '';
+  for (const w of words) {
+    const test = cur ? cur + ' ' + w : w;
+    if (!cur || unitW(test, wt, fam, it) * size <= maxW) cur = test; else { out.push(cur); cur = w; }
+  }
+  if (cur) out.push(cur);
+  return out.map(s => ({ s, w: unitW(s, wt, fam, it) * size }));
+}
+// A text block: lines laid out in world units, offsets from its node's top-left. `center` centres each line in maxW.
+function block(text, o) {
+  const lines = wrap(text, o.wt, o.fam, o.size, o.maxW, o.it);
+  return { lines, size: o.size, lh: o.size * (o.lh || 1.3), wt: o.wt, fam: o.fam, it: o.it, color: o.color, dx: 0, dy: 0, maxW: o.maxW, center: !!o.center };
+}
+const fits = b => b.lines.every(l => l.w <= b.maxW + 0.01);
+const heightOf = b => b.lines.length * b.lh;
+// Stack blocks top to bottom from y with the gaps given; returns the bottom.
+function stack(blocks, x, y, gaps) { blocks.forEach((b, i) => { b.dx = x; b.dy = y; y += heightOf(b) + (gaps[i] || 0); }); return y; }
+
+// ---------- The ladder: each step out from the thesis is smaller and squarer ----------
+// size: width and height in world units; n: the outline's squareness (2 = circle, higher = squarer); stroke weight.
+const STEP = [
+  { kind: 'thesis', w: 1080, h: 1080, n: 2, lw: 0 },
+  { kind: 'string', w: 600, h: 600, n: 3.2, lw: 2.8 },
+  { kind: 'idea', w: 430, h: 360, n: 6, lw: 2.2 },
+  { kind: 'card', w: 250, h: 160, n: 24, lw: 1.6 },
+];
+
+function layoutThesis(n) {
+  const R = n.w / 2, bw = R * 1.46, bh = R * 1.2, x0 = R - bw / 2;
+  for (let tf = 100; tf >= 30; tf -= 2) {
+    const ti = block(THESIS.title, { wt: 700, fam: T.title, size: tf, maxW: bw, color: 'thesis-ink', lh: 1.04, center: true });
+    const no = block(THESIS.note, { wt: 400, fam: T.body, size: Math.max(15, tf * 0.28), maxW: bw * 0.9, color: 'thesis-ink', lh: 1.34, center: true, it: true });
+    if (ti.lines.length > 4 || !fits(ti)) continue;
+    const gap = tf * 0.42, h = heightOf(ti) + gap + heightOf(no);
+    if (h > bh) continue;
+    stack([ti, no], x0, R - h / 2, [gap]);
+    no.dx = x0 + bw * 0.05;
+    return [ti, no];
+  }
+  return [];
+}
+// Text inside a squircle or rounded rectangle sits in the box clear of its corners.
+function inset(n) { const k = n.n <= 3.5 ? 0.13 : n.n <= 8 ? 0.06 : 0.05; return Math.max(n.w, n.h) * k + 6; }
+function layoutString(n, a) {
+  const pad = inset(n), iw = n.w - pad * 2, ih = n.h - pad * 2;
+  // a point's name is a waypoint: big enough to read from the opening view, with its body small underneath
+  for (let tf = 96; tf >= 12; tf -= 1) {
+    const ti = block(a.title, { wt: 700, fam: T.title, size: tf, maxW: iw, color: 'ink', lh: 1.05 });
+    const bo = block(a.body, { wt: 400, fam: T.body, size: clamp(tf * 0.24, 9, 20), maxW: iw, color: 'ink', lh: 1.32 });
+    if (ti.lines.length > 3 || !fits(ti)) continue;
+    const gap = tf * 0.4;
+    if (heightOf(ti) + gap + heightOf(bo) > ih) continue;
+    stack([ti, bo], pad, pad, [gap]);
+    return [ti, bo];
+  }
+  return [];
+}
+function layoutIdea(n, d) {
+  const pad = inset(n), iw = n.w - pad * 2, ih = n.h - pad * 2;
+  const note = d.note || 'None yet';
+  // a theme's name is a waypoint too: as big as three lines allow, with its note small underneath
+  for (let tf = 72; tf >= 10; tf -= 1) {
+    const ti = block(d.title, { wt: 700, fam: T.title, size: tf, maxW: iw, color: 'ink', lh: 1.05 });
+    if (ti.lines.length > 3 || !fits(ti)) continue;
+    const bs = clamp(tf * 0.2, 6.5, 12);
+    const pg = block(d.pages, { wt: 700, fam: T.body, size: bs * 0.9, maxW: iw, color: 'line', lh: 1.2 });
+    const lb = block('Our note', { wt: 700, fam: T.body, size: bs * 0.85, maxW: iw, color: 'ink-soft', lh: 1.2 });
+    const no = block(note, { wt: 400, fam: T.body, size: bs, maxW: iw, color: d.note ? 'ink' : 'ink-soft', lh: 1.3, it: !d.note });
+    const gaps = [tf * 0.3, bs * 0.7, bs * 0.15];
+    if (heightOf(ti) + heightOf(pg) + heightOf(lb) + heightOf(no) + gaps[0] + gaps[1] + gaps[2] > ih) continue;
+    stack([ti, pg, lb, no], pad, pad, gaps);
+    return [ti, pg, lb, no];
+  }
+  return [];
+}
+// The event's name leads; the date sits under it, small.
+// A featured event's name is a waypoint, as big as two lines of its bigger card allow.
+function layoutEvent(n, c) {
+  const pad = inset(n), iw = n.w - pad * 2, ih = n.h - pad * 2, k = n.w / STEP[3].w;
+  for (let tf = n.featured ? 64 : 24; tf >= 8; tf -= 0.5) {
+    for (let bf = 8 * k; bf >= 5.5 * k; bf -= 0.25) {
+      const ti = block(c.title, { wt: 700, fam: T.title, size: tf, maxW: iw, color: 'ink', lh: 1.05 });
+      const eb = block((c.au ? 'Australia · ' : '') + c.date, { wt: 700, fam: T.body, size: bf * 0.95, maxW: iw, color: c.au ? 'local' : 'ink-soft', lh: 1.2 });
+      const bo = block(c.body, { wt: 400, fam: T.body, size: bf, maxW: iw, color: 'ink', lh: 1.25 });
+      const so = block(c.src, { wt: 400, fam: T.body, size: bf * 0.8, maxW: iw, color: 'ink-soft', it: true, lh: 1.2 });
+      if (ti.lines.length > 2 || !fits(ti) || !fits(eb)) continue;
+      const g = bf * 0.4;
+      if (heightOf(ti) + heightOf(eb) + heightOf(bo) + heightOf(so) + g * 3 > ih) continue;
+      stack([ti, eb, bo], pad, pad, [g, g]);
+      so.dx = pad; so.dy = n.h - pad - heightOf(so);
+      return [ti, eb, bo, so];
+    }
+  }
+  return [];
+}
+
+// ---------- The ground: the graph of daily players is the map's background ----------
+// x is time, y is daily players. Time runs on two scales, both marked by the year ticks:
+// 2004–2016 squeezed into the first sixth, the busy years after spread over the rest.
+const GW = 6200, GH = 3500, GSPLIT = 2017, GEARLY = 0.16, AXIS_SIZE = 72;
+const gx = t => t < GSPLIT ? (t - 2004) / (GSPLIT - 2004) * GW * GEARLY : GW * GEARLY + (t - GSPLIT) / (2027 - GSPLIT) * GW * (1 - GEARLY);
+const gy = m => m / PMAX * GH;
+const curvePt = t => [gx(t), gy(playersAt(t))];
+// The line drawn as points with distance along it, for laying the events beside it.
+const LINE = (() => {
+  const pts = [];
+  let s = 0;
+  for (let t = 2004; t <= 2027.0001; t += 0.01) {
+    const [x, y] = curvePt(t);
+    if (pts.length) { const q = pts[pts.length - 1]; s += Math.hypot(x - q.x, y - q.y); }
+    pts.push({ t, x, y, s });
+  }
+  return pts;
+})();
+const lineAtS = s => { let lo = 0, hi = LINE.length - 1; s = clamp(s, 0, LINE[hi].s); while (hi - lo > 1) { const m = (lo + hi) >> 1; if (LINE[m].s <= s) lo = m; else hi = m; } return LINE[lo]; };
+const lineAtT = t => LINE[clamp(Math.round((t - 2004) / 0.01), 0, LINE.length - 1)];
+
+// ---------- Placing ----------
+const overlaps = (a, b, m) => a.x0 < b.x0 + b.w + m && b.x0 < a.x0 + a.w + m && a.y1 - a.h < b.y1 + m && b.y1 - b.h < a.y1 + m;
+const centre = n => [n.x0 + n.w / 2, n.y1 - n.h / 2];
+const setCentre = (n, x, y) => { n.x0 = x - n.w / 2; n.y1 = y + n.h / 2; };
+// Does the line pass through (or within m of) a node?
+const onLine = (n, m) => LINE.some(p => p.x > n.x0 - m && p.x < n.x0 + n.w + m && p.y > n.y1 - n.h - m && p.y < n.y1 + m);
+
+// ---------- Buds ----------
+// A bud is a copy of a node at k of its size: k = BUD_K, or less if that would make it more than BUD_MAX of its host's
+// shorter side. It sits just off the host's rim in the direction of the node it copies.
+const BUD_K = 0.2, BUD_MAX = 0.4;
+// How far from a node's centre its outline lies in direction (ux, uy).
+const reachAlong = (n, ux, uy) => 1 / Math.pow(Math.pow(Math.abs(ux) / (n.w / 2), n.n) + Math.pow(Math.abs(uy) / (n.h / 2), n.n), 1 / n.n);
+function layoutBuds(h, placed) {
+  const [cx, cy] = centre(h), gap = Math.min(h.w, h.h) * 0.03;
+  const place = b => {
+    const ux = Math.cos(b.a), uy = Math.sin(b.a), d = reachAlong(h, ux, uy) + gap + reachAlong(b.node, ux, uy) * b.k;
+    b.x0 = cx + ux * d - b.w / 2; b.y1 = cy + uy * d + b.h / 2;
+  };
+  for (const b of h.buds) {
+    b.k = Math.min(BUD_K, BUD_MAX * Math.min(h.w, h.h) / Math.max(b.node.w, b.node.h));
+    b.w = b.node.w * b.k; b.h = b.node.h * b.k;
+    const [nx, ny] = centre(b.node);
+    b.a = Math.atan2(ny - cy, nx - cx);
+    place(b);
+  }
+  // buds that would overlap are eased apart round the rim, keeping their order
+  h.buds.sort((p, q) => p.a - q.a);
+  for (let it = 0; it < 400; it++) {
+    let clash = false;
+    for (let i = 0; i < h.buds.length - 1; i++) {
+      const p = h.buds[i], q = h.buds[i + 1];
+      if (!overlaps(p, q, gap)) continue;
+      p.a -= 0.01; q.a += 0.01; place(p); place(q); clash = true;
+    }
+    if (!clash) break;
+  }
+  // a bud that lands on another node, or on a bud already placed, slides round the rim to the nearest clear spot;
+  // with none, it isn't drawn. Settled once here, so nothing about the buds is decided while the view moves.
+  for (const b of h.buds) {
+    const a0 = b.a, free = () => !NODES.some(n => n !== h && overlaps(b, n, gap)) && !placed.some(o => overlaps(b, o, gap));
+    for (let i = 1; i <= 50 && !free(); i++) { b.a = a0 + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.05; place(b); }
+    b.blocked = !free();
+    if (!b.blocked) placed.push(b);
+  }
+}
+
+// ---------- Build ----------
+let NODES = [], EDGES = [], CARDS = [], ROOT = null, TITLE = null;
+const WORLD = {}, FULL = {};
+function make(step, data, layout, extra) {
+  const n = Object.assign({ data, kids: [], also: [] }, STEP[step], { depth: step }, extra);
+  n.blocks = layout(n, data);
+  return n;
+}
+function build() {
+  NODES = []; EDGES = []; CARDS = [];
+  // The thesis: the big circle in the top-left corner of the graph, where the line never reaches
+  ROOT = make(0, THESIS, n => layoutThesis(n));
+  setCentre(ROOT, ROOT.w / 2 + 40, GH + 260 - ROOT.h / 2);
+  const C = centre(ROOT);
+
+  // What hangs from it: strings, then themes, then events. A second string or theme naming the same thing gets an edge too.
+  const themeNode = new Map(), eventNode = new Map(), strings = [];
+  for (const a of ARGUMENT) {
+    const s = make(1, a, layoutString);
+    strings.push(s); ROOT.kids.push(s);
+    for (const title of a.themes) {
+      const d = IDEAS.find(i => i.title === title);
+      if (!d) continue;
+      if (themeNode.has(title)) { themeNode.get(title).also.push(s); continue; }
+      const t = make(2, d, layoutIdea);
+      themeNode.set(title, t); s.kids.push(t);
+    }
+  }
+  const themes = [...themeNode.values()];
+  for (const t of themes) {
+    for (const title of t.data.events || []) {
+      const e = EVENTS.find(x => x.title === title);
+      if (!e) continue;
+      if (eventNode.has(e)) { eventNode.get(e).also.push(t); continue; }
+      const c = make(3, e, layoutEvent, FEATURED.includes(e.title) ? { w: STEP[3].w * 1.6, h: STEP[3].h * 1.6, featured: true } : {});
+      eventNode.set(e, c); t.kids.push(c);
+    }
+  }
+  CARDS = [...eventNode.values()].sort((a, b) => a.data.t - b.data.t);
+
+  // Events: beside the line on the thesis's side, each as near its date as there is room. In date order, a card takes
+  // the nearest free place beside its date, sliding along the line first and stepping farther from it only if it must.
+  {
+    const besideAt = (s, k) => { const p = lineAtS(s), d = Math.hypot(C[0] - p.x, C[1] - p.y) || 1; return [p.x + (C[0] - p.x) / d * k, p.y + (C[1] - p.y) / d * k]; };
+    const placed = [];
+    for (const c of CARDS) {
+      const s0 = lineAtT(c.data.t).s, base = Math.hypot(c.w, c.h) / 2 + 40;
+      let done = false;
+      for (let k = base; k < base + 1600 && !done; k += 80) {
+        for (let i = 0; i <= 40 && !done; i++) {
+          const ds = (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 50;
+          const [x, y] = besideAt(s0 + ds, k);
+          setCentre(c, x, y);
+          if (c.y1 - c.h < 30 || placed.some(o => overlaps(c, o, 30)) || onLine(c, 30)) continue;
+          done = true;
+        }
+      }
+      placed.push(c);
+      c.pin = curvePt(c.data.t);
+    }
+  }
+
+  // Themes and strings: each pulled from the thesis toward the events it leads to, the themes farther out than the strings.
+  const reach = n => n.depth === 3 ? [n.pin] : n.kids.concat(n.depth === 1 ? [] : []).flatMap(reach);
+  const pull = (n, u) => {
+    const pts = reach(n), mx = pts.reduce((a, p) => a + p[0], 0) / pts.length, my = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+    setCentre(n, C[0] + (mx - C[0]) * u, C[1] + (my - C[1]) * u);
+  };
+  themes.forEach(t => pull(t, 0.62));
+  strings.forEach(s => pull(s, 0.36));
+  // Parker's hand moves, in world units (y up), applied before everything is nudged apart
+  for (const n of [...themes, ...strings]) {
+    const d = NUDGE[n.data.title];
+    if (d) { const [x, y] = centre(n); setCentre(n, x + d[0], y + d[1]); }
+  }
+
+  // Then nudge everything apart: nothing overlaps, nothing sits on the line, and the thesis keeps its space.
+  // Events move least, so they stay by their dates.
+  NODES = [ROOT, ...strings, ...themes, ...CARDS];
+  const movers = [...strings, ...themes, ...CARDS];
+  const weight = n => n.depth === 3 ? 0.25 : 1;
+  for (let it = 0; it < 400; it++) {
+    let moved = false;
+    for (let i = 0; i < NODES.length; i++) for (let j = i + 1; j < NODES.length; j++) {
+      const a = NODES[i], b = NODES[j], m = a.depth === 3 && b.depth === 3 ? 30 : 70;
+      if (!overlaps(a, b, m)) continue;
+      const [ax, ay] = centre(a), [bx, by] = centre(b);
+      let dx = bx - ax, dy = by - ay; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+      const wa = a === ROOT ? 0 : weight(a), wb = weight(b), k = 14 / (wa + wb || 1);
+      setCentre(a, ax - dx * k * wa, ay - dy * k * wa); setCentre(b, bx + dx * k * wb, by + dy * k * wb);
+      moved = true;
+    }
+    for (const n of movers) if (onLine(n, 40)) {
+      const [x, y] = centre(n), d = Math.hypot(C[0] - x, C[1] - y) || 1;
+      setCentre(n, x + (C[0] - x) / d * 12, y + (C[1] - y) / d * 12); moved = true;
+    }
+    if (!moved) break;
+  }
+
+  for (const n of NODES) {
+    for (const k of n.kids) EDGES.push({ a: n, b: k });
+    for (const p of n.also) EDGES.push({ a: p, b: n });
+  }
+  // Buds: on each node's rim, a small copy of every node it is edged to, where the edge leaves it
+  for (const n of NODES) n.buds = [];
+  for (const e of EDGES) { e.a.buds.push({ host: e.a, node: e.b }); e.b.buds.push({ host: e.b, node: e.a }); }
+  // bigger nodes place their buds first
+  const placedBuds = [];
+  for (const n of [...NODES].sort((p, q) => q.w * q.h - p.w * p.h)) layoutBuds(n, placedBuds);
+  TITLE = { text: 'Roblox', x: ROOT.x0, y: ROOT.y1 + 70, size: 170 };
+  let x0 = Math.min(-120, ...NODES.map(n => n.x0)), x1 = Math.max(GW + 60 + unitW('150M daily players', 600, T.body) * AXIS_SIZE, ...NODES.map(n => n.x0 + n.w));
+  let y0 = Math.min(-170, ...NODES.map(n => n.y1 - n.h)), y1 = Math.max(TITLE.y + TITLE.size * 0.8, ...NODES.map(n => n.y1));
+  Object.assign(WORLD, { x0: x0 - 40, y1: y1 + 40, w: x1 - x0 + 80, h: y1 - y0 + 80 });
+  Object.assign(FULL, WORLD);
+}
+
+// ---------- View (computed sizes: screen = world × s + offset; y flipped) ----------
+const cv = document.getElementById('map'), ctx = cv.getContext('2d');
+const hint = document.getElementById('hint');
+let W = 0, H = 0, dpr = 1;
+const view = { s: 1, ox: 0, oy: 0 };
+const sx = x => x * view.s + view.ox;
+const sy = y => -y * view.s + view.oy;
+const rectOf = n => ({ x: sx(n.x0), y: sy(n.y1), w: n.w * view.s, h: n.h * view.s });
+function fitView(x0, y1, w, h, pad) {
+  const s = Math.min((W * (1 - 2 * pad)) / w, (H * (1 - 2 * pad)) / h);
+  const cx = x0 + w / 2, cy = y1 - h / 2;
+  return { s, ox: W / 2 - cx * s, oy: H / 2 + cy * s };
+}
+let minS = 0.05;
+const MAX_S = 40;
+function resize() {
+  dpr = Math.max(1, window.devicePixelRatio || 1);
+  const r = cv.getBoundingClientRect();
+  const first = W === 0;
+  const cx = W ? (W / 2 - view.ox) / view.s : 0, cy = H ? (view.oy - H / 2) / view.s : 0;
+  W = r.width; H = r.height;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  minS = fitView(FULL.x0, FULL.y1, FULL.w, FULL.h, 0.03).s * 0.6;
+  if (first) Object.assign(view, fitView(WORLD.x0, WORLD.y1, WORLD.w, WORLD.h, 0.03));
+  else { view.ox = W / 2 - cx * view.s; view.oy = H / 2 + cy * view.s; }
+  dirty();
+}
+
+// ---------- Drawing ----------
+const ramp = (v, a, b) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+function col(key, a) { ctx.globalAlpha = clamp(a, 0, 1); return T[key] || key; }
+// A superellipse: n = 2 is a circle, and the higher n is, the squarer the outline.
+function outline(n, r) {
+  const a = r.w / 2, b = r.h / 2, cx = r.x + a, cy = r.y + b, e = 2 / n.n;
+  ctx.beginPath();
+  for (let i = 0; i <= 120; i++) {
+    const t = i / 120 * Math.PI * 2, c = Math.cos(t), s = Math.sin(t);
+    const px = cx + a * Math.sign(c) * Math.pow(Math.abs(c), e), py = cy + b * Math.sign(s) * Math.pow(Math.abs(s), e);
+    if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+  }
+  ctx.closePath();
+}
+// From a node's centre toward a point, where the line leaves its outline.
+function exitPt(n, tx, ty) {
+  const cx = n.x0 + n.w / 2, cy = n.y1 - n.h / 2, a = n.w / 2, b = n.h / 2;
+  const d = Math.hypot(tx - cx, ty - cy) || 1, ux = (tx - cx) / d, uy = (ty - cy) / d;
+  const t = 1 / Math.pow(Math.pow(Math.abs(ux) / a, n.n) + Math.pow(Math.abs(uy) / b, n.n), 1 / n.n);
+  return [cx + ux * t, cy + uy * t];
+}
+
+// Type has three rungs by its own on-screen size: a block per paragraph, then a bar per row, then words.
+// s: screen units per world unit for this drawing (a bud draws its node's blocks smaller).
+function drawBlock(b, nx, ny, a, s = view.s) {
+  const fs = b.size * s;
+  if (a <= 0.004 || fs < 0.4) return;
+  const words = ramp(fs, 5.5, 8.5), barsIn = ramp(fs, 2.2, 3.6);
+  const blockA = 1 - barsIn, barsA = barsIn * clamp(1 - words / 0.35, 0, 1); // bars only once the words are mostly gone
+  const x0 = nx + b.dx * s, lh = b.lh * s, top0 = ny + b.dy * s;
+  if (top0 > H || top0 + lh * b.lines.length < 0 || x0 > W) return;
+  const lx = l => x0 + (b.center ? (b.maxW - l.w) / 2 * s : 0);
+  if (blockA > 0.01) {
+    ctx.fillStyle = col(b.color, a * blockA * 0.16);
+    ctx.beginPath(); b.lines.forEach((l, i) => ctx.rect(lx(l), top0 + i * lh, l.w * s, lh)); ctx.fill();
+  }
+  if (barsA > 0.01) {
+    ctx.fillStyle = col(b.color, a * barsA * 0.38);
+    ctx.beginPath(); b.lines.forEach((l, i) => ctx.rect(lx(l), top0 + i * lh + lh * 0.3, l.w * s, lh * 0.42)); ctx.fill();
+  }
+  if (words > 0.01) {
+    ctx.fillStyle = col(b.color, a * words);
+    ctx.font = font(b.wt, fs, b.fam, b.it);
+    ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    const base = (b.lh - b.size) / 2 * s + fs * 0.8;
+    // small type renders a little wider than it measures; hold each line to its measured width
+    b.lines.forEach((l, i) => { const y = top0 + i * lh + base; if (y - fs > H || y < 0) return; ctx.fillText(l.s, lx(l), y, l.w * s + 0.5); });
+  }
+}
+const presence = r => ramp(Math.min(r.w, r.h), 3, 14);
+const onScreen = r => !(r.x > W || r.y > H || r.x + r.w < 0 || r.y + r.h < 0);
+
+let hover = null; // a node, or a bud
+// Under a bud, the edge it stands for is lit; under a node, all of its edges.
+const edgeLit = e => hover && (hover.host ? (e.a === hover.host && e.b === hover.node) || (e.b === hover.host && e.a === hover.node) : e.a === hover || e.b === hover);
+const nodeLit = n => hover && n !== hover && EDGES.some(e => edgeLit(e) && (e.a === n || e.b === n));
+
+// Edges run straight, outline to outline, beneath the nodes.
+function drawEdges() {
+  for (const e of EDGES) {
+    const on = edgeLit(e);
+    const ac = [e.a.x0 + e.a.w / 2, e.a.y1 - e.a.h / 2], bc = [e.b.x0 + e.b.w / 2, e.b.y1 - e.b.h / 2];
+    const p = exitPt(e.a, bc[0], bc[1]), q = exitPt(e.b, ac[0], ac[1]);
+    const lw = Math.max(0.8, (e.b.lw || 1) * 1.1);
+    ctx.strokeStyle = col(on ? 'line' : 'ink-soft', on ? 1 : 0.55);
+    ctx.lineWidth = clamp(lw * view.s * 2.5, 0.7, lw) * (on ? 1.5 : 1);
+    ctx.beginPath(); ctx.moveTo(sx(p[0]), sy(p[1])); ctx.lineTo(sx(q[0]), sy(q[1])); ctx.stroke();
+  }
+}
+// A node drawn into screen rect r at scale s: the node itself, or a bud copying it.
+function drawCopy(n, r, a, s, on) {
+  outline(n, r);
+  ctx.fillStyle = col(n.kind === 'thesis' ? 'thesis' : 'card', a); ctx.fill();
+  if (n.lw || on) {
+    ctx.strokeStyle = col(on ? 'line' : 'ink', a * (on ? 1 : 0.85));
+    ctx.lineWidth = on ? Math.max(2.4, n.lw) : clamp(n.lw * s * 2, 0.6, n.lw);
+    ctx.stroke();
+  }
+  if (n.kind === 'card' && n.data.au) {
+    ctx.save(); outline(n, r); ctx.clip();
+    ctx.fillStyle = col('local', a); ctx.fillRect(r.x, r.y, r.w, Math.max(1.5, 4 * s));
+    ctx.restore();
+  }
+  for (const b of n.blocks) drawBlock(b, r.x, r.y, a, s);
+}
+function drawNodes() {
+  for (const n of NODES) {
+    const r = rectOf(n);
+    if (!onScreen(r)) continue;
+    const a = presence(r);
+    if (a > 0.004) drawCopy(n, r, a, view.s, hover === n || nodeLit(n));
+  }
+}
+// Buds grow in as their host gets big on screen, measured against the screen itself: none at the opening view
+// (where no node's shorter side is 30% of the screen's), solid once the host's shorter side is half the screen's.
+const BUD_IN = [0.3, 0.5];
+// (the host itself may be off screen by then: zooming into a bud takes it there)
+const budsShown = h => ramp(Math.min(h.w, h.h) * view.s / Math.min(W, H), BUD_IN[0], BUD_IN[1]);
+const budRect = b => ({ x: sx(b.x0), y: sy(b.y1), w: b.w * view.s, h: b.h * view.s });
+// A bud stands in for a node you can't see well: as the node itself comes on screen and grows readable, its bud fades out.
+function seen(n) {
+  const r = rectOf(n);
+  const ix = clamp(Math.min(r.x + r.w, W) - Math.max(r.x, 0), 0, r.w), iy = clamp(Math.min(r.y + r.h, H) - Math.max(r.y, 0), 0, r.h);
+  return ramp(ix * iy / (r.w * r.h), 0.3, 0.8) * ramp(Math.min(r.w, r.h), 30, 80);
+}
+const budAlpha = b => b.blocked ? 0 : budsShown(b.host) * presence(budRect(b)) * (1 - seen(b.node));
+let SHOWN = []; // the buds drawn this frame, with their opacity
+function drawBuds() {
+  SHOWN = [];
+  for (const h of NODES) {
+    if (budsShown(h) <= 0.004) continue;
+    for (const b of h.buds) {
+      const r = budRect(b);
+      if (b.blocked || !onScreen(r)) continue;
+      const ba = budAlpha(b);
+      if (ba <= 0.004) continue;
+      drawCopy(b.node, r, ba, view.s * b.k, hover === b);
+      SHOWN.push({ b, a: ba });
+    }
+  }
+}
+// ---------- The graph, drawn under everything ----------
+function gtext(text, x, y, size, o = {}) {
+  const fs = size * view.s;
+  if (fs < 1.5) return;
+  const words = ramp(fs, 5.5, 8.5), f = o.fam || T.body, wt = o.wt || 600;
+  const w = unitW(text, wt, f, o.it) * fs, X0 = sx(x) - (o.align === 'center' ? w / 2 : o.align === 'right' ? w : 0), Y0 = sy(y);
+  if (X0 > W || X0 + w < 0 || Y0 - fs > H || Y0 + fs < 0) return;
+  if (words < 1) { ctx.fillStyle = col(o.color || 'ink-soft', (1 - words) * 0.38); ctx.fillRect(X0, Y0 - fs * 0.62, w, fs * 0.5); }
+  if (words > 0.01) { ctx.fillStyle = col(o.color || 'ink-soft', words); ctx.font = font(wt, fs, f, o.it); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(text, X0, Y0); }
+}
+function drawGraph() {
+  // the area under the measured line, faintly
+  ctx.fillStyle = col('line', 0.07);
+  ctx.beginPath(); ctx.moveTo(sx(gx(PLAYERS[0][0])), sy(0));
+  for (const p of LINE) if (p.t >= PLAYERS[0][0] && p.t <= LASTP[0] + 1e-6) ctx.lineTo(sx(p.x), sy(p.y));
+  ctx.lineTo(sx(gx(LASTP[0])), sy(0)); ctx.closePath(); ctx.fill();
+  // gridlines, their values at the right-hand end
+  for (const m of [50, 100, 150]) {
+    ctx.strokeStyle = col('rule', 0.9); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx(gx(2017)), sy(gy(m))); ctx.lineTo(sx(GW + 20), sy(gy(m))); ctx.stroke();
+    gtext(m === 150 ? '150M daily players' : m + 'M', GW + 40, gy(m) - 14, AXIS_SIZE);
+  }
+  // the time axis: a tick at each year, a label every year from 2017 and every fourth before
+  ctx.strokeStyle = col('ink-soft', 0.9); ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(sx(0), sy(0)); ctx.lineTo(sx(GW), sy(0)); ctx.stroke();
+  for (let y = 2004; y <= 2027; y++) {
+    ctx.beginPath(); ctx.moveTo(sx(gx(y)), sy(0)); ctx.lineTo(sx(gx(y)), sy(0) + Math.max(3, 16 * view.s)); ctx.stroke();
+    if (y < 2027 && (y >= GSPLIT || y % 4 === 0)) gtext(String(y), y >= GSPLIT ? gx(y + 0.5) : gx(y), -96, 64, { align: 'center' });
+  }
+  const cw = clamp(12 * view.s, 2, 10);
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // before the first figures and after the last: dashed
+  ctx.setLineDash([cw * 2.2, cw * 1.8]); ctx.strokeStyle = col('line', 0.7); ctx.lineWidth = cw * 0.7;
+  ctx.beginPath(); ctx.moveTo(sx(gx(LAUNCHED)), sy(0)); ctx.lineTo(sx(gx(PLAYERS[0][0])), sy(gy(PLAYERS[0][1]))); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sx(gx(LASTP[0])), sy(gy(LASTP[1]))); ctx.lineTo(sx(GW), sy(gy(LASTP[1]))); ctx.stroke();
+  ctx.setLineDash([]);
+  // the measured line
+  ctx.strokeStyle = col('line', 1); ctx.lineWidth = cw;
+  ctx.beginPath();
+  let first = true;
+  for (const p of LINE) if (p.t >= PLAYERS[0][0] && p.t <= LASTP[0] + 1e-6) { if (first) { ctx.moveTo(sx(p.x), sy(p.y)); first = false; } else ctx.lineTo(sx(p.x), sy(p.y)); }
+  ctx.stroke();
+  ctx.fillStyle = col('line', 1);
+  for (const q of [PEAK, LASTP]) { ctx.beginPath(); ctx.arc(sx(gx(q[0])), sy(gy(q[1])), cw * 1.3, 0, Math.PI * 2); ctx.fill(); }
+  gtext(PEAK[1].toFixed(1) + 'M at the peak, Q3 2025', gx(PEAK[0]) + 40, gy(PEAK[1]) + 20, 34, { color: 'line', wt: 700 });
+  gtext(LASTP[1].toFixed(0) + 'M, Q2 2026', gx(LASTP[0]) + 30, gy(LASTP[1]) - 60, 34, { color: 'line', wt: 700 });
+  {
+    const a = curvePt(LAUNCHED + 0.6), b = curvePt(PLAYERS[0][0]), ang = Math.atan2(sy(b[1]) - sy(a[1]), sx(b[0]) - sx(a[0]));
+    const fs = 26 * view.s;
+    if (fs > 1.5) {
+      ctx.save(); ctx.translate(sx(a[0]), sy(a[1] + 24)); ctx.rotate(ang);
+      ctx.fillStyle = col('ink-soft', ramp(fs, 5.5, 8.5)); ctx.font = font(400, fs, T.body, true); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      ctx.fillText('No daily player figures were published before 2018', 0, 0);
+      ctx.restore();
+    }
+  }
+}
+// Each event's pin to its date on the line. The pins run beneath the cards; the dots go on top.
+function drawPins(dots) {
+  for (const c of CARDS) {
+    const on = hover === c || nodeLit(c);
+    const [x, y] = c.pin, [px, py] = exitPt(c, x, y);
+    if (dots) {
+      ctx.fillStyle = col(on ? 'line' : 'ink', 1);
+      ctx.beginPath(); ctx.arc(sx(x), sy(y), clamp(14 * view.s, 2, on ? 7 : 5), 0, Math.PI * 2); ctx.fill();
+      continue;
+    }
+    ctx.strokeStyle = col(on ? 'line' : 'ink', on ? 1 : 0.55);
+    ctx.lineWidth = on ? 2 : 1.2;
+    ctx.beginPath(); ctx.moveTo(sx(px), sy(py)); ctx.lineTo(sx(x), sy(y)); ctx.stroke();
+  }
+}
+function drawTitle() {
+  const fs = TITLE.size * view.s;
+  if (fs < 1.5) return;
+  const words = ramp(fs, 5.5, 8.5), w = unitW(TITLE.text, 700, T.title) * fs, x = sx(TITLE.x), y = sy(TITLE.y);
+  if (words < 1) { ctx.fillStyle = col('ink', (1 - words) * 0.38); ctx.fillRect(x, y - fs * 0.62, w, fs * 0.5); }
+  if (words > 0.01) { ctx.fillStyle = col('ink', words); ctx.font = font(700, fs, T.title); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(TITLE.text, x, y); }
+}
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = T.ground; ctx.fillRect(0, 0, W, H);
+  drawGraph();
+  drawTitle();
+  drawEdges();
+  drawPins(false);
+  drawNodes();
+  drawPins(true);
+  drawBuds();
+  drawFade();
+  ctx.globalAlpha = 1;
+}
+let raf = 0;
+function dirty() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw(); }); }
+
+// ---------- Moving ----------
+function zoomAt(px, py, k) {
+  const s2 = clamp(view.s * k, minS, MAX_S), kk = s2 / view.s;
+  view.ox = px - (px - view.ox) * kk; view.oy = py - (py - view.oy) * kk; view.s = s2;
+  dirty();
+}
+let flight = null;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function travel(to, done) {
+  const from = { s: view.s, cx: (W / 2 - view.ox) / view.s, cy: (view.oy - H / 2) / view.s };
+  const dest = { s: to.s, cx: (W / 2 - to.ox) / to.s, cy: (to.oy - H / 2) / to.s };
+  if (reduce) { Object.assign(view, to); if (done) done(); dirty(); return; }
+  const dur = 700, t0 = performance.now();
+  flight = { stop: false };
+  const me = flight;
+  const step = now => {
+    if (me.stop) return;
+    const t = clamp((now - t0) / dur, 0, 1), e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const s = Math.exp(Math.log(from.s) + (Math.log(dest.s) - Math.log(from.s)) * e);
+    // move the centre in step with the zoom so the target stays in view the whole way
+    const k = from.s === dest.s ? e : (1 / s - 1 / from.s) / (1 / dest.s - 1 / from.s);
+    const cx = from.cx + (dest.cx - from.cx) * k, cy = from.cy + (dest.cy - from.cy) * k;
+    view.s = s; view.ox = W / 2 - cx * s; view.oy = H / 2 + cy * s;
+    draw();
+    if (t < 1) requestAnimationFrame(step); else if (done) done();
+  };
+  requestAnimationFrame(step);
+}
+const stopFlight = () => { if (flight) flight.stop = true; };
+const goHome = () => travel(fitView(WORLD.x0, WORLD.y1, WORLD.w, WORLD.h, 0.03));
+const goTo = n => travel(fitView(n.x0, n.y1, n.w, n.h, 0.12));
+// A bud looks exactly like its node, so the view can jump from the bud to the node with nothing on it moving:
+// the node is put on screen where the bud is, at the bud's size. What surrounds it changes, so the old scene
+// is kept as a picture and faded out over the new one, moving with the view as it goes.
+const FADE_MS = 450;
+let FADE = null;
+function swapInto(b) {
+  const img = document.createElement('canvas');
+  img.width = cv.width; img.height = cv.height;
+  img.getContext('2d').drawImage(cv, 0, 0);
+  const s2 = view.s * b.k;
+  view.ox = sx(b.x0) - b.node.x0 * s2; view.oy = sy(b.y1) + b.node.y1 * s2; view.s = s2;
+  FADE = { img, t0: performance.now(), at: { s: view.s, ox: view.ox, oy: view.oy } };
+  hover = null; dirty();
+}
+function drawFade() {
+  if (!FADE) return;
+  const t = (performance.now() - FADE.t0) / FADE_MS;
+  if (t >= 1) { FADE = null; return; }
+  const k = view.s / FADE.at.s;
+  ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * (view.ox - FADE.at.ox * k), dpr * (view.oy - FADE.at.oy * k));
+  ctx.globalAlpha = 1 - t * t * (3 - 2 * t);
+  ctx.drawImage(FADE.img, 0, 0, W, H);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  dirty();
+}
+// Clicking a bud flies into it, then steps through to its node.
+const enterBud = b => travel(fitView(b.x0, b.y1, b.w, b.h, 0.12), () => swapInto(b));
+// Zooming into a bud steps through once it fills about half the screen.
+function stepThrough(px, py) {
+  const b = hitBud(px, py);
+  if (b) { const r = budRect(b); if (Math.min(r.w, r.h) >= 0.45 * Math.min(W, H)) swapInto(b); }
+}
+const insideShape = (n, r, px, py) => Math.pow(Math.abs(px - r.x - r.w / 2) / (r.w / 2), n.n) + Math.pow(Math.abs(py - r.y - r.h / 2) / (r.h / 2), n.n) <= 1;
+function hitBud(px, py) {
+  for (const { b, a } of SHOWN) if (a >= 0.5 && insideShape(b.node, budRect(b), px, py)) return b;
+  return null;
+}
+// Whatever is under the cursor: a bud (they sit on top), else a node. Nodes don't overlap, so there is at most one.
+function hit(px, py) {
+  const b = hitBud(px, py);
+  if (b) return b;
+  for (const n of NODES) { const r = rectOf(n); if (insideShape(n, r, px, py) && presence(r) > 0.2) return n; }
+  return null;
+}
+
+const pointers = new Map();
+let drag = null, pinch = null;
+let moved = false; // once the visitor has moved, a rebuild never moves the view under them
+function quietHint() { hint.classList.add('gone'); moved = true; }
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
+  stopFlight();
+  if (pointers.size === 1) drag = { x: e.offsetX, y: e.offsetY, moved: false };
+  else if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+    drag = null;
+  }
+});
+cv.addEventListener('pointermove', e => {
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
+  if (pinch && pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    view.ox += mx - pinch.mx; view.oy += my - pinch.my;
+    zoomAt(mx, my, d / pinch.d);
+    if (d > pinch.d) stepThrough(mx, my);
+    pinch = { d, mx, my }; quietHint();
+    return;
+  }
+  if (drag) {
+    const dx = e.offsetX - drag.x, dy = e.offsetY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) > 4) { drag.moved = true; cv.classList.add('dragging'); quietHint(); }
+    if (drag.moved) { view.ox += dx; view.oy += dy; drag.x = e.offsetX; drag.y = e.offsetY; dirty(); }
+    return;
+  }
+  const h = hit(e.offsetX, e.offsetY);
+  if (h !== hover) { hover = h; cv.classList.toggle('over', !!h); dirty(); }
+});
+function endPointer(e) {
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinch = null;
+  if (drag && !drag.moved && e.type === 'pointerup') {
+    const n = hit(e.offsetX, e.offsetY);
+    if (n) { if (n.host) enterBud(n); else goTo(n); quietHint(); }
+  }
+  drag = null; cv.classList.remove('dragging');
+}
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+cv.addEventListener('pointerleave', () => { if (hover) { hover = null; cv.classList.remove('over'); dirty(); } });
+cv.addEventListener('wheel', e => {
+  e.preventDefault(); stopFlight(); quietHint();
+  const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? H : 1;
+  zoomAt(e.offsetX, e.offsetY, Math.exp(-e.deltaY * unit * (e.ctrlKey ? 0.01 : 0.0015)));
+  if (e.deltaY < 0) stepThrough(e.offsetX, e.offsetY);
+}, { passive: false });
+window.addEventListener('keydown', e => {
+  const step = 80;
+  if (e.key === 'Escape' || e.key === 'Home' || e.key === '0') { goHome(); }
+  else if (e.key === '+' || e.key === '=') { zoomAt(W / 2, H / 2, 1.4); stepThrough(W / 2, H / 2); }
+  else if (e.key === '-' || e.key === '_') zoomAt(W / 2, H / 2, 1 / 1.4);
+  else if (e.key === 'ArrowLeft') { view.ox += step; dirty(); }
+  else if (e.key === 'ArrowRight') { view.ox -= step; dirty(); }
+  else if (e.key === 'ArrowUp') { view.oy += step; dirty(); }
+  else if (e.key === 'ArrowDown') { view.oy -= step; dirty(); }
+  else return;
+  stopFlight(); quietHint();
+});
+
+// ---------- Start ----------
+window.addEventListener('resize', resize);
+const relook = () => {
+  readTheme(); build();
+  minS = fitView(FULL.x0, FULL.y1, FULL.w, FULL.h, 0.03).s * 0.6;
+  if (!moved) Object.assign(view, fitView(WORLD.x0, WORLD.y1, WORLD.w, WORLD.h, 0.03));
+  dirty();
+};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', relook);
+new MutationObserver(relook).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+build(); resize();
+const faces = ['700 40px "Source Serif 4"', '400 40px "Source Sans 3"', '700 40px "Source Sans 3"', 'italic 400 40px "Source Sans 3"'];
+Promise.race([Promise.all(faces.map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 2500))]).then(relook);
+document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', relook);
+window.__map = { budAlpha, get SHOWN() { return SHOWN; }, get FADE() { return FADE; }, view, goTo, goHome, hit, hitBud, swapInto, enterBud, budsShown, budRect, fitView, get NODES() { return NODES; }, get EDGES() { return EDGES; }, WORLD };
+})();
+</script>
