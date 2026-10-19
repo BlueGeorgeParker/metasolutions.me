@@ -67,7 +67,7 @@ body { background: var(--ground); color: var(--ink); overflow: hidden; }
 #hint.gone { opacity: 0; pointer-events: none; }
 </style>
 
-<canvas id="map" role="img" aria-label="Infomap on the future of platform games: a front page of cards, the thesis and its three arguments in the largest with a QR code to open the map on a phone, a card asking whether platform games will replace game platforms, the Roblox money map, the case that kids now socialise inside games, set beside a graph comparing Roblox with TikTok, and the map's six themes: the Roblox economy, child safety, regulation and governance, online social life, feeds and content discovery, and a typology of platforms"></canvas>
+<canvas id="map" role="img" aria-label="Infomap on the future of platform games: a front page of cards, the thesis and its three arguments in the largest with a QR code to open the map on a phone, a card asking whether platform games will replace game platforms, ending on the future of platform games: platforms of all sorts trending towards each other's functions, regulatory burdens that may limit social media giants, and what happens when the two meet: if regulation prevails, platforms more selective about who joins, and a more networked approach to platformization, the Roblox money map, a card asking whether platform games will replace social media, set on a graph comparing Roblox with TikTok, and the map's six themes: the Roblox economy, child safety, regulation and governance, online social life, feeds and content discovery, and a typology of platforms"></canvas>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
 <script src="map-fonts.js"></script>
 <script src="path-text.js"></script>
@@ -92,13 +92,15 @@ const SERIES = [
   { key: 'tiktok', kind: 'monthly', name: 'TikTok, monthly', pts: [[2018.04, 54.7], [2018.96, 271.1], [2019.96, 507.5], [2020.54, 689.1], [2021.71, 1000]] },
 ];
 const seriesOf = (key, kind) => SERIES.find(s => s.key === key && s.kind === kind);
-// A series' value at time t, read along its drawn line (straight on a scale of tens), held at its ends.
-function valueAt(s, t) {
+// A series' value at time t, read along its drawn line (straight on a scale of tens, or on an even scale when
+// `linear`), held at its ends.
+function valueAt(s, t, linear) {
   const p = s.pts;
   if (t <= p[0][0]) return p[0][1];
   if (t >= p[p.length - 1][0]) return p[p.length - 1][1];
   let i = 0; while (p[i + 1][0] < t) i++;
   const u = (t - p[i][0]) / (p[i + 1][0] - p[i][0]);
+  if (linear) return p[i][1] + (p[i + 1][1] - p[i][1]) * u;
   return Math.pow(10, Math.log10(p[i][1]) + (Math.log10(p[i + 1][1]) - Math.log10(p[i][1])) * u);
 }
 
@@ -157,8 +159,13 @@ const TOP = [
   { id: 'replace', kind: 'replace', rect: [486, 498, 450, 328],
     title: 'Will platform games replace game platforms?' },
   { id: 'social', kind: 'graphic', rect: [948, 256, 438, 570],
-    title: 'Kids now socialise inside games, and the games are drifting toward feeds.',
-    graph: { t0: 2007, t1: 2027, lines: [['roblox', 'daily'], ['roblox', 'monthly'], ['tiktok', 'monthly']], vmin: 5, vmax: 2500, grid: [10, 100, 1000] } },
+    title: 'Will platform games replace social media?',
+    // users on an even scale, so a billion looks like a billion; drawn faint behind the argument, across the whole card,
+    // with finer steps (`minor`) under 250 million, where Roblox's lines run
+    graph: { t0: 2007, t1: 2027, lines: [['roblox', 'daily'], ['roblox', 'monthly'], ['tiktok', 'monthly']], linear: true, vmin: 0, vmax: 1100,
+      grid: [250, 500, 750, 1000], minor: [50, 100, 150, 200], background: true, names: false,
+      // its scale read from the whole page: three times the size, short (250M, 1B), under the word Users
+      scaleSize: 3, short: true, unit: 'Users' } },
   // the themes that run through the whole map, each a node holding its facets (THEMES, below)
   { id: 'themes', kind: 'themes', rect: [948, 14, 438, 230] },
   // the Roblox money map (roblox-money-map.js), drawn in its card and zoomed into like the rest; it has no statement
@@ -167,7 +174,8 @@ const TOP = [
 ];
 
 // ---------- What sits inside each graphic card ----------
-// Positions are on the card's graph: `at` is the centre as [year, users in millions]. Explainers are the large
+// Positions are on the card's graph: `at` is the centre as [year, users in millions]. On the replace card, which has
+// no graph, `at` is the centre in that card's own units (replace-card.js: 1400 x 1020, y down from its top-left). Explainers are the large
 // nodes that say what each platform is, pinned to their line by `pin`. A bridge joins things across, or with no
 // `joins` stands alone (a conclusion). Containers hold their points inside them, `scale` times the usual size; `top`
 // is the largest a container's or bridge's title may be, `memberBody` the largest its points' text may be (before
@@ -175,54 +183,109 @@ const TOP = [
 // names other atoms a point relates to, or a whole card by its id: they appear on its rim as buds. `events` names
 // dated moments, which take places near their pins.
 const CONTENT = {
-  // Three branches stacked down the empty years before the lines start, in reading order, and the conclusion under
-  // them; the moments they name sit along the time axis and on the Roblox line.
+  // A tug of war (Parker, 2026-10-19): social media and platform games are hubs, each beside its own line's point on
+  // the graph and pinned to it, and the themes hang between them. A theme is anchored at its `at` (shares of the
+  // card's width and height, from its top left), nearer the hub that pulls it harder, in a crescent down the open
+  // years on the left; `pull` is how hard each side pulls, drawn as the weight of its line to each hub. A theme's
+  // points sit in the room under its name, each tinted by its `side`. The themes are Parker's, in his words; a
+  // `split` theme pulls through its own pair of halves, one beside each hub. The card's earlier argument hangs on the
+  // lines between (`links`): each of its sentences a small circle on the line `between` two of them, `along` it from
+  // the first, `size` times the usual, holding its points as relations. Three hang on the rope between the hubs:
+  // that the two are growing into each other, nearer social media; Parker's two futures, at the knot; and the
+  // conclusion, nearer the side it says is winning. Nothing sits on the graph's
+  // lines or numbers. The moments the points name sit along the time axis and on the Roblox line.
   social: {
+    tug: {
+      hubs: { sm: { id: 'hub-sm', title: 'Social media', key: 'tiktok', on: ['tiktok', 'monthly', 2021.71], beside: [1, 0] },
+              pg: { id: 'hub-pg', title: 'Platform games', key: 'roblox', on: ['roblox', 'daily', 2025.625], beside: [0, 1] } },
+      themes: [
+        { id: 'tug-regulation', title: 'Regulation and governance', pull: { sm: 4, pg: 2.5 }, at: [0.2, 0.3],
+          members: [
+            { id: 'ban', side: 'both', title: 'The under-16 ban left games out',
+              body: 'Australia’s ban on social media accounts for under-16s began in December 2025 and leaves out online games. Experts warned it could push children toward Roblox.',
+              src: 'Kavya’s research; Rintoul, 2026', events: ['Under-16 social media ban begins'], rel: ['meet'] },
+          ] },
+        { id: 'tug-safety', title: 'Safety', pull: { sm: 3, pg: 3 }, at: [0.13, 0.53], members: [] },
+        { id: 'tug-sociality', title: 'Sociality and its associated dangers', pull: { sm: 3, pg: 4.5 }, at: [0.22, 0.82],
+          members: [
+            { id: 'parts', side: 'pg', title: 'It has social media’s parts',
+              body: 'One avatar, one friends list and chat across every game, with profiles, invites and recommendations by age and interests. Leaving costs you your friends.',
+              src: 'Kavya’s research; Annika’s research: Barns 2019', rel: ['meet', 'fed'] },
+            { id: 'grewup', side: 'pg', title: 'A generation grew up inside it',
+              body: 'More than half of Roblox’s players are under 17. Gen Z and Gen Alpha grew up meeting their friends there, and are used to how it works.',
+              src: 'Annika’s research; Carter, Vekhande & Fifita 2026, citing Statista', rel: ['spend'] },
+            { id: 'meet', side: 'both', title: 'In a feed the risk is what kids see; in a game, who they meet',
+              body: 'Strangers can play, chat and talk beside a child. In August 2026 eSafety found adults on Roblox could still send young children connection requests without a parent’s consent.',
+              src: 'Bella’s research; Kavya’s research: Reuters, 2026' },
+          ] },
+        { id: 'tug-content', title: 'Content and its associated dangers', pull: { sm: 5, pg: 1.5 }, at: [0.46, 0.21],
+          members: [
+            { id: 'fed', side: 'pg', title: 'Games are adding feeds',
+              body: 'Roblox’s recommendations pick which games reach players, and the rest are hidden from their feed. In 2025 it added Moments, a scrolling feed of short gameplay videos.',
+              src: 'Kavya’s mock game; TechCrunch, 2025', events: ['Roblox Moments'], rel: ['replace'] },
+            { id: 'adding', side: 'sm', title: 'Social media is adding games',
+              body: 'Facebook put games in Messenger and the News Feed in 2016. Netflix added games in 2021, TikTok tested them in 2022, and YouTube opened them to everyone in 2024.',
+              src: 'Annika’s research; Engadget 2016; TechCrunch 2021, 2022; iPhone in Canada 2024',
+              events: ['Facebook Instant Games', 'Netflix adds games', 'TikTok tests mini-games', 'YouTube Playables'] },
+            { id: 'eastasia', side: 'sm', title: 'In East Asia it already happened',
+              body: 'KakaoTalk in Korea and LINE in Japan, both chat apps, became game platforms in 2012, where you play against your chat friends. WeChat followed in China in 2017.',
+              src: 'TechNode 2012; LINE 2012; Niko Partners 2018; Steinberg 2020', events: ['KakaoTalk and LINE add games', 'WeChat Mini Games'], rel: ['adding'] },
+          ] },
+        { id: 'tug-money', title: 'Monetization', pull: { sm: 2, pg: 2 }, at: [0.4, 0.68],
+          body: 'Platform games and social media’s currently use different methods of monetization (but there is no reason for this to remain true forever)',
+          split: [{ id: 'tug-ads', title: 'Advertisers pay', to: 'sm', pull: 4, at: [0.69, 0.33] },
+                  { id: 'tug-players', title: 'Players pay', to: 'pg', pull: 4, at: [0.7, 0.64] }],
+          members: [
+            { id: 'paid', side: 'both', title: 'Advertisers pay social media; kids pay Roblox',
+              body: 'Meta made 98% of its 2025 revenue from ads. Roblox makes nearly all of its money selling Robux to its players, most of them young.',
+              src: 'Meta 10-K, 2025; Roblox 10-K', rel: ['money'] },
+            // Parker's words (2026-10-19)
+            { id: 'incentives', side: 'both', title: 'Social media and platform games also have similar incentives',
+              body: 'Currently, social media sells advertising and Roblox sells robux for in-game content, but it’s easy to imagine games selling advertising space and platforms have started moving towards selling exclusive content.',
+              rel: ['trajectories', 'paid'] },
+          ] },
+        { id: 'tug-tactics', title: 'Manipulative tactics', pull: { sm: 3.5, pg: 3.5 }, at: [0.4, 0.43],
+          members: [
+            { id: 'spend', side: 'pg', title: 'And what they spend',
+              body: 'Sydney researchers played 15 top-earning Roblox games. Nearly all sold paid lucky draws and rushed players with limited-time offers, designs they say are treated as illegal outside games.',
+              src: 'Bella’s research; Carter, Vekhande & Fifita 2026', rel: ['money'] },
+          ] },
+      ],
+      // the card's argument from before the tug of war, kept whole and under its old ids, hung on the lines between
+      links: [
+        { id: 'grow', between: ['hub-sm', 'hub-pg'], along: 0.16, points: ['fed', 'adding', 'eastasia'],
+          title: 'Games and social media are growing into each other.' },
+        // the knot of the rope: Parker's own reading of the two, in his words (2026-10-19), its two futures related
+        // to the blending and to regulation, and to the ban that the label "game" escaped
+        { id: 'trajectories', between: ['hub-sm', 'hub-pg'], along: 0.5, size: 1.45, points: ['grow', 'tug-regulation', 'ban', 'label'],
+          title: 'Social media and platform games share many similar troubles.',
+          body: 'However the dissimilarity between the two may be sufficient to generate different future trajectories. Either social media and platform games will continue to blend into each other, or regulation will provide sufficient incentive to keep them as separate classes.' },
+        { id: 'social-end', between: ['hub-sm', 'hub-pg'], along: 0.86, size: 1.3, points: ['kids', 'grow', 'differ'],
+          title: 'Platform games are taking social media’s place in kids’ lives, but not its business or its dangers, so rules written for feeds won’t fit them.' },
+        { id: 'kids', between: ['tug-sociality', 'hub-pg'], along: 0.25, points: ['parts', 'grewup', 'ban'],
+          title: 'Kids already use platform games as their social media.' },
+        { id: 'differ', between: ['tug-tactics', 'tug-money'], along: 0.5, points: ['paid', 'meet', 'spend'],
+          title: 'But they don’t make money or cause harm the same way.' },
+      ],
+    },
+  },
+  // the corner under the replace card's argument (x 752 to 1370, y 605 to 918 of its units): the future of platform
+  // games, as two trends, the question of what happens when they meet, and what may follow. Parker's words, as he gave them; keep them
+  // his. Drawn by this page, not by replace-card.js, so regenerating that leaves it be.
+  replace: {
     containers: [
-      { id: 'kids', at: [2011.95, 1293], cols: 3, scale: 1.5, top: 200, memberBody: 21,
-        title: 'Kids already use platform games as their social media.',
+      { id: 'future', box: [752, 605, 1370, 918], scale: 1.38, top: 200, cols: 3, memberTop: 80, memberLines: 6, memberBody: 34, even: true,
+        title: 'The future of platform games',
         members: [
-          { id: 'parts', title: 'It has social media’s parts',
-            body: 'One avatar, one friends list and chat across every game, with profiles, invites and recommendations by age and interests. Leaving costs you your friends.',
-            src: 'Kavya’s research; Annika’s research: Barns 2019', rel: ['meet', 'fed'] },
-          { id: 'grewup', title: 'A generation grew up inside it',
-            body: 'More than half of Roblox’s players are under 17. Gen Z and Gen Alpha grew up meeting their friends there, and are used to how it works.',
-            src: 'Annika’s research; Carter, Vekhande & Fifita 2026, citing Statista', rel: ['spend'] },
-          { id: 'ban', title: 'The under-16 ban left games out',
-            body: 'Australia’s ban on social media accounts for under-16s began in December 2025 and leaves out online games. Experts warned it could push children toward Roblox.',
-            src: 'Kavya’s research; Rintoul, 2026', events: ['Under-16 social media ban begins'], rel: ['meet'] },
+          { id: 'converge',
+            title: 'Platforms of all sorts seem to be trending towards the functions of others',
+            body: 'Platform games are integrating their own social media’s, social media’s are hosting games. This is in an attempt to produce insular spaces which capture user attention and do not lose users to other platforms for any reason.' },
+          { id: 'burdens',
+            title: 'At the same time, increasing regulatory burdens may limit the size of social media giants' },
+          { id: 'meets',
+            title: 'What happens when an unmovable object meets an unstoppable force?',
+            body: 'If regulation prevails, we may see social platforms become more selective about who is allowed to join and interact with others. Depending on how governments decide to regulate addictive software, we might also see a more networked approach to platformization, undoing the trend toward generality of service and insularity of user attention.' },
         ] },
-      { id: 'grow', at: [2011.95, 302], cols: 3, scale: 1.5, top: 200, memberBody: 21,
-        title: 'Games and social media are growing into each other.',
-        members: [
-          { id: 'fed', title: 'Games are adding feeds',
-            body: 'Roblox’s recommendations pick which games reach players, and the rest are hidden from their feed. In 2025 it added Moments, a scrolling feed of short gameplay videos.',
-            src: 'Kavya’s mock game; TechCrunch, 2025', events: ['Roblox Moments'], rel: ['replace'] },
-          { id: 'adding', title: 'Social media is adding games',
-            body: 'Facebook put games in Messenger and the News Feed in 2016. Netflix added games in 2021, TikTok tested them in 2022, and YouTube opened them to everyone in 2024.',
-            src: 'Annika’s research; Engadget 2016; TechCrunch 2021, 2022; iPhone in Canada 2024',
-            events: ['Facebook Instant Games', 'Netflix adds games', 'TikTok tests mini-games', 'YouTube Playables'] },
-          { id: 'eastasia', title: 'In East Asia it already happened',
-            body: 'KakaoTalk in Korea and LINE in Japan, both chat apps, became game platforms in 2012, where you play against your chat friends. WeChat followed in China in 2017.',
-            src: 'TechNode 2012; LINE 2012; Niko Partners 2018; Steinberg 2020', events: ['KakaoTalk and LINE add games', 'WeChat Mini Games'], rel: ['adding'] },
-        ] },
-      { id: 'differ', at: [2011.95, 70.5], cols: 3, scale: 1.5, top: 200, memberBody: 21,
-        title: 'But they don’t make money or cause harm the same way.',
-        members: [
-          { id: 'paid', title: 'Advertisers pay social media; kids pay Roblox',
-            body: 'Meta made 98% of its 2025 revenue from ads. Roblox makes nearly all of its money selling Robux to its players, most of them young.',
-            src: 'Meta 10-K, 2025; Roblox 10-K', rel: ['money'] },
-          { id: 'meet', title: 'In a feed the risk is what kids see; in a game, who they meet',
-            body: 'Strangers can play, chat and talk beside a child. In August 2026 eSafety found adults on Roblox could still send young children connection requests without a parent’s consent.',
-            src: 'Bella’s research; Kavya’s research: Reuters, 2026' },
-          { id: 'spend', title: 'And what they spend',
-            body: 'Sydney researchers played 15 top-earning Roblox games. Nearly all sold paid lucky draws and rushed players with limited-time offers, designs they say are treated as illegal outside games.',
-            src: 'Bella’s research; Carter, Vekhande & Fifita 2026', rel: ['money'] },
-        ] },
-    ],
-    bridges: [
-      { id: 'social-end', at: [2011.95, 20.7], w: 2610, h: 1000, top: 170, maxLines: 5, joins: [],
-        title: 'Platform games are taking social media’s place in kids’ lives, but not its business or its dangers, so rules written for feeds won’t fit them.' },
     ],
   },
 };
@@ -249,7 +312,7 @@ const THEMES = [
         body: 'Adults spend more each, so from June 2026 makers earn more of what age-checked US adults spend in their games.',
         src: 'Roblox Q1 2026 shareholder letter', rel: ['faces'] },
     ] },
-  { id: 'safety', r: 1, at: [0.43, 0.36], title: 'Child safety', up: ['masthead', 'differ'],
+  { id: 'safety', r: 1, at: [0.43, 0.36], title: 'Child safety', up: ['masthead', 'differ', 'tug-safety'],
     // six categories; a category's `subs` are drawn in the room at its foot
     facets: [
       { id: 'cat-strangers', title: 'Stranger danger', subs: ['strangers', 'grooming'] },
@@ -314,7 +377,7 @@ const THEMES = [
         body: 'Turkey blocked Roblox in August 2024 over child-abuse concerns. Russia blocked it in December 2025 and let it back in June 2026.',
         src: 'Bloomberg, 2024; Roblox Q1 and Q2 2026 shareholder letters' },
     ] },
-  { id: 'social-life', r: 0.78, at: [0.2, 0.77], title: 'Online social life', up: ['masthead', 'kids'],
+  { id: 'social-life', r: 0.78, at: [0.2, 0.77], title: 'Online social life', up: ['masthead', 'kids', 'tug-sociality'],
     facets: [
       { id: 'hangout', title: 'Kids socialise inside games',
         body: 'One avatar, one friends list and chat across every game. Leaving costs you your friends.',
@@ -326,7 +389,7 @@ const THEMES = [
         body: 'For kids, platform games do much of what social media does, and experts warned the under-16 ban could push more of them there.',
         src: 'Kavya’s research: Rintoul, 2026', rel: ['^social-end', 'ban', '^socialmedia'] },
     ] },
-  { id: 'feeds', r: 0.64, at: [0.53, 0.8], title: 'Feeds, sharing, and content discovery', up: ['masthead', 'grow'],
+  { id: 'feeds', r: 0.64, at: [0.53, 0.8], title: 'Feeds, sharing, and content discovery', up: ['masthead', 'grow', 'tug-content'],
     facets: [
       { id: 'moments', title: 'Roblox Moments',
         body: 'A scrolling feed of short gameplay videos, opened in 2025. Tap one to join the game it shows.',
@@ -539,16 +602,21 @@ function layoutBand(c, d) {
   }
   return [];
 }
-// A card's graph: time across (the early years compressed when `split` is set), users up on a scale of tens.
+// A card's graph: time across (the early years compressed when `split` is set), users up on a scale of tens, or on an
+// even scale when `linear`. A `background` graph is drawn faint under the card's argument and keeps only the room its
+// scale's labels need at the right.
 function makeGraph(c, spec) {
-  const padX = c.w * 0.05, labelRoom = c.w * 0.15, axisRoom = 15 * K;
+  const padX = c.w * 0.05, labelRoom = c.w * (spec.background ? 0.07 : 0.15), axisRoom = 15 * K;
   const g = { spec, left: c.x0 + padX, right: c.x0 + c.w - padX - labelRoom, bottom: c.y1 - c.h + padX * 0.6 + axisRoom, top: c.y1 - BAND - padX * 0.6 };
   const W0 = g.right - g.left;
   g.x = spec.split
     ? t => t < spec.split ? g.left + (t - spec.t0) / (spec.split - spec.t0) * W0 * spec.early
                           : g.left + W0 * spec.early + (t - spec.split) / (spec.t1 - spec.split) * W0 * (1 - spec.early)
     : t => g.left + (t - spec.t0) / (spec.t1 - spec.t0) * W0;
-  g.y = v => g.bottom + (Math.log10(v) - Math.log10(spec.vmin)) / (Math.log10(spec.vmax) - Math.log10(spec.vmin)) * (g.top - g.bottom);
+  g.y = spec.linear
+    ? v => g.bottom + (v - spec.vmin) / (spec.vmax - spec.vmin) * (g.top - g.bottom)
+    : v => g.bottom + (Math.log10(v) - Math.log10(spec.vmin)) / (Math.log10(spec.vmax) - Math.log10(spec.vmin)) * (g.top - g.bottom);
+  g.val = (s, t) => valueAt(s, t, spec.linear);
   g.series = spec.lines.map(([k, kind]) => seriesOf(k, kind));
   g.has = (k, kind) => g.series.some(s => s.key === k && s.kind === kind);
   g.nameSize = 3.2 * K;
@@ -557,10 +625,11 @@ function makeGraph(c, spec) {
     const p = s.pts;
     for (let i = 0; i < p.length - 1; i++) for (let k = 0; k <= 20; k++) {
       const t = p[i][0] + (p[i + 1][0] - p[i][0]) * k / 20;
-      g.pts.push([g.x(t), g.y(valueAt(s, t))]);
+      g.pts.push([g.x(t), g.y(g.val(s, t))]);
     }
   }
-  g.names = g.series.map(s => {
+  // its lines' names; `names: false` when something else on the card names them (the social card's hubs)
+  g.names = spec.names === false ? [] : g.series.map(s => {
     const e = s.est || s.pts[s.pts.length - 1], w = unitW(s.name, 700, T.body) * g.nameSize;
     const early = e[0] < 2024;
     const x = early ? g.x(e[0]) - w / 2 : g.x(e[0]) + g.nameSize * 0.8;
@@ -616,6 +685,9 @@ const SHAPE = {
   link: { n: 2, lw: 2 },
   lobed: { n: 2, lw: 2 },
   lobe: { n: 2, lw: 2 },
+  // the social card's tug of war: its themes and their halves, and the two hubs
+  tug: { n: 2, lw: 2 },
+  hub: { n: 2, lw: 3 },
 };
 function inset(n) { const k = n.n <= 3.5 ? 0.13 : n.n <= 5 ? 0.09 : n.n <= 8 ? 0.06 : 0.05; return Math.max(n.w, n.h) * k + 6; }
 // A key statement leads, as large as `maxLines` allow; what backs it sits small underneath. Returns the blocks and
@@ -1103,6 +1175,163 @@ function layoutBuds(h, placed) {
   }
 }
 
+// ---------- The tug of war ----------
+// A grid of `k` cards (`aspect` high to one wide) as large as fits in a circle of radius Ri below the cut at y = cut
+// (y down from the centre), `gap` apart and off the wall: rows of up to two (three from five cards), the last row
+// centred, the whole grid in the middle of the heights it can sit at. Found by halving.
+function gridInRoom(k, Ri, cut, gap, aspect) {
+  const cols = k <= 4 ? Math.min(k, 2) : 3, rows = Math.ceil(k / cols);
+  const cells = (w, y0) => [...Array(k)].map((_, i) => {
+    const r = Math.floor(i / cols), inRow = r === rows - 1 ? k - cols * (rows - 1) : cols, h = w * aspect;
+    return [((i % cols) - (inRow - 1) / 2) * (w + gap), y0 + r * (h + gap)];
+  });
+  const fits = (w, y0) => cells(w, y0).every(([x, y]) => [[x - w / 2, y], [x + w / 2, y], [x - w / 2, y + w * aspect], [x + w / 2, y + w * aspect]]
+    .every(([px, py]) => Math.hypot(px, py) <= Ri - gap && py >= cut + gap));
+  const tops = w => { const ok = []; for (let i = 0; i <= 80; i++) { const y0 = cut + gap + (Ri - cut) * i / 80; if (fits(w, y0)) ok.push(y0); } return ok; };
+  let lo = 0, hi = Ri * 2, best = null;
+  for (let i = 0; i < 30; i++) {
+    const w = (lo + hi) / 2, ok = tops(w);
+    if (ok.length) { lo = w; best = { w, h: w * aspect, cells: cells(w, (ok[0] + ok[ok.length - 1]) / 2) }; } else hi = w;
+  }
+  return best;
+}
+// A tug node (a theme, or half of a split one): its ring, its name (and words) as large as fits above its room, and
+// its points in the room; with no points, its words fill the circle.
+function tugNode(d, c, x, y, R, ring, byId, relate, out) {
+  const pts = d.members || [], cut = pts.length ? (d.body ? 0.12 : -0.08) * R : null;
+  const n = node('tug', d, { card: c, w: R * 2, h: R * 2, fixed: true, ringW: R * 0.035, ringColor: ring,
+    room: pts.length ? { Ri: R * 0.9, cut } : null });
+  n.x0 = x - R; n.y1 = y + R;
+  const tr = R - n.ringW - R * 0.05;
+  n.blocks = fitInCircle(tr, R, sz => [
+    { text: d.title, wt: 700, fam: T.title, size: sz, lh: 1.06, color: 'ink', after: d.body ? sz * 0.35 : 0 },
+    ...(d.body ? [{ text: d.body, wt: 400, fam: T.body, size: sz * 0.42, lh: 1.3, color: 'ink' }] : []),
+  ], -tr * 0.92, pts.length ? cut - R * 0.05 : tr * 0.92, R * (d.body ? 0.2 : 0.32), R * 0.02).blocks;
+  out.push(n); byId.set(d.id, n);
+  if (pts.length) {
+    const Ri = n.room.Ri - n.ringW * 0.5, gp = Ri * 0.06, gr = gridInRoom(pts.length, Ri, cut, gp, 0.72);
+    if (gr) pts.forEach((m, i) => {
+      const [cx, cy] = gr.cells[i];
+      const mn = node('member', m, { card: c, parent: n, fixed: true, w: gr.w, h: gr.h });
+      mn.x0 = x + cx - gr.w / 2; mn.y1 = y - cy;
+      mn.blocks = layoutBox(mn, m, { top: gr.w * 0.105, maxLines: 4, bodyK: 0.42, bodyMax: gr.w * 0.05 });
+      n.kids.push(mn); out.push(mn); byId.set(m.id, mn);
+      for (const id of m.rel || []) relate.push([mn, id, false]);
+    });
+  }
+  return n;
+}
+// The hubs sit beside their lines' points (`beside`, a direction), pinned to them, so the data stays in view. The
+// themes and the halves of a split one start at their anchors (`at`), and a link sits on the line between its two
+// ends, `along` the stretch between their rims. Then everything that may move eases apart: inside the card but clear
+// of the graph's numbers (its scale on the right, its years along the foot), off the hubs, the links and each other,
+// held to its anchor by a spring; linked ends keep room for their links between them; nothing, links included,
+// sits on the graph's lines; and a theme is nudged off other themes' pulls (a theme a line runs under looks joined to
+// it). A last pass leaves nothing overlapping. The pulls are drawn as lines, as heavy as they pull, and a link's line
+// runs under it; a link keeps its points as relations (buds on its rim).
+function placeTug(c, g, tug, room, byId, relate, fixed) {
+  const out = [], Rh = c.w * 0.065, Rt = c.w * 0.085, Rs = c.w * 0.045, Rl = c.w * 0.06, gap = c.w * 0.025;
+  const box = { x0: room.x0, x1: g.right - gap, y0: g.bottom + gap * 0.5, y1: room.y1 };
+  const cardAt = f => [c.x0 + f[0] * c.w, c.y1 - f[1] * c.h];
+  const hub = {}, ends = new Map();
+  for (const side of ['sm', 'pg']) {
+    const d = tug.hubs[side], s = seriesOf(d.on[0], d.on[1]), px = g.x(d.on[2]), py = g.y(g.val(s, d.on[2]));
+    const n = node('hub', d, { card: c, w: Rh * 2, h: Rh * 2, fixed: true, ringW: Rh * 0.08, ringColor: d.key, pin: [px, py] });
+    setCentre(n, px + d.beside[0] * (Rh + gap), py + d.beside[1] * (Rh + gap)); keepIn(n, box);
+    const tr = Rh - n.ringW - Rh * 0.06;
+    n.blocks = fitInCircle(tr, Rh, sz => [{ text: d.title, wt: 700, fam: T.title, size: sz, lh: 1.06, color: d.key }], -tr * 0.8, tr * 0.8, Rh * 0.32, Rh * 0.04).blocks;
+    hub[side] = n; out.push(n); byId.set(d.id, n);
+    ends.set(d.id, { xy: centre(n), r: Rh, fixed: true });
+  }
+  // the movers: each theme, and each half of a split one
+  const ps = [];
+  for (const d of tug.themes) {
+    const p = { d, r: Rt, home: cardAt(d.at) };
+    p.xy = [...p.home]; ps.push(p); ends.set(d.id, p);
+    for (const h of d.split || []) { const q = { d: h, r: Rs, half: true, of: p, home: cardAt(h.at) }; q.xy = [...q.home]; ps.push(q); }
+  }
+  // the links, each placed on the line between its ends whenever they move
+  const links = (tug.links || []).map(d => ({ d, a: ends.get(d.between[0]), b: ends.get(d.between[1]), r: Rl * (d.size || 1), xy: [0, 0] }));
+  const onLine = l => {
+    const [ax, ay] = l.a.xy, [bx, by] = l.b.xy, d = Math.hypot(bx - ax, by - ay) || 1e-9, free = d - l.a.r - l.b.r, t = l.a.r + l.d.along * free;
+    l.xy = [ax + (bx - ax) / d * t, ay + (by - ay) / d * t];
+  };
+  const shift = (end, dx, dy) => { if (!end.fixed) { end.xy[0] += dx; end.xy[1] += dy; } };
+  const lim = p => { p.xy[0] = clamp(p.xy[0], box.x0 + p.r, box.x1 - p.r); p.xy[1] = clamp(p.xy[1], box.y0 + p.r, box.y1 - p.r); };
+  for (let it = 0; it < 2400; it++) {
+    const settle = it >= 2000;   // the last pass: no spring, no nudging
+    let worst = 0;
+    // how far p and q (circles) overlap with `m` between them; p moves by `wp` of it, q by the rest
+    const push = (p, q, m, wp) => {
+      let dx = q.xy[0] - p.xy[0], dy = q.xy[1] - p.xy[1]; const d = Math.hypot(dx, dy) || 1e-9, e = p.r + q.r + m - d;
+      if (e <= 0) return;
+      worst = Math.max(worst, e); dx /= d; dy /= d;
+      shift(p, -dx * e * wp, -dy * e * wp); shift(q, dx * e * (1 - wp), dy * e * (1 - wp));
+    };
+    if (!settle) for (const p of ps) { p.xy[0] += (p.home[0] - p.xy[0]) * 0.03; p.xy[1] += (p.home[1] - p.xy[1]) * 0.03; }
+    for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) push(ps[i], ps[j], gap, 0.5);
+    for (const p of ps) for (const h of [hub.sm, hub.pg]) push(p, ends.get(h.data.id), gap, 1);
+    // linked ends keep room for their links between their rims
+    for (const l of links) {
+      const [ax, ay] = l.a.xy, [bx, by] = l.b.xy, d = Math.hypot(bx - ax, by - ay) || 1e-9, need = l.a.r + l.b.r + 2 * l.r + 2 * gap;
+      if (d >= need) continue;
+      const e = need - d, k = l.a.fixed ? 0 : l.b.fixed ? 1 : 0.5; worst = Math.max(worst, e);
+      shift(l.a, -(bx - ax) / d * e * k, -(by - ay) / d * e * k); shift(l.b, (bx - ax) / d * e * (1 - k), (by - ay) / d * e * (1 - k));
+    }
+    links.forEach(onLine);
+    for (const l of links) for (const p of ps) if (p !== l.a && p !== l.b) push(p, { xy: l.xy, r: l.r, fixed: true }, gap, 1);
+    // the graph's lines, as the points they are drawn through: a mover steps off them, a link takes its ends with it
+    const offGraph = (q, move) => {
+      const m = gap * 0.4;
+      for (const pt of g.pts) {
+        if (Math.abs(pt[0] - q.xy[0]) > q.r + m || Math.abs(pt[1] - q.xy[1]) > q.r + m) continue;
+        let dx = q.xy[0] - pt[0], dy = q.xy[1] - pt[1]; const d = Math.hypot(dx, dy) || 1e-9, e = q.r + m - d;
+        if (e <= 0) continue;
+        worst = Math.max(worst, e); move(dx / d * e, dy / d * e);
+      }
+    };
+    for (const p of ps) offGraph(p, (dx, dy) => shift(p, dx, dy));
+    for (const l of links) offGraph(l, (dx, dy) => { shift(l.a, dx, dy); shift(l.b, dx, dy); l.xy[0] += dx; l.xy[1] += dy; });
+    // a theme's pulls are segments to the hubs (a half's to its hub and its theme); a mover one would run under is
+    // nudged off it
+    if (!settle) {
+      const lines = [];
+      for (const q of ps) {
+        if (q.half) lines.push([q, q.xy, centre(hub[q.d.to])], [q, q.xy, q.of.xy]);
+        else if (!q.d.split) lines.push([q, q.xy, centre(hub.sm)], [q, q.xy, centre(hub.pg)]);
+      }
+      for (const p of ps) for (const [q, a, b] of lines) {
+        if (q === p || (p.half && p.of === q) || (q.half && q.of === p)) continue;
+        const bx = b[0] - a[0], by = b[1] - a[1], t = clamp(((p.xy[0] - a[0]) * bx + (p.xy[1] - a[1]) * by) / (bx * bx + by * by || 1), 0, 1);
+        const cx = a[0] + bx * t, cy = a[1] + by * t, need = p.r + gap * 0.5;
+        const dx = p.xy[0] - cx, dy = p.xy[1] - cy, d = Math.hypot(dx, dy) || 1e-9;
+        if (t <= 0 || t >= 1 || d >= need) continue;
+        shift(p, dx / d * (need - d) * 0.15, dy / d * (need - d) * 0.15);
+      }
+    }
+    for (const p of ps) { const [x, y] = p.xy; lim(p); worst = Math.max(worst, Math.abs(x - p.xy[0]), Math.abs(y - p.xy[1])); }
+    links.forEach(onLine);
+    if (settle && worst < 1) break;
+  }
+  const made = new Map([['hub-sm', hub.sm], ['hub-pg', hub.pg]]);
+  for (const p of ps) made.set(p.d.id, tugNode(p.d, c, p.xy[0], p.xy[1], p.r, p.half ? tug.hubs[p.d.to].key : 'ink', byId, relate, out));
+  const pull = (a, b, w, color, dash) => EDGES.push({ a, b, w: w * c.w * 0.0018, color, dash: dash ? c.w * 0.006 : 0, noBuds: true });
+  for (const p of ps) {
+    const n = made.get(p.d.id);
+    if (p.half) { pull(n, hub[p.d.to], p.d.pull, tug.hubs[p.d.to].key); pull(made.get(p.of.d.id), n, 1.5, 'ink', true); }
+    else if (!p.d.split) { pull(n, hub.sm, p.d.pull.sm, 'tiktok'); pull(n, hub.pg, p.d.pull.pg, 'roblox'); }
+  }
+  // the links, in the themes card's way: a ring on the line between two things, named for what connects them; the
+  // rope between the hubs is drawn once, under both links that hang on it
+  for (const l of links) {
+    const n = tugNode(l.d, c, l.xy[0], l.xy[1], l.r, 'line', byId, relate, out);
+    for (const id of l.d.points || []) relate.push([n, id, false]);
+    const [a, b] = l.d.between.map(id => made.get(id));
+    if (!EDGES.some(e => (e.a === a && e.b === b) || (e.a === b && e.b === a))) pull(a, b, a.kind === 'hub' && b.kind === 'hub' ? 2.5 : 1.2, a.kind === 'hub' && b.kind === 'hub' ? 'ink' : 'line');
+  }
+  fixed.push(...out);
+}
+
 // ---------- Build ----------
 let CARDS = [], NODES = [], EDGES = [];
 const WORLD = {};
@@ -1125,49 +1354,68 @@ function build() {
   for (const c of CARDS) {
     if (c.sub === 'themes') { c.inner = layoutThemes(c, byId, relate); NODES.push(...c.inner); continue; }
     const content = CONTENT[c.data.id];
-    if (!content || !c.graph) continue;
-    const g = c.graph, at = ([t, v]) => [g.x(t), g.y(v)], fixed = [], movers = [];
+    if (!content || !(c.graph || c.map)) continue;
+    // a graph card places by its graph; a card drawn in its own units (the replace card) by those units, anywhere
+    // under its title band, and has no moments to pin
+    const g = c.graph, fixed = [], movers = [];
+    const at = g ? ([t, v]) => [g.x(t), g.y(v)] : ([u, v]) => [c.map.x0 + u * c.map.k, c.map.y1 - v * c.map.k];
+    const room = g ? g.room : { x0: c.x0, x1: c.x0 + c.w, y0: c.y1 - c.h, y1: c.y1 - c.band };
     // the platforms, each pinned to its line
     for (const d of content.explainers || []) {
       const n = node('explainer', d, { card: c, w: d.w, h: d.h, fixed: true });
       n.blocks = layoutBox(n, d, { top: 150, maxLines: 3, bodyK: 0.26, color: d.key });
-      setCentre(n, ...at(d.at)); keepIn(n, g.room);
+      setCentre(n, ...at(d.at)); keepIn(n, room);
       const s = seriesOf(d.pin[0], d.pin[1]);
-      n.pin = [g.x(d.pin[2]), g.y(valueAt(s, d.pin[2]))];
+      n.pin = [g.x(d.pin[2]), g.y(g.val(s, d.pin[2]))];
       fixed.push(n); byId.set(d.id, n);
     }
     for (const d of content.bridges || []) {
       const n = node('bridge', d, { card: c, w: d.w, h: d.h, fixed: true });
       n.blocks = layoutBox(n, d, { top: d.top || 80, maxLines: d.maxLines || 4 });
-      setCentre(n, ...at(d.at)); keepIn(n, g.room);
+      setCentre(n, ...at(d.at)); keepIn(n, room);
       fixed.push(n); byId.set(d.id, n);
       for (const id of d.joins) relate.push([n, id, true]);
     }
     // containers size themselves to their members: a title chamber over a grid of member cards, all `scale` times
-    // the usual size, type included
+    // the usual size, type included. One given a `box` (its corners, in the units of a card drawn in its own) fills
+    // that box instead, members or none.
     for (const d of content.containers || []) {
-      const z = d.scale || 1, M = { w: SHAPE.member.w * z, h: SHAPE.member.h * z };
+      const z = d.scale || 1;
       const cols = d.cols || 2, rows = Math.ceil(d.members.length / cols), gap = 130 * z, pad = 110 * z;
-      const w = cols * M.w + (cols - 1) * gap + pad * 2;
-      const head = fitStatement(d, w - pad * 2, 0, { top: d.top || 76 * z, maxLines: 3, bodyK: 0.3, bodyMax: 22 * z });
+      let M = { w: SHAPE.member.w * z, h: SHAPE.member.h * z };
+      const box = d.box && !g ? [at([d.box[0], d.box[1]]), at([d.box[2], d.box[3]])] : null;
+      const w = box ? box[1][0] - box[0][0] : cols * M.w + (cols - 1) * gap + pad * 2;
+      const head = fitStatement(d, w - pad * 2, 0, { top: d.top || 76 * z, maxLines: 3, bodyK: 0.3, bodyMax: d.bodyMax || 22 * z });
       const chamber = head.h + pad * 0.8;
-      const n = node('container', d, { card: c, w, h: pad + chamber + rows * M.h + (rows - 1) * gap + pad, fixed: true });
+      const h = box ? box[0][1] - box[1][1] : pad + chamber + rows * M.h + Math.max(0, rows - 1) * gap + pad;
+      // a box shares the room its title leaves among its members
+      if (box && rows) M = { w: (w - pad * 2 - (cols - 1) * gap) / cols, h: (h - pad * 2 - chamber - (rows - 1) * gap) / rows };
+      const n = node('container', d, { card: c, w, h, fixed: true });
       stack(head.blocks, pad, pad, head.gaps); n.blocks = head.blocks;
-      setCentre(n, ...at(d.at)); keepIn(n, g.room);
+      if (box) { n.x0 = box[0][0]; n.y1 = box[0][1]; } else { setCentre(n, ...at(d.at)); keepIn(n, room); }
       fixed.push(n); byId.set(d.id, n);
+      // a member's title is as large as `top` (its own, or the container's `memberTop`) and its lines allow
+      const lay = (mn, m, top) => layoutBox(mn, m, { top, maxLines: m.maxLines || d.memberLines || 4, bodyK: 0.42, bodyMax: (d.memberBody || 15) * z });
       d.members.forEach((m, i) => {
         const r = Math.floor(i / cols), k = i % cols;
         const mn = node('member', m, { card: c, parent: n, fixed: true, w: M.w, h: M.h });
         mn.x0 = n.x0 + pad + k * (M.w + gap); mn.y1 = n.y1 - pad - chamber - r * (M.h + gap);
-        mn.blocks = layoutBox(mn, m, { top: 44 * z, maxLines: 4, bodyK: 0.42, bodyMax: (d.memberBody || 15) * z });
+        mn.blocks = lay(mn, m, (m.top || d.memberTop || 44) * z);
         n.kids.push(mn); fixed.push(mn); byId.set(m.id, mn);
         for (const id of m.rel || []) relate.push([mn, id, false]);
       });
+      // `even`: the members without a `top` of their own share the smallest title any of them takes, so none of them
+      // shouts over its neighbours
+      if (d.even) {
+        const peers = n.kids.filter(mn => !mn.data.top && mn.blocks.length);
+        const t = Math.min(...peers.map(mn => mn.blocks[0].size));
+        for (const mn of peers) mn.blocks = lay(mn, mn.data, t);
+      }
     }
     if (content.history) {
       const d = content.history, n = node('heading', d, { card: c, w: d.w, h: d.h, fixed: true });
       n.blocks = layoutBox(n, d, { top: 80, maxLines: 3 });
-      setCentre(n, ...at(d.at)); keepIn(n, g.room);
+      setCentre(n, ...at(d.at)); keepIn(n, room);
       fixed.push(n); byId.set(d.id, n);
     }
     // dated moments: those the members name, and the history's
@@ -1177,20 +1425,22 @@ function build() {
       const n = node('event', e, { card: c });
       n.blocks = layoutEvent(n, e);
       const s = e.on && g.has(...e.on) ? seriesOf(...e.on) : null;
-      n.pin = [g.x(e.t), s ? g.y(valueAt(s, e.t)) : g.bottom];
+      n.pin = [g.x(e.t), s ? g.y(g.val(s, e.t)) : g.bottom];
       eventNode.set(e, n); movers.push(n);
       relate.push([n, from, false]);
     };
-    for (const d of content.containers || []) for (const m of d.members) for (const title of m.events || []) {
+    if (content.tug) placeTug(c, g, content.tug, room, byId, relate, fixed);
+    const members = [...(content.containers || []).flatMap(d => d.members), ...(content.tug ? content.tug.themes.flatMap(t => t.members || []) : [])];
+    for (const m of members) for (const title of g ? m.events || [] : []) {
       const e = EVENTS.find(x => x.title === title); if (e) want(e, m.id);
     }
-    if (content.history) {
+    if (content.history && g) {
       for (const e of HISTORY) want(e, content.history.id);
       for (const title of ['Developer Exchange', 'Fortnite opens its editor to makers', 'Roblox Everywhere']) {
         const e = EVENTS.find(x => x.title === title); if (e) want(e, content.history.id);
       }
     }
-    const names = g.names.map(b => Object.assign({ fixed: true, name: true }, b));
+    const names = (g ? g.names : []).map(b => Object.assign({ fixed: true, name: true }, b));
     // Moments take the nearest free place to their pin, rings out from it, above first; then everything that may
     // move eases apart, off the lines and inside the card.
     const placed = [...fixed, ...names];
@@ -1285,7 +1535,7 @@ function resize() {
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
   HOME = homeView(); minS = HOME.s;
   if (first || atHome) Object.assign(view, HOME);
-  else { view.s = Math.max(minS, HOME.s * rel); view.ox = W / 2 - cx * view.s; view.oy = H / 2 + cy * view.s; }
+  else { if (!FRAMES.length) view.s = Math.max(minS, HOME.s * rel); view.ox = W / 2 - cx * view.s; view.oy = H / 2 + cy * view.s; }
   dirty();
 }
 // A card is one thing until it fills most of the screen: 60% one way and 40% the other, as on adoptic.online.
@@ -1358,9 +1608,10 @@ function gtext(text, x, y, size, o = {}) {
   const words = ramp(fs, 5.5, 8.5), f = o.fam || T.body, wt = o.wt || 600;
   const w = unitW(text, wt, f, o.it) * fs, X0 = sx(x) - (o.align === 'center' ? w / 2 : o.align === 'right' ? w : 0), Y0 = sy(y);
   if (X0 > W || X0 + w < 0 || Y0 - fs > H || Y0 + fs < 0) return;
-  if (words < 1) { ctx.fillStyle = col(o.color || 'ink-soft', (1 - words) * 0.38); ctx.fillRect(X0, Y0 - fs * 0.62, w, fs * 0.5); }
+  const a = o.a == null ? 1 : o.a;
+  if (words < 1) { ctx.fillStyle = col(o.color || 'ink-soft', (1 - words) * 0.38 * a); ctx.fillRect(X0, Y0 - fs * 0.62, w, fs * 0.5); }
   if (words > 0.01) {
-    ctx.fillStyle = col(o.color || 'ink-soft', words);
+    ctx.fillStyle = col(o.color || 'ink-soft', words * a);
     if (PT) PT.fill(ctx, text, X0, Y0, fs, wt, f, o.it, dpr);
     else { ctx.font = font(wt, fs, f, o.it); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(text, X0, Y0); }
   }
@@ -1398,13 +1649,25 @@ function drawCard(c) {
   for (const b of c.blocks) drawBlock(b, r.x, r.y, 1);
 }
 function drawGraph(g) {
-  const lab = 3.6 * K, sp = g.spec;
+  // a background graph keeps its grid and scale faint; its lines (`fl`) stay bold enough to read through the argument
+  const lab = 3.6 * K, sp = g.spec, f = sp.background ? 0.45 : 1, fl = sp.background ? 0.85 : 1;
+  // the scale's numbers: `scaleSize` times the axis's, `short` as 250M and 1B, solid enough to read even on a faint
+  // graph, under the `unit` they count
+  const vl = lab * (sp.scaleSize || 1), va = sp.scaleSize ? 0.9 : f;
+  const num = v => sp.short ? (v >= 1000 ? `${v / 1000}B` : `${v}M`) : v >= 1000 ? `${v / 1000} billion` : `${v} million`;
+  if (sp.unit) gtext(sp.unit, g.right + lab * 0.4, g.y(sp.vmax) - vl * 0.1, vl * 0.7, { a: va, wt: 700 });
   for (const v of sp.grid) {
-    ctx.strokeStyle = col('rule', 0.9); ctx.lineWidth = 1;
+    ctx.strokeStyle = col('rule', 0.9 * f); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(sx(g.left), sy(g.y(v))); ctx.lineTo(sx(g.right), sy(g.y(v))); ctx.stroke();
-    gtext(v >= 1000 ? `${v / 1000} billion` : `${v} million`, g.right + lab * 0.4, g.y(v) - lab * 0.3, lab);
+    gtext(num(v), g.right + lab * 0.4, g.y(v) - vl * 0.3, vl, { a: va });
   }
-  ctx.strokeStyle = col('ink-soft', 0.9); ctx.lineWidth = 1.2;
+  // the finer steps: lighter lines and smaller labels, so the main scale still leads
+  for (const v of sp.minor || []) {
+    ctx.strokeStyle = col('rule', 0.55 * f); ctx.lineWidth = 0.75;
+    ctx.beginPath(); ctx.moveTo(sx(g.left), sy(g.y(v))); ctx.lineTo(sx(g.right), sy(g.y(v))); ctx.stroke();
+    gtext(num(v), g.right + lab * 0.4, g.y(v) - vl * 0.22, vl * 0.75, { a: va });
+  }
+  ctx.strokeStyle = col('ink-soft', 0.9 * f); ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(sx(g.left), sy(g.bottom)); ctx.lineTo(sx(g.right), sy(g.bottom)); ctx.stroke();
   // ticks: every year where the years are spread out, every five where they are compressed
   for (let y = sp.t0; y <= sp.t1; y++) {
@@ -1412,47 +1675,51 @@ function drawGraph(g) {
     if (y % every) continue;
     ctx.beginPath(); ctx.moveTo(sx(g.x(y)), sy(g.bottom)); ctx.lineTo(sx(g.x(y)), sy(g.bottom) + Math.max(2, lab * 0.35 * view.s)); ctx.stroke();
     const label = late ? (y < sp.t1 && y % 2 === 1) : y % 10 === 0;
-    if (label) gtext(String(y), late ? g.x(y + 0.5) : g.x(y), g.bottom - lab * 1.3, lab, { align: 'center' });
+    if (label) gtext(String(y), late ? g.x(y + 0.5) : g.x(y), g.bottom - lab * 1.3, lab, { align: 'center', a: f });
   }
   if (sp.split) {
     // where the axis changes pace
-    ctx.setLineDash([4, 4]); ctx.strokeStyle = col('rule', 0.9); ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = col('rule', 0.9 * f); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(sx(g.x(sp.split)), sy(g.bottom)); ctx.lineTo(sx(g.x(sp.split)), sy(g.top)); ctx.stroke();
     ctx.setLineDash([]);
   }
-  const cw = clamp(0.9 * K * view.s, 1.5, 7);
+  const cw = clamp(0.9 * K * view.s, 1.5, 7) * (sp.background ? 3 : 1);
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   for (const s of g.series) {
     ctx.setLineDash(s.kind === 'monthly' ? [cw * 2.4, cw * 1.6] : []);
-    ctx.strokeStyle = col(s.key, 1); ctx.lineWidth = cw * (s.kind === 'monthly' ? 0.75 : 1);
+    ctx.strokeStyle = col(s.key, fl); ctx.lineWidth = cw * (s.kind === 'monthly' ? 0.75 : 1);
     ctx.beginPath(); s.pts.forEach((p, i) => { const x = sx(g.x(p[0])), y = sy(g.y(p[1])); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = col(s.key, 1);
+    ctx.fillStyle = col(s.key, fl);
     for (const p of s.pts) { ctx.beginPath(); ctx.arc(sx(g.x(p[0])), sy(g.y(p[1])), cw * 0.9, 0, Math.PI * 2); ctx.fill(); }
     if (s.est) {
       const end = s.pts[s.pts.length - 1], [t, v] = s.est;
-      ctx.setLineDash([cw * 0.4, cw * 1.6]); ctx.strokeStyle = col(s.key, 0.85); ctx.lineWidth = cw * 0.6;
+      ctx.setLineDash([cw * 0.4, cw * 1.6]); ctx.strokeStyle = col(s.key, 0.85 * fl); ctx.lineWidth = cw * 0.6;
       ctx.beginPath(); ctx.moveTo(sx(g.x(end[0])), sy(g.y(end[1]))); ctx.lineTo(sx(g.x(t)), sy(g.y(v))); ctx.stroke();
       ctx.setLineDash([]); ctx.lineWidth = cw * 0.5;
-      ctx.beginPath(); ctx.arc(sx(g.x(t)), sy(g.y(v)), cw * 1.3, 0, Math.PI * 2); ctx.fillStyle = col('card', 1); ctx.fill(); ctx.strokeStyle = col(s.key, 1); ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx(g.x(t)), sy(g.y(v)), cw * 1.3, 0, Math.PI * 2); ctx.fillStyle = col('card', 1); ctx.fill(); ctx.strokeStyle = col(s.key, fl); ctx.stroke();
     }
   }
-  for (const n of g.names) gtext(n.text, n.x, n.y, g.nameSize, { color: n.s.key, wt: 700 });
+  for (const n of g.names) gtext(n.text, n.x, n.y, g.nameSize, { color: n.s.key, wt: 700, a: fl });
 }
-function drawEdges() {
-  for (const e of EDGES) {
+function drawEdges(list = EDGES) {
+  for (const e of list) {
     if (e.quiet) continue;
     const on = edgeLit(e);
     const ac = centre(e.a), bc = centre(e.b);
     const p = exitPt(e.a, bc[0], bc[1]), q = exitPt(e.b, ac[0], ac[1]);
     const lw = Math.max(0.8, Math.min(e.a.lw || 1, e.b.lw || 1) * 1.1);
-    if (e.w) { ctx.strokeStyle = col(on ? 'ink' : 'line', on ? 1 : 0.7); ctx.lineWidth = Math.max(0.8, e.w * view.s) * (on ? 1.4 : 1); }
+    if (e.w) { ctx.strokeStyle = col(on ? 'ink' : e.color || 'line', on ? 1 : e.color ? 0.8 : 0.7); ctx.lineWidth = Math.max(0.8, e.w * view.s) * (on ? 1.4 : 1); }
     else { ctx.strokeStyle = col(on ? 'line' : 'ink-soft', on ? 1 : 0.55); ctx.lineWidth = clamp(lw * view.s * 2.5, 0.5, lw) * (on ? 1.5 : 1); }
+    ctx.setLineDash(e.dash ? [e.dash * view.s, e.dash * view.s] : []);
     ctx.beginPath(); ctx.moveTo(sx(p[0]), sy(p[1])); ctx.lineTo(sx(q[0]), sy(q[1])); ctx.stroke();
+    ctx.setLineDash([]);
   }
 }
-// The tint a node wears: an explainer its platform's colour, everything else ink.
-const inkOf = n => n.kind === 'explainer' ? n.data.key : 'ink';
+// The tint a node wears: an explainer its platform's colour, a point the colour of the side it is on, everything
+// else ink.
+const SIDE_INK = { pg: 'roblox', sm: 'tiktok', both: 'ink' };
+const inkOf = n => n.kind === 'explainer' ? n.data.key : n.kind === 'member' && n.data.side ? SIDE_INK[n.data.side] : 'ink';
 // A whole card as a bud: the card itself drawn small, its title band and the map under it, so zooming in arrives in
 // the same picture.
 function drawCardCopy(c, r, a, s, on) {
@@ -1500,7 +1767,7 @@ function drawCopy(n, r, a, s, on, depth = 0) {
   ctx.fillStyle = col('card', a); ctx.fill();
   if (n.ringW) {
     // a theme's, link's or facet's ring; a theme's or link's room under its name; a facet's pocket of doors
-    ctx.strokeStyle = col(on ? 'ink' : 'line', a); ctx.lineWidth = Math.max(0.8, n.ringW * s) * (on ? 1.3 : 1);
+    ctx.strokeStyle = col(on ? 'ink' : n.ringColor || 'line', a); ctx.lineWidth = Math.max(0.8, n.ringW * s) * (on ? 1.3 : 1);
     ctx.stroke();
     // its room, and its pockets: bigger context at the top, what is more specific at the foot
     const pR = (n.kind === 'theme' ? n.room.Ri : POCKET.R * n.w / 2) - n.ringW * 0.5, plw = Math.max(0.5, n.ringW * 0.35 * s);
@@ -1526,7 +1793,7 @@ function drawInside(n, r, a, s, depth) {
   if (!depth || depth >= 4) return;
   const at = (x0, y1, w, h) => ({ x: r.x + (x0 - n.x0) * s, y: r.y + (n.y1 - y1) * s, w: w * s, h: h * s });
   for (const k of n.kids || []) {
-    if (k.kind === 'lobe' || k.kind === 'member' && n.kind !== 'container') continue;
+    if (k.kind === 'lobe' || k.kind === 'member' && n.kind !== 'container' && n.kind !== 'tug') continue;
     const kr = at(k.x0, k.y1, k.w, k.h);
     if (Math.min(kr.w, kr.h) >= 3 && onScreen(kr)) drawCopy(k, kr, a * presence(kr), s, false, depth + 1);
   }
@@ -1535,9 +1802,9 @@ function drawInside(n, r, a, s, depth) {
     if (Math.min(dr.w, dr.h) >= 3 && onScreen(dr)) drawCopy(b.node, dr, a * presence(dr), s * b.k, false, depth + 1);
   }
 }
-function drawNodes() {
+function drawNodes(list = NODES) {
   // containers and themes first, so their members and facets draw over them
-  for (const pass of [false, true]) for (const n of NODES) {
+  for (const pass of [false, true]) for (const n of list) {
     if ((n.kind === 'member' || n.kind === 'facet') !== pass || n.kind === 'lobe') continue;
     const r = rectOf(n);
     if (!onScreen(r)) continue;
@@ -1546,19 +1813,19 @@ function drawNodes() {
   }
 }
 // Pins: a moment to its date, a platform's explainer to its line, in the platform's colour.
-function drawPins(dots) {
-  for (const n of NODES) {
+function drawPins(dots, list = NODES) {
+  for (const n of list) {
     if (!n.pin) continue;
-    const on = hover === n || nodeLit(n), c = n.kind === 'explainer' ? n.data.key : 'ink';
+    const on = hover === n || nodeLit(n), keyed = n.kind === 'explainer' || n.kind === 'hub', c = keyed ? n.data.key : 'ink';
     const [x, y] = n.pin, [px, py] = exitPt(n, x, y);
     if (dots) {
       ctx.fillStyle = col(on ? 'line' : c, 1);
-      const rr = n.kind === 'explainer' ? clamp(40 * view.s, 2, 12) : clamp(14 * view.s, 1.2, on ? 7 : 5);
+      const rr = keyed ? clamp(40 * view.s, 2, 12) : clamp(14 * view.s, 1.2, on ? 7 : 5);
       ctx.beginPath(); ctx.arc(sx(x), sy(y), rr, 0, Math.PI * 2); ctx.fill();
       continue;
     }
-    ctx.strokeStyle = col(on ? 'line' : c, on ? 1 : n.kind === 'explainer' ? 0.9 : 0.55);
-    ctx.lineWidth = n.kind === 'explainer' ? clamp(14 * view.s, 1, 4) : on ? 2 : clamp(1.2 * view.s * 4, 0.4, 1.2);
+    ctx.strokeStyle = col(on ? 'line' : c, on ? 1 : keyed ? 0.9 : 0.55);
+    ctx.lineWidth = keyed ? clamp(14 * view.s, 1, 4) : on ? 2 : clamp(1.2 * view.s * 4, 0.4, 1.2);
     ctx.beginPath(); ctx.moveTo(sx(px), sy(py)); ctx.lineTo(sx(x), sy(y)); ctx.stroke();
   }
 }
@@ -1570,11 +1837,11 @@ function seen(n) {
   const ix = clamp(Math.min(r.x + r.w, W) - Math.max(r.x, 0), 0, r.w), iy = clamp(Math.min(r.y + r.h, H) - Math.max(r.y, 0), 0, r.h);
   return ramp(ix * iy / (r.w * r.h), 0.3, 0.8) * ramp(Math.min(r.w, r.h), 30, 80);
 }
-const budAlpha = b => b.blocked ? 0 : budsShown(b.host) * presence(budRect(b)) * (1 - seen(b.node));
+// a bud fades as the thing it stands for comes into view itself; inside a frame (below) nothing else is in view
+const budAlpha = (b, framed) => b.blocked ? 0 : budsShown(b.host) * presence(budRect(b)) * (framed ? 1 : 1 - seen(b.node));
 let SHOWN = [];
-function drawBuds() {
-  SHOWN = [];
-  for (const h of NODES) {
+function drawBuds(list = NODES, layer = 0) {
+  for (const h of list) {
     // a theme's kissing cards and a facet's doors are part of its picture, there at every distance
     for (const b of [...(h.kiss || []), ...(h.doors || [])]) {
       const r = budRect(b);
@@ -1582,30 +1849,90 @@ function drawBuds() {
       const ba = presence(r) * presence(rectOf(h));
       if (ba <= 0.004) continue;
       drawCopy(b.node, r, ba, view.s * b.k, hover === b, 1);
-      SHOWN.push({ b, a: ba });
+      SHOWN.push({ b, a: ba, layer });
     }
     if (budsShown(h) <= 0.004) continue;
     for (const b of h.buds) {
       const r = budRect(b);
       if (b.blocked || !onScreen(r)) continue;
-      const ba = budAlpha(b);
+      const ba = budAlpha(b, layer > 0);
       if (ba <= 0.004) continue;
       drawCopy(b.node, r, ba, view.s * b.k, hover === b, 1);
-      SHOWN.push({ b, a: ba });
+      SHOWN.push({ b, a: ba, layer });
     }
+  }
+}
+// ---------- Frames: zooming in without end ----------
+// ZOOMING INTO A BUD OPENS IT WHERE IT IS. A bud is a thing drawn small on another's rim (or in a facet's pocket, or
+// kissing a theme). Once it fills enough of the screen it becomes a frame: the thing itself, drawn whole at the bud's
+// place with everything it holds and its own buds, which open the same way, without end. Around it, the layer it was
+// opened from stays drawn, so the way out is the way in: once it shrinks back below that size, the frame closes and
+// the view is exactly the picture it was opened from. A frame's view is in the thing's own world units (where it
+// really sits on the sheet), so the numbers stay small however deep the visitor goes; frameViews() works back out to
+// the view of each layer around it. Nothing ever moves the visitor to where a thing really sits on the map.
+const FRAME_IN = 0.32, FRAME_OUT = 0.3;   // shares of the screen's smaller side: a bud opens above one, closes below the other
+let FRAMES = [];
+// what a frame draws: the thing and everything it holds; a card, everything on it
+function subtreeOf(n) {
+  if (n.kind === 'card') return new Set(NODES.filter(x => x.card === n));
+  const out = new Set(), add = x => { out.add(x); for (const k of x.kids || []) add(k); };
+  add(n);
+  return out;
+}
+// the view of every layer, from the sheet's out to the innermost frame's (the view itself)
+function frameViews() {
+  const vs = [{ s: view.s, ox: view.ox, oy: view.oy }];
+  for (let j = FRAMES.length - 1; j >= 0; j--) {
+    const b = FRAMES[j].b, v = vs[0], s = v.s / b.k;
+    vs.unshift({ s, ox: b.node.x0 * v.s + v.ox - b.x0 * s, oy: -b.node.y1 * v.s + v.oy + b.y1 * s });
+  }
+  return vs;
+}
+function withView(v, fn) {
+  const was = { s: view.s, ox: view.ox, oy: view.oy };
+  Object.assign(view, v);
+  try { return fn(); } finally { Object.assign(view, was); }
+}
+// the sheet is layer 0; a frame draws only what it holds
+function drawLayer(j) {
+  if (!j) {
+    for (const c of CARDS) drawCard(c);
+    drawEdges(); drawPins(false); drawNodes(); drawPins(true); drawBuds();
+    return;
+  }
+  const F = FRAMES[j - 1], list = [...F.nodes];
+  if (F.card) drawCard(F.card);
+  drawEdges(EDGES.filter(e => F.nodes.has(e.a) && F.nodes.has(e.b)));
+  drawPins(false, list); drawNodes(list); drawPins(true, list); drawBuds(list, j);
+}
+function pushFrame(b) {
+  const n = b.node, s2 = view.s * b.k, x = sx(b.x0), y = sy(b.y1);
+  FRAMES.push({ b, nodes: subtreeOf(n), card: n.kind === 'card' ? n : null });
+  view.ox = x - n.x0 * s2; view.oy = y + n.y1 * s2; view.s = s2;
+  framed = true; hover = null; dirty();
+}
+// back out to layer j, the picture unchanged
+function popTo(j) {
+  if (FRAMES.length <= j) return;
+  Object.assign(view, frameViews()[j]);
+  FRAMES.length = j; hover = null; dirty();
+}
+// a frame closes once what it opened is too small, or gone from the screen
+function checkFrames() {
+  while (FRAMES.length) {
+    const r = rectOf(FRAMES[FRAMES.length - 1].b.node);
+    if (Math.min(r.w, r.h) >= FRAME_OUT * Math.min(W, H) && onScreen(r)) break;
+    popTo(FRAMES.length - 1);
   }
 }
 function draw() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.globalAlpha = 1;
   ctx.fillStyle = T.ground; ctx.fillRect(0, 0, W, H);
-  for (const c of CARDS) drawCard(c);
-  drawEdges();
-  drawPins(false);
-  drawNodes();
-  drawPins(true);
-  drawBuds();
-  drawFade();
+  SHOWN = [];
+  // the innermost layers only: further out, a layer is so large that what shows of it is its ground
+  const vs = frameViews();
+  for (let j = Math.max(0, vs.length - 3); j < vs.length; j++) withView(vs[j], () => drawLayer(j));
   ctx.globalAlpha = 1;
 }
 let raf = 0;
@@ -1636,15 +1963,24 @@ function homingAnchor(px, py) {
 }
 let lastZoomOut = false;
 function zoomAt(px, py, k) {
-  const s2 = clamp(view.s * k, minS, MAX_S), kk = s2 / view.s;
+  // inside a frame, going out has no floor and no homing: the frame closes on its own and hands back to the layer
+  // it was opened from
+  const deep = FRAMES.length > 0;
+  const s2 = clamp(view.s * k, deep ? 0 : minS, MAX_S), kk = s2 / view.s;
   if (kk !== 1) { lastZoomOut = kk < 1; framed = false; }
-  if (kk < 1) {
+  if (kk < 1 && !deep) {
     if (s2 <= HOME.s * (1 + 1e-9)) { Object.assign(view, HOME); moved(); dirty(); return; }
     [px, py] = homingAnchor(px, py);
   }
   view.ox = px - (px - view.ox) * kk; view.oy = py - (py - view.oy) * kk; view.s = s2;
-  clampPan(); moved();
+  if (deep) checkFrames(); else clampPan();
+  moved();
   dirty();
+}
+function panBy(dx, dy) {
+  view.ox += dx; view.oy += dy; framed = false;
+  if (FRAMES.length) checkFrames(); else clampPan();
+  moved(); dirty();
 }
 // ONCE STILL, IT SETTLES. A zoom out that comes to rest within SNAP_OUT of the full view finishes the journey by
 // itself. Otherwise: fully zoomed out the sheet sits centred; a side larger than the screen may stand off its edge by
@@ -1678,6 +2014,7 @@ function settleTick(now) {
   settleRaf = 0;
   const busy = flight && !flight.stop && !flight.done || pointers.size > 0;
   if (busy || now - lastMove < SETTLE_AFTER) { settleT = now; settleRaf = requestAnimationFrame(settleTick); return; }
+  if (FRAMES.length) return;   // inside a frame nothing settles: the visitor is where they put themselves
   if (lastZoomOut && view.s > HOME.s * 1.0001 && view.s < HOME.s * SNAP_OUT) { lastZoomOut = false; travel(HOME); return; }
   if (framed) return;
   const dt = Math.min(50, now - (settleT || now)) || 16; settleT = now;
@@ -1705,77 +2042,78 @@ function travel(to, done) {
     const cx = from.cx + (dest.cx - from.cx) * k, cy = from.cy + (dest.cy - from.cy) * k;
     view.s = s; view.ox = W / 2 - cx * s; view.oy = H / 2 + cy * s;
     draw();
-    if (t < 1) requestAnimationFrame(step); else { me.done = true; lastZoomOut = false; framed = true; if (done) done(); moved(); }
+    if (t < 1) requestAnimationFrame(step); else { me.done = true; lastZoomOut = false; framed = true; if (done) done(); else checkFrames(); moved(); }
   };
   requestAnimationFrame(step);
 }
 const stopFlight = () => { if (flight) flight.stop = true; };
-const goHome = () => travel(HOME);
+const goHome = () => { popTo(0); travel(HOME); };
 // Going to anything frames it whole, in the middle of the screen: a card, a contest, a point, a node of the money map.
 function viewFor(n) {
   return fitView(n.x0, n.y1, n.w, n.h, n.kind === 'card' ? 0.03 : n.kind === 'money' || n.kind === 'replace' ? 0.05 : 0.1);
 }
 const goTo = n => travel(viewFor(n));
-const FADE_MS = 450;
-let FADE = null;
-function swapInto(b) {
-  const img = document.createElement('canvas');
-  img.width = cv.width; img.height = cv.height;
-  img.getContext('2d').drawImage(cv, 0, 0);
-  const s2 = view.s * b.k;
-  view.ox = sx(b.x0) - b.node.x0 * s2; view.oy = sy(b.y1) + b.node.y1 * s2; view.s = s2;
-  FADE = { img, t0: performance.now(), at: { s: view.s, ox: view.ox, oy: view.oy } };
-  framed = true; hover = null; dirty();
-}
-function drawFade() {
-  if (!FADE) return;
-  const t = (performance.now() - FADE.t0) / FADE_MS;
-  if (t >= 1) { FADE = null; return; }
-  const k = view.s / FADE.at.s;
-  ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * (view.ox - FADE.at.ox * k), dpr * (view.oy - FADE.at.oy * k));
-  ctx.globalAlpha = 1 - t * t * (3 - 2 * t);
-  ctx.drawImage(FADE.img, 0, 0, W, H);
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  dirty();
-}
-const enterBud = b => travel(fitView(b.x0, b.y1, b.w, b.h, 0.1), () => swapInto(b));
+// a click on a bud glides to it and opens it there; zooming in on one opens it once it is large enough
+const enterBud = b => travel(fitView(b.x0, b.y1, b.w, b.h, 0.1), () => pushFrame(b));
 function stepThrough(px, py) {
-  const b = hitBud(px, py);
-  if (b) { const r = budRect(b); if (Math.min(r.w, r.h) >= 0.45 * Math.min(W, H)) swapInto(b); }
+  const b = hitBud(px, py, FRAMES.length);
+  if (b) { const r = budRect(b); if (Math.min(r.w, r.h) >= FRAME_IN * Math.min(W, H)) pushFrame(b); }
 }
 const insideShape = (n, r, px, py) => Math.pow(Math.abs(px - r.x - r.w / 2) / (r.w / 2), n.n) + Math.pow(Math.abs(py - r.y - r.h / 2) / (r.h / 2), n.n) <= 1;
 const insideRect = (r, px, py) => px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
-function hitBud(px, py) {
-  for (const { b, a } of SHOWN) if (a >= 0.5 && insideShape(b.node, budRect(b), px, py)) return b;
+function hitBud(px, py, layer = 0) {
+  for (const { b, a, layer: l } of SHOWN) if (l === layer && a >= 0.5 && insideShape(b.node, budRect(b), px, py)) return b;
   return null;
+}
+// The innermost layer answers first, then the ones around it; HIT_LAYER says which answered.
+let HIT_LAYER = 0;
+function hit(px, py) {
+  const vs = frameViews();
+  for (let j = vs.length - 1; j >= Math.max(0, vs.length - 3); j--) {
+    const r = withView(vs[j], () => j ? hitFrame(j, px, py) : hitSheet(px, py));
+    if (r) { HIT_LAYER = j; return r; }
+  }
+  return null;
+}
+// in a frame: on a card, as on an entered card; else its buds, then what it holds, smallest first
+function hitFrame(j, px, py) {
+  const F = FRAMES[j - 1];
+  if (F.card) return insideRect(rectOf(F.card), px, py) ? hitCard(F.card, px, py, j) : null;
+  return hitBud(px, py, j) || hitNodes([...F.nodes], px, py);
 }
 // Over a card that is not yet entered, the card answers for everything on it. Inside an entered card: buds, then
 // members (they sit on top of their containers), then everything else.
-function hit(px, py) {
+function hitSheet(px, py) {
   for (const c of CARDS) {
     if (c.sub === 'empty' || !insideRect(rectOf(c), px, py)) continue;
-    if (!entered(c)) return c;
-    // inside the main card, its argument boxes; anywhere else on it, the card, so a click frames it
-    if (c.sub === 'masthead') {
-      const r = rectOf(c), s = view.s;
-      return c.args.find(b => insideRect({ x: r.x + b.x * s, y: r.y + b.y * s, w: b.w * s, h: b.h * s }, px, py)) || c;
-    }
-    if (c.sub === 'money') {
-      const r = window.MoneyMap && c.map ? MoneyMap.hit(px, py) : null;
-      return !r ? null : r.href ? { kind: 'link', href: r.href } : moneyNode(c, r);
-    }
-    if (c.sub === 'replace') {
-      const r = window.ReplaceCard && c.map ? ReplaceCard.hit(px, py) : null;
-      return r ? replaceNode(c, r) : null;
-    }
-    const b = hitBud(px, py);
-    if (b) return b;
-    // the smallest thing under the pointer answers; a lobed node is only its lobes
-    const top = n => n.kind === 'member' || n.kind === 'facet';
-    const order = [...c.inner.filter(top), ...c.inner.filter(n => !top(n) && n.kind !== 'lobed').sort((p, q) => p.w * p.h - q.w * q.h)];
-    for (const n of order) { const r = rectOf(n); if (insideShape(n, r, px, py) && presence(r) > 0.2) return n; }
-    return null;
+    return entered(c) ? hitCard(c, px, py, 0) : c;
   }
+  return null;
+}
+function hitCard(c, px, py, layer) {
+  // inside the main card, its argument boxes; anywhere else on it, the card, so a click frames it
+  if (c.sub === 'masthead') {
+    const r = rectOf(c), s = view.s;
+    return c.args.find(b => insideRect({ x: r.x + b.x * s, y: r.y + b.y * s, w: b.w * s, h: b.h * s }, px, py)) || c;
+  }
+  if (c.sub === 'money') {
+    const r = window.MoneyMap && c.map ? MoneyMap.hit(px, py) : null;
+    return !r ? null : r.href ? { kind: 'link', href: r.href } : moneyNode(c, r);
+  }
+  // on the replace card, what this page draws there (its corner section) first, then what replace-card.js draws
+  if (c.sub === 'replace') {
+    const n = hitBud(px, py, layer) || hitNodes(c.inner, px, py);
+    if (n) return n;
+    const r = window.ReplaceCard && c.map ? ReplaceCard.hit(px, py) : null;
+    return r ? replaceNode(c, r) : null;
+  }
+  return hitBud(px, py, layer) || hitNodes(c.inner, px, py);
+}
+// the smallest thing under the pointer answers; a lobed node is only its lobes
+function hitNodes(list, px, py) {
+  const top = n => n.kind === 'member' || n.kind === 'facet';
+  const order = [...list.filter(top), ...list.filter(n => !top(n) && n.kind !== 'lobed').sort((p, q) => p.w * p.h - q.w * q.h)];
+  for (const n of order) { const r = rectOf(n); if (insideShape(n, r, px, py) && presence(r) > 0.2) return n; }
   return null;
 }
 
@@ -1808,7 +2146,7 @@ cv.addEventListener('pointermove', e => {
   if (drag) {
     const dx = e.offsetX - drag.x, dy = e.offsetY - drag.y;
     if (!drag.moved && Math.hypot(dx, dy) > 4) { drag.moved = true; cv.classList.add('dragging'); quietHint(); }
-    if (drag.moved) { view.ox += dx; view.oy += dy; drag.x = e.offsetX; drag.y = e.offsetY; framed = false; clampPan(); moved(); dirty(); }
+    if (drag.moved) { drag.x = e.offsetX; drag.y = e.offsetY; panBy(dx, dy); }
     return;
   }
   const h = hit(e.offsetX, e.offsetY);
@@ -1825,6 +2163,8 @@ function endPointer(e) {
   if (drag && !drag.moved && e.type === 'pointerup') {
     const n = hit(e.offsetX, e.offsetY);
     if (n) {
+      // a thing in a layer around the innermost frame: back out to that layer first, the picture unchanged
+      popTo(HIT_LAYER);
       if (n.kind === 'link') window.open(n.href, '_blank', 'noopener');
       else if (n.kind === 'arg') {
         // an argument goes to the card or the theme that makes it
@@ -1853,10 +2193,10 @@ window.addEventListener('keydown', e => {
   if (e.key === 'Escape' || e.key === 'Home' || e.key === '0') { stopFlight(); quietHint(); goHome(); return; }
   else if (e.key === '+' || e.key === '=') { zoomAt(W / 2, H / 2, 1.4); stepThrough(W / 2, H / 2); }
   else if (e.key === '-' || e.key === '_') zoomAt(W / 2, H / 2, 1 / 1.4);
-  else if (e.key === 'ArrowLeft') { view.ox += step; framed = false; clampPan(); moved(); dirty(); }
-  else if (e.key === 'ArrowRight') { view.ox -= step; framed = false; clampPan(); moved(); dirty(); }
-  else if (e.key === 'ArrowUp') { view.oy += step; framed = false; clampPan(); moved(); dirty(); }
-  else if (e.key === 'ArrowDown') { view.oy -= step; framed = false; clampPan(); moved(); dirty(); }
+  else if (e.key === 'ArrowLeft') panBy(step, 0);
+  else if (e.key === 'ArrowRight') panBy(-step, 0);
+  else if (e.key === 'ArrowUp') panBy(0, step);
+  else if (e.key === 'ArrowDown') panBy(0, -step);
   else return;
   stopFlight(); quietHint();
 });
@@ -1866,6 +2206,7 @@ window.addEventListener('resize', resize);
 const relook = () => {
   readTheme(); build();
   HOME = homeView(); minS = HOME.s;
+  if (FRAMES.length) { FRAMES = []; Object.assign(view, HOME); }
   if (!movedByVisitor) Object.assign(view, HOME);
   dirty();
 };
@@ -1876,7 +2217,7 @@ build(); resize();
 const faces = ['700 40px "Source Serif 4"', '400 40px "Source Sans 3"', '700 40px "Source Sans 3"', 'italic 400 40px "Source Sans 3"'];
 Promise.race([Promise.all(faces.map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 2500))]).then(relook);
 document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', relook);
-window.__map = { get HOME() { return HOME; }, zoomAt, view, goTo, viewFor, goHome, hit, fitView, entered, budAlpha, get SHOWN() { return SHOWN; }, get CARDS() { return CARDS; }, get NODES() { return NODES; }, get EDGES() { return EDGES; }, WORLD, get hover() { return hover; }, set hover(h) { hover = h; dirty(); } };
+window.__map = { get HOME() { return HOME; }, zoomAt, view, goTo, viewFor, goHome, hit, fitView, entered, budAlpha, get SHOWN() { return SHOWN; }, get FRAMES() { return FRAMES; }, frameViews, popTo, get CARDS() { return CARDS; }, get NODES() { return NODES; }, get EDGES() { return EDGES; }, WORLD, get hover() { return hover; }, set hover(h) { hover = h; dirty(); } };
 })();
 </script>
 <script src="hand-control.js"></script>
