@@ -2,14 +2,17 @@
 // pointer and wheel events a mouse or a touch screen sends, so the map moves by its own rules and nothing here knows
 // its camera. Any map drawn on <canvas id="map"> that takes drags, two-finger pinches and the wheel can use it.
 //   Open hand           points: lights what it is over, like a mouse
-//   Pinch, let go       clicks: goes to what it is over
+//   Pinch, let go       clicks: goes to what it is over, and presses the hand-control buttons
 //   Pinch, move         drags the map
-//   Fist, push or pull  zooms in toward the screen, out away from it (the wheel, at the point the fist closed)
-//   Two hands pinched   stretched apart or squeezed together, zooms (a two-finger pinch, stretched a little more)
+//   Fist                grabs the map like a sheet: moved sideways drags it, pushed toward the screen zooms in, pulled
+//                       back zooms out, both at once (the wheel, at the fist); letting go of a fist never clicks
+//   Two hands pinched   (or fists) stretched apart or squeezed together, zooms (a two-finger pinch, stretched a little more)
 // The hand tracker is MediaPipe's (tasks-vision 0.10.14 from jsdelivr, its model from Google's storage); it runs in
 // this page and the camera picture never leaves it. The button (or H) turns it on and off; a viewer who left it on
-// finds it on next time. ?handsrc=<video or image URL> watches that instead of the camera, and ?handsrc=none watches
-// nothing, for tests that hand it results themselves through window.__hands.see().
+// finds it on next time. The cross on the camera window closes the window while the hands keep working, and Show
+// camera opens it again; a viewer who closed it finds it closed next time. ?handsrc=<video or image URL> watches that
+// instead of the camera, and ?handsrc=none watches nothing, for tests that hand it results themselves through
+// window.__hands.see().
 (() => {
 'use strict';
 const cv = document.getElementById('map');
@@ -22,10 +25,10 @@ const REACH = 0.62, REACH_CY = 0.42;    // the part of the picture that spans th
 const PINCH_ON = 0.32, PINCH_OFF = 0.5; // thumb tip to index tip, over wrist to middle knuckle, in 3D
 const CURL = 1.1;                       // a finger is curled when its tip is nearer the wrist than this times its knuckle
 const HOLD = { open: 2, pinch: 2, fist: 3 }; // frames a new hand shape must last before it counts
-const DEAD = 0.2;                       // a pinched hand may wander this much of its palm's size on screen and still click
+const DEAD = 0.2;                       // a pressed hand may wander this much of its palm's size on screen and still be still, so a pinch and let go clicks
 const SETTLE_MS = 200;                  // a hand just found cannot press yet: the tracker's first guess jumps once it locks on
 const LOST_AFTER = 220;                 // ms a hand may go unseen before it is let go
-const FIST_GAIN = 3, FIST_BAND = 0.03;  // zoom = (hand size change)^GAIN, past a band that swallows the tracker's jitter
+const FIST_GAIN = 3, FIST_BAND = 0.03;  // fist zoom = (hand size change)^GAIN, past a band that swallows the tracker's jitter
 const STRETCH = 1.5;                    // two-hand zoom = (spread change)^STRETCH
 const WHEEL_RATE = 0.0015;              // the map's wheel: zoom = exp(-deltaY * WHEEL_RATE)
 const EASE_MS = 30, CATCH_MS = 120;     // the pointer glides between camera frames; a drag catches up with the hand
@@ -41,7 +44,11 @@ css.textContent = `
   font: 14px/1.3 var(--font-body, system-ui, sans-serif); color: var(--ink, #1B263F); }
 #hands button { font: inherit; color: inherit; background: var(--card, #fff); border: 1px solid var(--rule, #ccc);
   border-radius: 6px; padding: 8px 12px; cursor: pointer; }
-#hands button:hover { border-color: var(--ink-soft, #555); }
+#hands button:hover, #hands button.hand-over { border-color: var(--ink-soft, #555); }
+#hands .row { display: flex; gap: 8px; }
+#hands .close { position: absolute; top: 6px; right: 6px; z-index: 1; width: 32px; height: 32px; padding: 0; border: 0;
+  border-radius: 50%; display: grid; place-items: center; color: #fff; background: rgba(0, 0, 0, .55); }
+#hands .close:hover, #hands .close.hand-over { background: rgba(0, 0, 0, .85); }
 #hands .panel { background: var(--card, #fff); border: 1px solid var(--rule, #ccc); border-radius: 6px; padding: 8px; }
 #hands .panel[hidden] { display: none; }
 #hands .view { position: relative; }
@@ -53,7 +60,7 @@ css.textContent = `
 #hands td { padding: 3px 6px; color: var(--ink-soft, #555); }
 #hands td + td { color: var(--ink, #1B263F); text-align: right; }
 #hands tr.now td { background: color-mix(in srgb, var(--line, #3F6FA3) 20%, transparent); color: var(--ink, #1B263F); }
-.hand-cursor { position: fixed; left: 0; top: 0; z-index: 4; pointer-events: none; will-change: transform; }
+.hand-cursor { position: fixed; left: 0; top: 0; z-index: 6; pointer-events: none; will-change: transform; }
 .hand-cursor i { position: absolute; left: -14px; top: -14px; width: 28px; height: 28px; box-sizing: border-box;
   border-radius: 50%; border: 2px solid var(--ink, #1B263F); background: color-mix(in srgb, var(--card, #fff) 45%, transparent);
   transition: transform .12s, background-color .12s, border-color .12s; }
@@ -66,21 +73,26 @@ document.head.appendChild(css);
 const ui = {};
 ui.root = document.createElement('div');
 ui.root.id = 'hands';
-ui.root.innerHTML = `<div class="panel" hidden><div class="view"><canvas width="512" height="384"></canvas><div class="status"></div></div>
+ui.root.innerHTML = `<div class="panel" hidden><div class="view"><canvas width="512" height="384"></canvas><div class="status"></div>
+<button type="button" class="close" aria-label="Close the camera window" title="Close the camera window (your hands keep working)">
+<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
 <table>
 <tr data-g="open"><td>Open hand</td><td>Point</td></tr>
 <tr data-g="click"><td>Pinch, let go</td><td>Go there</td></tr>
-<tr data-g="drag"><td>Pinch, move</td><td>Move the map</td></tr>
+<tr data-g="drag"><td>Pinch or fist, move</td><td>Move the map</td></tr>
 <tr data-g="fist"><td>Fist, push in or pull back</td><td>Zoom</td></tr>
 <tr data-g="stretch"><td>Pinch both hands, pull apart</td><td>Zoom</td></tr>
-</table></div><button type="button">Hand control</button>`;
+</table></div><div class="row"><button type="button" class="show" hidden>Show camera</button><button type="button" class="onoff">Hand control</button></div>`;
 document.body.appendChild(ui.root);
 ui.panel = ui.root.querySelector('.panel');
 ui.view = ui.root.querySelector('canvas');
 ui.status = ui.root.querySelector('.status');
 ui.rows = [...ui.root.querySelectorAll('tr')];
-ui.button = ui.root.querySelector('button');
+ui.button = ui.root.querySelector('.onoff');
+ui.show = ui.root.querySelector('.show');
 ui.button.addEventListener('click', () => (running ? stop() : start()));
+ui.root.querySelector('.close').addEventListener('click', () => (running ? openWindow(false) : (ui.panel.hidden = true)));
+ui.show.addEventListener('click', () => openWindow(true));
 addEventListener('keydown', e => {
   if ((e.key === 'h' || e.key === 'H') && !e.ctrlKey && !e.metaKey && !e.altKey) running ? stop() : start();
 });
@@ -106,6 +118,18 @@ function send(type, h, p) {
 }
 function wheel(p, zoom) {
   cv.dispatchEvent(new WheelEvent('wheel', { deltaY: -Math.log(zoom) / WHEEL_RATE, deltaMode: 0, clientX: p[0], clientY: p[1], bubbles: true, cancelable: true }));
+}
+// The hand-control buttons sit over the map, so a hand pointer over one is over it and not the map, as a mouse would be.
+function uiAt(p) {
+  const el = document.elementFromPoint(Math.min(p[0], W - 1), Math.min(p[1], H - 1));
+  return el && ui.root.contains(el) ? el.closest('button') : null;
+}
+let overBtn = null; // the button the leading hand is over, lit like a mouse's hover
+function overButton(b) {
+  if (b === overBtn) return;
+  if (overBtn) overBtn.classList.remove('hand-over');
+  if (b) b.classList.add('hand-over');
+  overBtn = b;
 }
 
 // ---------- Seeing ----------
@@ -155,7 +179,7 @@ function palmSize(lm) {
 function shapeOf(h, lm) {
   const [vw, vh] = srcSize(), d = (a, b) => Math.hypot((lm[a].x - lm[b].x) * vw, (lm[a].y - lm[b].y) * vh, (lm[a].z - lm[b].z) * vw);
   const curled = [[8, 5], [12, 9], [16, 13], [20, 17]].filter(([tip, knuckle]) => d(tip, 0) < CURL * d(knuckle, 0)).length;
-  if (curled === 4) return 'fist';
+  if (curled === 4 || (h.state === 'fist' && curled === 3)) return 'fist'; // a fist dragging the map holds through one finger's flicker
   const pinch = d(4, 8) / d(0, 9);
   if (h.state === 'pinch' ? pinch < PINCH_OFF : pinch < PINCH_ON && d(8, 0) > 1.1 * d(5, 0)) return 'pinch';
   return 'open';
@@ -163,6 +187,7 @@ function shapeOf(h, lm) {
 
 // One look at the camera: match what it saw to the hands already followed, nearest palm first.
 function see(res, t = performance.now()) {
+  if (!running) return; // a look already on its way when Stop was pressed
   const found = (res.landmarks || []).map(lm => ({ lm, c: palmCentre(lm) }));
   const unseen = new Set(hands);
   for (const f of found) {
@@ -174,10 +199,10 @@ function see(res, t = performance.now()) {
   for (const h of unseen) if (t - h.seen > LOST_AFTER) lose(h);
   if (found.length) since = t;
   if (landmarker || TEST_SRC === 'none') say(found.length || t - since < 1500 ? '' : 'Hold a hand up to the camera');
-  drawView();
+  if (!ui.panel.hidden) drawView();
 }
 function meet(f, t) {
-  const h = { pid: nextPid++, found: t, state: 'open', cand: 'open', candN: 0, down: false, fist: null,
+  const h = { pid: nextPid++, found: t, state: 'open', cand: 'open', candN: 0, down: false, press: null,
     fx: new OneEuro(1.5, 0.015), fy: new OneEuro(1.5, 0.015), fs: new OneEuro(1, 0.05) };
   look(h, f, t);
   h.pos = h.target.slice();
@@ -192,41 +217,55 @@ function look(h, f, t) {
   const [x, y] = toScreen(f.c);
   h.target = [h.fx.at(x, t), h.fy.at(y, t)];
   const size = h.fs.at(palmSize(f.lm), t);
-  if (h.fist) { // past the band, a change in the hand's size is a zoom, applied over the next few frames
-    const ref = size > h.fist.ref * (1 + FIST_BAND) ? size / (1 + FIST_BAND) : size < h.fist.ref / (1 + FIST_BAND) ? size * (1 + FIST_BAND) : h.fist.ref;
-    h.fist.owed += FIST_GAIN * Math.log(ref / h.fist.ref);
-    h.fist.ref = ref;
+  if (h.zoom) { // past the band, a change in a gripping fist's size is a zoom, applied over the next few frames
+    const ref = size > h.zoom.ref * (1 + FIST_BAND) ? size / (1 + FIST_BAND) : size < h.zoom.ref / (1 + FIST_BAND) ? size * (1 + FIST_BAND) : h.zoom.ref;
+    h.zoom.owed += FIST_GAIN * Math.log(ref / h.zoom.ref);
+    h.zoom.ref = ref;
   }
   h.size = size;
   const want = shapeOf(h, f.lm);
   if (want === h.cand) h.candN++; else { h.cand = want; h.candN = 1; }
   if (h.cand !== h.state && h.candN >= HOLD[want] && t - h.found >= SETTLE_MS) become(h, want);
 }
+// A pinch or a fist closed from an open hand presses; until the hand opens again it is the same press, so a pinch
+// closing into a fist, or a fist opening through a pinch, is one grab and never a click.
 function become(h, shape) {
-  if (h.state === 'pinch' && h.down) { send('pointerup', h, h.sent); h.down = false; }
-  h.state = shape; h.fist = null;
-  if (shape === 'pinch' && !hands.some(o => o.fist)) {
-    const r = reach();
-    h.down = true; h.free = false; h.downAt = h.pos.slice(); h.sent = h.pos.slice(); h.off = [0, 0];
-    h.dead = clamp(DEAD * h.size * W / ((r.x1 - r.x0) * srcSize()[0]), 20, 70);
-    send('pointerdown', h, h.sent);
-  } else if (shape === 'fist' && !hands.some(o => o.down)) {
-    h.fist = { at: h.pos.slice(), ref: h.size, owed: 0 };
-  }
+  const from = h.state;
+  h.state = shape;
+  if (shape === 'open') release(h);
+  else if (from === 'open') press(h, shape);
+  else if (shape === 'fist') { h.press = null; if (h.down && h.grip !== 'fist') grip(h); }
+}
+function press(h, shape) {
+  const r = reach(), dead = clamp(DEAD * h.size * W / ((r.x1 - r.x0) * srcSize()[0]), 20, 70), btn = uiAt(h.pos);
+  if (btn) { if (shape === 'pinch') h.press = { el: btn, at: h.pos.slice(), dead }; return; }
+  h.down = true; h.grip = shape; h.free = false; h.downAt = h.pos.slice(); h.sent = h.pos.slice(); h.off = [0, 0]; h.dead = dead;
+  if (shape === 'fist') grip(h);
+  send('pointerdown', h, h.sent);
+}
+function grip(h) { h.grip = 'fist'; h.zoom = { ref: h.size, owed: 0, at: 0 }; } // from here the fist's size is measured against this
+function release(h) {
+  h.zoom = null;
+  if (h.down) { send(h.grip === 'fist' ? 'pointercancel' : 'pointerup', h, h.sent); h.down = false; } // the map clicks on an up, never a cancel
+  if (h.press) { const el = h.press.el; h.press = null; setTimeout(() => el.click()); } // after this look at the camera is done: Stop ends it
 }
 function lose(h) {
   if (h.down) send('pointercancel', h, h.sent);
   else if (h === hands[0]) send('pointerleave', h, h.pos);
+  h.press = null;
   h.el.remove();
   hands = hands.filter(o => o !== h);
 }
 
-// ---------- Every frame: glide, press, zoom, show ----------
+// ---------- Every frame: glide, press, show ----------
 function frame(now) {
   rafId = requestAnimationFrame(frame);
   const dt = Math.min(64, now - (lastT || now)), k = 1 - Math.exp(-dt / EASE_MS), decay = Math.exp(-dt / CATCH_MS);
   lastT = now;
   for (const h of hands) { h.pos[0] += (h.target[0] - h.pos[0]) * k; h.pos[1] += (h.target[1] - h.pos[1]) * k; }
+  for (const h of hands) { // a pinch that slides off a button lets it go unpressed, as a mouse does
+    if (h.press && Math.hypot(h.pos[0] - h.press.at[0], h.pos[1] - h.press.at[1]) > h.press.dead) h.press = null;
+  }
   const pressed = hands.filter(h => h.down), at = new Map();
   for (const h of pressed) {
     // a pinch stays where it closed until the hand moves off, so a pinch and let go is a click
@@ -248,23 +287,29 @@ function frame(now) {
     const p = at.get(h);
     if (Math.abs(p[0] - h.sent[0]) + Math.abs(p[1] - h.sent[1]) > 0.2) { h.sent = p; send('pointermove', h, p); }
   }
-  const fister = hands.find(h => h.fist);
-  if (fister && !pressed.length && Math.abs(fister.fist.owed) > 1e-4) {
-    const step = fister.fist.owed * (1 - Math.exp(-dt / 60));
-    fister.fist.owed -= step;
-    wheel(fister.fist.at, Math.exp(step));
+  // A lone gripping fist zooms as it is pushed in or pulled back, at the fist, so the point it holds stays in its grip.
+  // With two hands pressed, the stretch between them zooms instead.
+  for (const h of pressed) if (h.zoom && pressed.length > 1) h.zoom.owed = 0;
+  const fister = pressed.length === 1 && pressed[0].zoom ? pressed[0] : null;
+  if (fister && Math.abs(fister.zoom.owed) > 1e-4) {
+    const step = fister.zoom.owed * (1 - Math.exp(-dt / 60));
+    fister.zoom.owed -= step; fister.zoom.at = now;
+    wheel(fister.sent, Math.exp(step));
   }
-  const lead = hands[0];
-  if (lead && !pressed.length && !lead.fist && (!lead.hov || Math.abs(lead.pos[0] - lead.hov[0]) + Math.abs(lead.pos[1] - lead.hov[1]) > 0.5)) {
+  const lead = hands[0], wasOver = overBtn;
+  overButton(!lead || lead.down ? null : lead.press ? lead.press.el : uiAt(lead.pos));
+  if (overBtn && !wasOver) send('pointerleave', lead, lead.pos);
+  if (lead && !pressed.length && !overBtn && (!lead.hov || Math.abs(lead.pos[0] - lead.hov[0]) + Math.abs(lead.pos[1] - lead.hov[1]) > 0.5)) {
     lead.hov = lead.pos.slice(); send('pointermove', lead, lead.pos);
   }
   for (const h of hands) {
-    const p = h.down ? h.show : h.fist ? h.fist.at : h.pos, look = h.down ? 'pinch' : h.fist ? 'fist' : 'open';
+    const p = h.down ? h.show : h.press ? h.press.at : h.pos, look = h.down ? h.grip : h.state;
     h.el.style.transform = `translate(${p[0].toFixed(1)}px, ${p[1].toFixed(1)}px)`;
     const cls = `hand-cursor ${look}${h === lead ? '' : ' second'}`;
     if (h.el.className !== cls) h.el.className = cls;
   }
-  light(!lead ? null : pressed.length === 2 ? 'stretch' : pressed.length ? (pressed[0].free ? 'drag' : 'click') : fister ? 'fist' : 'open');
+  light(!lead ? null : pressed.length === 2 ? 'stretch' : fister && now - fister.zoom.at < 200 ? 'fist'
+    : pressed.length ? (pressed[0].free || pressed[0].grip === 'fist' ? 'drag' : 'click') : hands.some(h => h.press) ? 'click' : 'open');
 }
 
 // ---------- The camera picture, with the hands drawn on it and the reach marked ----------
@@ -286,7 +331,7 @@ function drawView() {
   for (const hand of hands) {
     if (now - hand.seen > 120) continue;
     const pt = i => [(1 - hand.lm[i].x) * w, hand.lm[i].y * h];
-    g.strokeStyle = hand.down ? '#86B2E3' : hand.fist ? '#F08A5D' : '#fff'; g.lineWidth = 3;
+    g.strokeStyle = !hand.down ? '#fff' : hand.grip === 'fist' ? '#F08A5D' : '#86B2E3'; g.lineWidth = 3;
     g.beginPath();
     for (const [a, b] of BONES) { g.moveTo(...pt(a)); g.lineTo(...pt(b)); }
     g.stroke();
@@ -331,7 +376,7 @@ async function start() {
   if (running) return;
   running = true; remember(true);
   const me = ++session;
-  ui.panel.hidden = false; ui.button.textContent = 'Stop hand control';
+  ui.button.textContent = 'Stop hand control'; openWindow(!closed);
   say('Starting the camera…');
   const tracker = TEST_SRC === 'none' ? null : loadTracker(); // loads while the camera starts
   try { await openSource(); }
@@ -342,7 +387,7 @@ async function start() {
   if (!tracker) { say(''); return; }
   say(landmarker ? '' : 'Loading the hand tracker…');
   try { landmarker = await tracker; }
-  catch (e) { console.warn('hand control: the tracker did not load', e); if (me === session) say('The hand tracker did not load. It needs the internet.'); return; }
+  catch (e) { console.warn('hand control: the tracker did not load', e); if (me === session) { ui.panel.hidden = false; say('The hand tracker did not load. It needs the internet.'); } return; }
   if (me !== session) return;
   since = performance.now(); say('');
   watch(me);
@@ -368,12 +413,19 @@ function stop() {
   if (video) { video.pause(); video.srcObject = null; video.removeAttribute('src'); }
   stream = video = still = null;
   cancelAnimationFrame(rafId); rafId = 0; lastT = 0;
-  light(null);
-  ui.panel.hidden = true; ui.button.textContent = 'Hand control';
+  light(null); overButton(null);
+  ui.panel.hidden = true; ui.show.hidden = true; ui.button.textContent = 'Hand control';
+}
+// The camera window opens and closes while the hands keep working; a closed one is remembered closed.
+function openWindow(open) {
+  closed = !open;
+  try { localStorage.setItem('hand-control-window', open ? 'open' : 'closed'); } catch (e) { /* private window */ }
+  ui.panel.hidden = !open; ui.show.hidden = open;
+  if (open) drawView();
 }
 function remember(on) { try { localStorage.setItem('hand-control', on ? '1' : '0'); } catch (e) { /* private window */ } }
-let wasOn = false;
-try { wasOn = localStorage.getItem('hand-control') === '1'; } catch (e) { /* private window */ }
+let wasOn = false, closed = false;
+try { wasOn = localStorage.getItem('hand-control') === '1'; closed = localStorage.getItem('hand-control-window') === 'closed'; } catch (e) { /* private window */ }
 if (wasOn || params.has('handsrc')) start();
 
 window.__hands = { see, start, stop, get hands() { return hands; }, get running() { return running; }, reach, toScreen, srcSize };

@@ -1647,18 +1647,26 @@ function zoomAt(px, py, k) {
   dirty();
 }
 // ONCE STILL, IT SETTLES. A zoom out that comes to rest within SNAP_OUT of the full view finishes the journey by
-// itself. Otherwise: fully zoomed out the sheet sits centred; a side larger than the screen closes any gap at its
-// edge; a side smaller than the screen is left where the visitor put it.
+// itself. Otherwise: fully zoomed out the sheet sits centred; a side larger than the screen may stand off its edge by
+// a gap that grows as the visitor zooms in: none near the full view, where the gap is closed, up to half the screen
+// from twice the full view in, so a node at the sheet's edge can sit in the middle of the screen; a side smaller than
+// the screen is left where the visitor put it.
 const SNAP_OUT = 1.15, SETTLE_AFTER = 160;
+const EDGE_FROM = 0.25, EDGE_BY = 1;    // log2(s / HOME.s): no gap below, up to half the screen above
+function edgeGap(sc) {
+  const u = clamp((Math.log2(sc / HOME.s) - EDGE_FROM) / (EDGE_BY - EDGE_FROM), 0, 1);
+  return u * u * (3 - 2 * u);
+}
 let lastMove = 0, settleRaf = 0, framed = false;
 function resting() {
   const full = view.s <= HOME.s * 1.0001;
   if (full) return { ox: HOME.ox, oy: HOME.oy };
   const pw = WORLD.w * view.s, ph = WORLD.h * view.s;
   const x0 = WORLD.x0 * view.s + view.ox, y0 = -WORLD.y1 * view.s + view.oy;
+  const free = edgeGap(view.s), gx = free * W / 2, gy = free * H / 2;
   let ox = view.ox, oy = view.oy;
-  if (pw > W) { if (x0 > 0) ox -= x0; else if (x0 + pw < W) ox += W - (x0 + pw); }
-  if (ph > H) { if (y0 > 0) oy -= y0; else if (y0 + ph < H) oy += H - (y0 + ph); }
+  if (pw > W) { if (x0 > gx) ox -= x0 - gx; else if (x0 + pw < W - gx) ox += W - gx - (x0 + pw); }
+  if (ph > H) { if (y0 > gy) oy -= y0 - gy; else if (y0 + ph < H - gy) oy += H - gy - (y0 + ph); }
   return { ox, oy };
 }
 function moved() {
