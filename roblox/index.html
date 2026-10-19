@@ -190,8 +190,9 @@ const CONTENT = {
   // points sit in the room under its name, each tinted by its `side`. The themes are Parker's, in his words; a
   // `split` theme pulls through its own pair of halves, one beside each hub. The card's earlier argument hangs on the
   // lines between (`links`): each of its sentences a small circle on the line `between` two of them, `along` it from
-  // the first, holding its points as relations. Two hang on the rope between the hubs: that the two are growing into
-  // each other, in the middle, and the conclusion, nearer the side it says is winning. Nothing sits on the graph's
+  // the first, `size` times the usual, holding its points as relations. Three hang on the rope between the hubs:
+  // that the two are growing into each other, nearer social media; Parker's two futures, at the knot; and the
+  // conclusion, nearer the side it says is winning. Nothing sits on the graph's
   // lines or numbers. The moments the points name sit along the time axis and on the Roblox line.
   social: {
     tug: {
@@ -238,6 +239,10 @@ const CONTENT = {
             { id: 'paid', side: 'both', title: 'Advertisers pay social media; kids pay Roblox',
               body: 'Meta made 98% of its 2025 revenue from ads. Roblox makes nearly all of its money selling Robux to its players, most of them young.',
               src: 'Meta 10-K, 2025; Roblox 10-K', rel: ['money'] },
+            // Parker's words (2026-10-19)
+            { id: 'incentives', side: 'both', title: 'Social media and platform games also have similar incentives',
+              body: 'Currently, social media sells advertising and Roblox sells robux for in-game content, but it’s easy to imagine games selling advertising space and platforms have started moving towards selling exclusive content.',
+              rel: ['trajectories', 'paid'] },
           ] },
         { id: 'tug-tactics', title: 'Manipulative tactics', pull: { sm: 3.5, pg: 3.5 }, at: [0.4, 0.43],
           members: [
@@ -248,9 +253,14 @@ const CONTENT = {
       ],
       // the card's argument from before the tug of war, kept whole and under its old ids, hung on the lines between
       links: [
-        { id: 'grow', between: ['hub-sm', 'hub-pg'], along: 0.42, points: ['fed', 'adding', 'eastasia'],
+        { id: 'grow', between: ['hub-sm', 'hub-pg'], along: 0.16, points: ['fed', 'adding', 'eastasia'],
           title: 'Games and social media are growing into each other.' },
-        { id: 'social-end', between: ['hub-sm', 'hub-pg'], along: 0.82, big: true, points: ['kids', 'grow', 'differ'],
+        // the knot of the rope: Parker's own reading of the two, in his words (2026-10-19), its two futures related
+        // to the blending and to regulation, and to the ban that the label "game" escaped
+        { id: 'trajectories', between: ['hub-sm', 'hub-pg'], along: 0.5, size: 1.45, points: ['grow', 'tug-regulation', 'ban', 'label'],
+          title: 'Social media and platform games share many similar troubles.',
+          body: 'However the dissimilarity between the two may be sufficient to generate different future trajectories. Either social media and platform games will continue to blend into each other, or regulation will provide sufficient incentive to keep them as separate classes.' },
+        { id: 'social-end', between: ['hub-sm', 'hub-pg'], along: 0.86, size: 1.3, points: ['kids', 'grow', 'differ'],
           title: 'Platform games are taking social media’s place in kids’ lives, but not its business or its dangers, so rules written for feeds won’t fit them.' },
         { id: 'kids', between: ['tug-sociality', 'hub-pg'], along: 0.25, points: ['parts', 'grewup', 'ban'],
           title: 'Kids already use platform games as their social media.' },
@@ -1241,7 +1251,7 @@ function placeTug(c, g, tug, room, byId, relate, fixed) {
     for (const h of d.split || []) { const q = { d: h, r: Rs, half: true, of: p, home: cardAt(h.at) }; q.xy = [...q.home]; ps.push(q); }
   }
   // the links, each placed on the line between its ends whenever they move
-  const links = (tug.links || []).map(d => ({ d, a: ends.get(d.between[0]), b: ends.get(d.between[1]), r: d.big ? Rl * 1.3 : Rl, xy: [0, 0] }));
+  const links = (tug.links || []).map(d => ({ d, a: ends.get(d.between[0]), b: ends.get(d.between[1]), r: Rl * (d.size || 1), xy: [0, 0] }));
   const onLine = l => {
     const [ax, ay] = l.a.xy, [bx, by] = l.b.xy, d = Math.hypot(bx - ax, by - ay) || 1e-9, free = d - l.a.r - l.b.r, t = l.a.r + l.d.along * free;
     l.xy = [ax + (bx - ax) / d * t, ay + (by - ay) / d * t];
