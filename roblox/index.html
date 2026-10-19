@@ -67,7 +67,7 @@ body { background: var(--ground); color: var(--ink); overflow: hidden; }
 #hint.gone { opacity: 0; pointer-events: none; }
 </style>
 
-<canvas id="map" role="img" aria-label="Infomap on the future of platform games: a front page of cards, the thesis and its three arguments in the largest with a QR code to open the map on a phone, a card asking whether platform games will replace game platforms, ending on where platform games are going instead, the Roblox money map, a card asking whether platform games will replace social media, set on a graph comparing Roblox with TikTok, and the map's six themes: the Roblox economy, child safety, regulation and governance, online social life, feeds and content discovery, and a typology of platforms"></canvas>
+<canvas id="map" role="img" aria-label="Infomap on the future of platform games: a front page of cards, the thesis and its three arguments in the largest with a QR code to open the map on a phone, a card asking whether platform games will replace game platforms, with a corner for the future of platform games, the Roblox money map, a card asking whether platform games will replace social media, set on a graph comparing Roblox with TikTok, and the map's six themes: the Roblox economy, child safety, regulation and governance, online social life, feeds and content discovery, and a typology of platforms"></canvas>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
 <script src="map-fonts.js"></script>
 <script src="path-text.js"></script>
@@ -231,28 +231,12 @@ const CONTENT = {
         title: 'Platform games are taking social media’s place in kids’ lives, but not its business or its dangers, so rules written for feeds won’t fit them.' },
     ],
   },
-  // the corner under the replace card's argument (x 752 to 1370, y 605 to 918 of its units): where platform games go
-  // instead of replacing game platforms. Drawn by this page, not by replace-card.js, so regenerating that leaves it be.
+  // the corner under the replace card's argument (x 752 to 1370, y 605 to 918 of its units): the future of platform
+  // games, a titled card for now and nothing in it yet. Drawn by this page, not by replace-card.js, so regenerating
+  // that leaves it be.
   replace: {
     containers: [
-      { id: 'future', at: [1061, 761], cols: 4, scale: 1.38, top: 200, bodyMax: 62, memberBody: 21,
-        title: 'The future of platform games',
-        body: 'Not one hub that replaces the others, but a web of platforms joined to each other.',
-        src: 'Annika’s research: Chia et al., 2020',
-        members: [
-          { id: 'everywhere', title: 'Roblox games are going into the stores',
-            body: 'From September 2026 makers can publish their Roblox games as standalone apps in other stores, still on Roblox’s technology and revenue share.',
-            src: 'Game Developer, 2026' },
-          { id: 'studios', title: 'Its studios are moving to Steam',
-            body: 'In 2025 The Gang, a Roblox studio, released a game on Steam and consoles, and plans to bring Roblox hits there too.',
-            src: 'GamesBeat, 2025', rel: ['leave'] },
-          { id: 'fortnite', title: 'Fortnite is becoming a platform game too',
-            body: 'In 2023 Epic opened its editor to makers and began paying them by how much their games are played, as Roblox does.',
-            src: 'Epic Games, 2023; Annika’s research', rel: ['platformgames'] },
-          { id: 'adults-next', title: 'Next, adults',
-            body: 'From June 2026 makers earn 42% more on what age-checked US adults spend in their games, as Roblox reaches past kids.',
-            src: 'Roblox newsroom, 2026; Roblox Q1 2026 shareholder letter', rel: ['adults'] },
-        ] },
+      { id: 'future', box: [752, 605, 1370, 918], scale: 1.38, top: 200, title: 'The future of platform games', members: [] },
     ],
   },
 };
@@ -1183,16 +1167,19 @@ function build() {
       for (const id of d.joins) relate.push([n, id, true]);
     }
     // containers size themselves to their members: a title chamber over a grid of member cards, all `scale` times
-    // the usual size, type included
+    // the usual size, type included. One given a `box` (its corners, in the units of a card drawn in its own) fills
+    // that box instead, members or none.
     for (const d of content.containers || []) {
       const z = d.scale || 1, M = { w: SHAPE.member.w * z, h: SHAPE.member.h * z };
       const cols = d.cols || 2, rows = Math.ceil(d.members.length / cols), gap = 130 * z, pad = 110 * z;
-      const w = cols * M.w + (cols - 1) * gap + pad * 2;
+      const box = d.box && !g ? [at([d.box[0], d.box[1]]), at([d.box[2], d.box[3]])] : null;
+      const w = box ? box[1][0] - box[0][0] : cols * M.w + (cols - 1) * gap + pad * 2;
       const head = fitStatement(d, w - pad * 2, 0, { top: d.top || 76 * z, maxLines: 3, bodyK: 0.3, bodyMax: d.bodyMax || 22 * z });
       const chamber = head.h + pad * 0.8;
-      const n = node('container', d, { card: c, w, h: pad + chamber + rows * M.h + (rows - 1) * gap + pad, fixed: true });
+      const h = box ? box[0][1] - box[1][1] : pad + chamber + rows * M.h + Math.max(0, rows - 1) * gap + pad;
+      const n = node('container', d, { card: c, w, h, fixed: true });
       stack(head.blocks, pad, pad, head.gaps); n.blocks = head.blocks;
-      setCentre(n, ...at(d.at)); keepIn(n, room);
+      if (box) { n.x0 = box[0][0]; n.y1 = box[0][1]; } else { setCentre(n, ...at(d.at)); keepIn(n, room); }
       fixed.push(n); byId.set(d.id, n);
       d.members.forEach((m, i) => {
         const r = Math.floor(i / cols), k = i % cols;
