@@ -113,7 +113,8 @@ const TOP = [
     kicker: 'What is the future of platform games?',
     // Parker's argument, in his words (2026-10-20)
     title: 'Gaming and platform-based interfaces are becoming increasingly integrated. However, the extent of future integration will depend on the decisions of regulators.',
-    note: 'A platform game is a game that is also a platform: players make the games, and carry one avatar, one friends list and one wallet across all of them. Roblox, Minecraft and Fortnite are platform games. Steam and the app stores are game platforms: shops that sell separate games.',
+    // no `note` under the thesis (Parker took the definition off, 2026-10-20; it stays in the typology's lobes); one
+    // given is set small and grey under it
     // the three arguments, in Parker's words (2026-10-20), each with an optional `body`; clicking one goes to the card,
     // theme or point that makes it (`to`). `doors` (Parker, 2026-10-20: "weave some connections into the three main
     // sub-points") are the places elsewhere on the map that make the argument, named as a relation is, drawn small in a
@@ -518,7 +519,7 @@ function stack(blocks, x, y, gaps) { blocks.forEach((b, i) => { b.dx = x; b.dy =
 
 // ---------- Cards ----------
 const BAND = 62 * K, RADIUS = 16 * K, CARD_LW = 3;
-// The main card: the question, the thesis and the definition down the left, the code that opens the map on a phone
+// The main card: the question and the thesis (and a note, if given) down the left, the code that opens the map on a phone
 // at the top right, and the three arguments in a row of boxes along the foot, each with its doors in a row under its
 // words. The card is filled by its words, not by more of them (Parker, 2026-10-20): the thesis's type (tf) is the
 // largest at which it takes at most four lines and everything fits, and then the arguments' and the definition's type
@@ -534,7 +535,7 @@ function layoutMasthead(c, d) {
     const url = block(d.qr.label, { wt: 600, fam: T.body, size: tf * 0.36, maxW: side, color: 'ink-soft', lh: 1.2, center: true });
     const right = pad + side + tf * 0.25 + heightOf(url);
     for (let ak = 1; ak >= 0.56; ak -= 0.02) {
-      const no = block(d.note, { wt: 400, fam: T.body, size: tf * Math.max(0.34, ak * 0.62), maxW: tw, color: 'ink-soft', lh: 1.35, it: true });
+      const no = d.note ? block(d.note, { wt: 400, fam: T.body, size: tf * Math.max(0.34, ak * 0.62), maxW: tw, color: 'ink-soft', lh: 1.35, it: true }) : null;
       const ag = tf * 0.5, aw = (iw - ag * (n - 1)) / n, ap = tf * 0.45, af = tf * ak;
       const args = d.args.map(a => ({
         title: block(a.title, { wt: 700, fam: T.title, size: af, maxW: aw - ap * 2, color: 'ink', lh: 1.12 }),
@@ -547,7 +548,7 @@ function layoutMasthead(c, d) {
       const pm = ap * 0.6, ph = dh + pp * 2;
       const words = t => heightOf(t.title) + (t.body ? af * 0.55 + heightOf(t.body) : 0);
       const ah = Math.max(...args.map(words)) + (dh ? ap + dg + ph + pm : ap * 2);
-      const left = stack([ki, ti, no], pad, pad, [tf * 0.28, tf * 0.4]);
+      const left = stack(no ? [ki, ti, no] : [ki, ti], pad, pad, [tf * 0.28, tf * 0.4]);
       if (Math.max(left, right) + gap + ah > pad + ih) continue;
       // the arguments sit on the card's foot, so its margins match top and bottom
       const ay = pad + ih - ah;
@@ -564,7 +565,7 @@ function layoutMasthead(c, d) {
         ds.forEach((to, j) => c.argDoors.push({ to, x: pocket.x + pp + j * (cw + cg), y: pocket.y + pp, w: cw, h: dh }));
         return { kind: 'arg', card: c, to: a.to, x, y: ay, w: aw, h: ah, r: tf * 0.4, pocket };
       });
-      return [ki, ti, no, url, ...args.flatMap(t => t.body ? [t.title, t.body] : [t.title])];
+      return [ki, ti, ...(no ? [no] : []), url, ...args.flatMap(t => t.body ? [t.title, t.body] : [t.title])];
     }
   }
   c.args = []; c.argDoors = []; c.qr = null;
