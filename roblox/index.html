@@ -193,8 +193,9 @@ const CONTENT = {
   // the card's width and height, from its top left), placed by hand. Parker's arguments for a future are themes that
   // `argue` for it: his words as the title (and body), his evidence as the points, and one arrow into that future;
   // Future 1's side is drawn as rounded rectangles, Future 2's as circles. Halfway down the rope sits Parker's central
-  // sentence on the challenges the two share and don't, a squircle, with one small node per challenge joined to it:
-  // the challenges they share above it as rounded rectangles, those that set them apart below it as circles. A theme
+  // sentence on the challenges the two share and don't, a squircle, with one small node per challenge round it: the
+  // challenges they share above it as rounded rectangles, those that set them apart below it as circles, each kind
+  // pointing into a statement of what it may mean, which points into that kind's future. A theme
   // is `size` times the usual, by how much it holds; its points sit in the room under its name, each tinted by its
   // `side` (which platform it is about). Everything sits left of the TikTok line, in the open years (Parker,
   // 2026-10-20). The card's sentences hang on lines (`links`): each
@@ -210,7 +211,7 @@ const CONTENT = {
       },
       themes: [
         // Parker's three arguments for Future 1, in his words (2026-10-20)
-        { id: 'tug-sociality', title: 'Kids are already using platform games as social media.', argues: 'blend', at: [0.13, 0.37], size: 1.1,
+        { id: 'tug-sociality', title: 'Kids are already using platform games as social media.', argues: 'blend', at: [0.13, 0.37], size: 0.85,
           members: [
             { id: 'parts', side: 'pg', title: 'It has social media’s parts',
               body: 'One avatar, one friends list and chat across every game, with profiles, invites and recommendations by age and interests. Leaving costs you your friends.',
@@ -219,7 +220,7 @@ const CONTENT = {
               body: 'More than half of Roblox’s players are under 17. Gen Z and Gen Alpha grew up meeting their friends there, and are used to how it works.',
               src: 'Annika’s research; Carter, Vekhande & Fifita 2026, citing Statista', rel: ['spend'] },
           ] },
-        { id: 'tug-content', title: 'Social media and platform games are already integrating each other’s functions.', argues: 'blend', at: [0.53, 0.21], size: 1.35,
+        { id: 'tug-content', title: 'Social media and platform games are already integrating each other’s functions.', argues: 'blend', at: [0.53, 0.21], size: 1.0,
           members: [
             { id: 'adding', side: 'sm', title: 'Other platforms are integrating games',
               body: 'Facebook put games in Messenger and the News Feed in 2016. Netflix added games in 2021, TikTok tested them in 2022, and YouTube opened them to everyone in 2024.',
@@ -234,7 +235,7 @@ const CONTENT = {
               body: 'Players scroll short videos of other players’ games, and tapping one takes them into the game it shows. Roblox added it in 2025.',
               src: 'TechCrunch, 2025' },
           ] },
-        { id: 'tug-money', title: 'Social media and platform games are already sharing monetization strategies.', argues: 'blend', at: [0.495, 0.42], size: 1.3,
+        { id: 'tug-money', title: 'Social media and platform games are already sharing monetization strategies.', argues: 'blend', at: [0.495, 0.42], size: 0.98,
           members: [
             { id: 'paid', side: 'both', title: 'Social media and platform games both earn from ads and from users',
               body: 'Meta made 98% of its 2025 revenue from ads and sells Meta Verified subscriptions. Roblox made nearly all of its 2025 revenue from selling Robux and sells ads inside its games.',
@@ -251,43 +252,51 @@ const CONTENT = {
               rel: ['trajectories', 'paid'] },
           ] },
         // Parker's two arguments for Future 2, in his words (2026-10-20)
-        { id: 'tug-regulation', title: 'Australian law treats platform games and social media as two classes.', argues: 'apart', at: [0.145, 0.69], size: 1.3,
+        { id: 'tug-regulation', title: 'Australian law treats platform games and social media as two classes.', argues: 'apart', at: [0.145, 0.69], size: 0.98,
           body: 'The under-16 ban only covers the latter. If different legal standards continue to apply to platform games and social media, it’s more likely that platform games will cease attempting to capture users through emulation of social media. However, the same incentives mean that social medias may increase their encroachment into the platform gaming space.',
           members: [
             { id: 'ban', side: 'both', title: 'The under-16 ban left games out',
               body: 'Australia’s ban on social media accounts for under-16s began in December 2025 and leaves out online games. Experts warned it could push children toward Roblox.',
               src: 'Kavya’s research; Rintoul, 2026', rel: ['meet', 'label'] },
           ] },
-        { id: 'tug-giants', title: 'Heavier rules may cap the size of social media giants, preventing them from expanding into all digital niches.', argues: 'apart', at: [0.465, 0.665], size: 0.92 },
+        { id: 'tug-giants', title: 'Heavier rules may cap the size of social media giants, preventing them from expanding into all digital niches.', argues: 'apart', at: [0.465, 0.665], size: 0.8 },
+        // what each kind of challenge may mean (Parker, 2026-10-20): a statement each kind's challenges all point into
+        // (`gathers`), which itself argues for its future, between the challenges and that future on the rope. Future
+        // 2's in Parker's words; Future 1's its mirror, written to match
+        { id: 'st-blend', gathers: 'similar', argues: 'blend', at: [0.3, 0.335], size: 0.95,
+          title: 'The similar challenges faced by platform games and social media platforms may mean that regulation treats them alike, and they continue to blend into each other.' },
+        { id: 'st-apart', gathers: 'dissimilar', argues: 'apart', at: [0.3, 0.71], size: 1.0,
+          title: 'The dissimilar challenges faced by platform games and social media platforms may mean that regulation maintains their differentiation.' },
         // the challenges the two face (Parker, 2026-10-20): one small node per challenge around the central sentence,
-        // each joined to it; those the two share (`challenge: 'similar'`) above it, on Future 1's side, those that set
-        // them apart (`'dissimilar'`) below it, on Future 2's
-        { id: 'ch-ages', challenge: 'similar', title: 'Checking users’ ages', at: [0.245, 0.34], size: 0.6,
+        // each pointing into the statement that gathers its kind; those the two share (`challenge: 'similar'`) above
+        // it, on Future 1's side, those that set them apart (`'dissimilar'`) below it, on Future 2's
+        { id: 'ch-ages', challenge: 'similar', title: 'Checking users’ ages', at: [0.245, 0.395], size: 0.45,
           rel: ['ban', 'money:agechecks', 'u13'],
           members: [
             { id: 'agelimits', side: 'both', title: 'Age limits shape who platforms sell to',
               body: 'Roblox shows ads only to players aged 13 and over. TikTok sells gift coins only to users aged 18 and over, and Roblox’s terms let only adults buy Robux.',
               src: 'Roblox newsroom, 2024; TikTok Virtual Items Policy; Roblox Terms of Use, 2026', rel: ['tug-money', 'money'] },
           ] },
-        { id: 'ch-strangers', challenge: 'similar', title: 'Strangers contacting children', at: [0.355, 0.34], size: 0.5, rel: ['grooming', 'commitments'] },
-        { id: 'ch-feeds', challenge: 'similar', title: 'Feeds choosing what kids see', at: [0.245, 0.42], size: 0.5, rel: ['fed', 'robloxmoments', 'socialmedia'] },
-        { id: 'ch-money', challenge: 'similar', title: 'Making money from young users', at: [0.355, 0.42], size: 0.5, rel: ['paid', 'usermoney', 'money:s1'] },
-        { id: 'ch-meet', challenge: 'dissimilar', title: 'Who kids meet while playing', at: [0.245, 0.625], size: 0.6, rel: ['grooming', 'threesteps'],
+        { id: 'ch-strangers', challenge: 'similar', title: 'Strangers contacting children', at: [0.355, 0.395], size: 0.36, rel: ['grooming', 'commitments'] },
+        { id: 'ch-feeds', challenge: 'similar', title: 'Feeds choosing what kids see', at: [0.245, 0.45], size: 0.36, rel: ['fed', 'robloxmoments', 'socialmedia'] },
+        { id: 'ch-money', challenge: 'similar', title: 'Making money from young users', at: [0.355, 0.45], size: 0.36, rel: ['paid', 'usermoney', 'money:s1'] },
+        { id: 'ch-meet', challenge: 'dissimilar', title: 'Who kids meet while playing', at: [0.245, 0.595], size: 0.45, rel: ['grooming', 'threesteps'],
           members: [
             { id: 'meet', side: 'both', title: 'In a feed the risk is what kids see; in a game, who they meet',
               body: 'Strangers can play, chat and talk beside a child. In August 2026 eSafety found adults on Roblox could still send young children connection requests without a parent’s consent.',
               src: 'Bella’s research; Kavya’s research: Reuters, 2026' },
           ] },
-        { id: 'ch-spend', challenge: 'dissimilar', title: 'Kids spending real money in games', at: [0.355, 0.625], size: 0.6, rel: ['money:s1', 'cat-sales'],
+        { id: 'ch-spend', challenge: 'dissimilar', title: 'Kids spending real money in games', at: [0.355, 0.595], size: 0.45, rel: ['money:s1', 'cat-sales'],
           members: [
             { id: 'spend', side: 'pg', title: 'Roblox games push kids to spend',
               body: 'Sydney researchers played 15 top-earning Roblox games. Nearly all sold paid lucky draws and rushed players with limited-time offers, designs they say are treated as illegal outside games.',
               src: 'Bella’s research; Carter, Vekhande & Fifita 2026', rel: ['money', 'stores:manipulative-monetization-targeting-minors'] },
           ] },
-        { id: 'ch-rated', challenge: 'dissimilar', title: 'Rated as a game, not as social media', at: [0.245, 0.705], size: 0.5, rel: ['label', 'rating', 'ban'] },
-        { id: 'ch-live', challenge: 'dissimilar', title: 'Moderating live play as it happens', at: [0.355, 0.71], size: 0.5, rel: ['stores:they-moderate-live'] },
+        { id: 'ch-rated', challenge: 'dissimilar', title: 'Rated as a game, not as social media', at: [0.245, 0.65], size: 0.36, rel: ['label', 'rating', 'ban'] },
+        { id: 'ch-live', challenge: 'dissimilar', title: 'Moderating live play as it happens', at: [0.355, 0.65], size: 0.36, rel: ['stores:they-moderate-live'] },
       ],
-      // the challenges gather on `centre`, the central sentence, on the rope between the futures
+      // the challenges sit round `centre`, the central sentence, on the rope between the futures; one whose kind no
+      // statement gathers is joined to it
       centre: 'trajectories',
       links: [
         // the centre of the challenges: Parker's sentence on them (2026-10-20) over his reading of the two futures
@@ -1342,8 +1351,10 @@ function placeTug(c, g, tug, room, byId, relate, fixed) {
     pole[k] = n; out.push(n); byId.set(d.id, n);
     ends.set(d.id, { xy: centre(n), r: Rp, fixed: true });
   }
-  // a theme's lines: an argument's one arrow to the future it argues for; a challenge joins the centre instead (below)
-  const linesOf = q => q.d.argues ? [pole[q.d.argues]] : [];
+  // a theme's lines, as the points they run to: an argument's one arrow to the future it argues for; a challenge's
+  // arrow to the statement that gathers its kind (or else its line to the centre, below)
+  const gatherer = k => ps.find(q => q.d.gathers === k);
+  const linesOf = q => q.d.argues ? [centre(pole[q.d.argues])] : q.d.challenge && gatherer(q.d.challenge) ? [gatherer(q.d.challenge).xy] : [];
   // the movers: the themes
   const ps = [];
   for (const d of tug.themes) {
@@ -1416,7 +1427,7 @@ function placeTug(c, g, tug, room, byId, relate, fixed) {
     for (const l of links) offGraph(l, (dx, dy) => { shift(l.a, dx, dy); shift(l.b, dx, dy); l.xy[0] += dx; l.xy[1] += dy; });
     // a theme's lines are segments to the poles; a mover one would run under is pushed off it
     if (!settle) {
-      const lines = ps.flatMap(q => linesOf(q).map(n => [q, q.xy, centre(n)]));
+      const lines = ps.flatMap(q => linesOf(q).map(b => [q, q.xy, b]));
       for (const p of ps) for (const [q, a, b] of lines) {
         if (q === p) continue;
         const bx = b[0] - a[0], by = b[1] - a[1], t = clamp(((p.xy[0] - a[0]) * bx + (p.xy[1] - a[1]) * by) / (bx * bx + by * by || 1), 0, 1);
@@ -1445,9 +1456,14 @@ function placeTug(c, g, tug, room, byId, relate, fixed) {
     const [a, b] = l.d.between.map(id => made.get(id)), rope = a.kind === 'pole' && b.kind === 'pole';
     if (!EDGES.some(e => (e.a === a && e.b === b) || (e.a === b && e.b === a))) pull(a, b, rope ? 2.5 : 1.2, rope ? 'ink' : 'line');
   }
-  // each challenge joined to the centre it gathers on
+  // each challenge points into the statement that gathers its kind; one no statement gathers is joined to the centre
   const hub = byId.get(tug.centre);
-  if (hub) for (const p of ps) if (p.d.challenge) pull(made.get(p.d.id), hub, 1.4, 'line');
+  for (const p of ps) {
+    if (!p.d.challenge) continue;
+    const st = gatherer(p.d.challenge);
+    if (st) pull(made.get(p.d.id), made.get(st.d.id), 1.4, 'line', true);
+    else if (hub) pull(made.get(p.d.id), hub, 1.4, 'line');
+  }
   fixed.push(...out);
 }
 
