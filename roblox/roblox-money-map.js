@@ -156,9 +156,12 @@ const ARROW = {
         'Laws against most of these tactics [[already exist|laws]]. Australian Consumer Law bans false claims about price, like a “sale” that never ends. But the researchers say Roblox games have had little attention. [[The ACCC has taken Coles and Woolworths to court|accc]] over misleading discounts, while the same kind of pricing in Roblox games happens, in the study lead’s words, “with far less oversight”.',
         'Australia even has legislation aimed at the in-game purchase practices of contemporary video games. Since September 2024, games that sell loot boxes for real money are meant to be rated M for 15 and over. Yet [[half the games in the study that had them still sold them to Australian players|lootaus]], in games listed for ages as young as 5.',
         'Australians are also entitled to a refund for things that aren’t as described. When the researchers bought a loot box on an account set to age 12 and [[asked for their money back|refund]], Apple, Roblox and the game’s makers all separately turned them away.',
-        'Families and reporters have [[been raising the alarm for years|timeline]]. But regulators are only just beginning to act. In Australia, the researchers are urging the ACCC to look into Roblox games.',
+        'Families and reporters have [[been raising the alarm for years|timeline]]. But [[regulators are only just beginning to act|goodwill]]. In Australia, the researchers are urging the ACCC to look into Roblox games.',
       ],
       kids: [
+        // Gorwa's line on leaving it to the platforms (Parker, 2026-10-20)
+        { id: 'goodwill', say: '“Voluntary arrangements rely on goodwill and provide limited recourse in the case of non-compliance.”',
+          src: 'Gorwa, R. (2019). What is platform governance? Information, Communication & Society, 22(6), 854–871, p. 863' },
         { id: 'laws', say: 'Laws against deceptive selling are already on the books.',
           body: 'Australian Consumer Law section 29 bans false or misleading claims about price, and its consumer guarantees promise a refund for things not as described. The EU banned telling children directly to buy in 2005 and set principles for game currencies in 2025. Canada’s Competition Act bans fake deadlines and misleading claims.',
           src: PAPER + ', pp. 6, 10–11, 23–24, 26, 29' },

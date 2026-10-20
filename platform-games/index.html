@@ -219,8 +219,8 @@ const CONTENT = {
               body: 'One avatar, one friends list and chat across every game, with profiles, invites and recommendations by age and interests. Leaving costs you your friends.',
               src: 'Barns 2019', rel: ['meet', 'robloxmoments'] },
             { id: 'grewup', side: 'pg', title: 'Gen Z and Gen Alpha grew up meeting their friends on Roblox',
-              body: 'More than half of Roblox’s players are under 17. Gen Z and Gen Alpha grew up meeting their friends there, and are used to how it works.',
-              src: 'Carter, Vekhande & Fifita 2026, citing Statista', rel: ['spend'] },
+              body: '“Roblox has taken on the role of a digital third space for Generation Z and Alpha, where they … gather, socialize, and do various social activities that were previously done offline.”',
+              src: 'Kusmawan, Arifah & Chitra, 2026, p. 20', rel: ['spend'] },
           ] },
         { id: 'tug-content', title: 'Social media and platform games are already integrating each other’s functions.', argues: 'blend', at: [0.53, 0.21], size: 1.0,
           members: [
@@ -231,8 +231,8 @@ const CONTENT = {
               body: 'KakaoTalk in Korea and LINE in Japan, both chat apps, became game platforms in 2012, where you play against your chat friends. WeChat followed in China in 2017.',
               src: 'TechNode 2012; LINE 2012; Niko Partners 2018; Steinberg 2020', rel: ['adding'] },
             { id: 'robloxmoments', side: 'pg', title: 'Roblox added Moments, a scrolling feed of short gameplay videos',
-              body: 'Players scroll short videos of other players’ games, and tapping one takes them into the game it shows. Roblox added it in 2025.',
-              src: 'TechCrunch, 2025' },
+              body: 'Roblox Moments “functionally mimics the vertical video format in the style of TikTok.” “Strategically, it ‘brings home’ all content creation and consumption activities that were previously ‘leaked’ to competing platforms like TikTok and YouTube, where Roblox-related content has been viewed trillions of times.”',
+              src: 'TechCrunch, 2025; Kusmawan, Arifah & Chitra, 2026, p. 21' },
           ] },
         { id: 'tug-money', title: 'Social media and platform games are already sharing monetization strategies.', argues: 'blend', at: [0.495, 0.42], size: 0.98,
           members: [
@@ -375,16 +375,28 @@ const THEMES = [
     facets: [
       { id: 'outpaced', title: 'Computing power outpaces traditional regulation’s ability to police',
         body: 'As computing power grows, so does the capacity for individuals to produce content. This means that in the modern world, we have platforms with an overwhelming amount of content, and the old regulatory structures simply aren’t designed to keep up with something like that. Roblox’s games are made by players, and so there is an overwhelming abundance of games to rate.',
-        rel: ['rating'] },
+        rel: ['rating'], subs: ['q-intervene', 'q-pace'], roomCut: 0.34 },
+      { id: 'q-intervene', title: '“Platform companies can quickly make specific interventions (such as requiring advertisers to register their identities or combating hate speech through specific tweaks of their content policies) far before legislation goes into effect.”',
+        src: 'Gorwa, 2019, p. 863' },
+      { id: 'q-pace', title: '“Given the rapid pace and development of the platform ecosystem, as well as the dynamic nature of the platform companies in question, new models for digital governance will likely need to be developed.”',
+        src: 'Gorwa, 2019, p. 865' },
       { id: 'rating', title: 'Regulators have struggled to keep up with the volume of games being published on Roblox',
         body: 'The last time it was classified in Australia was in May of 2018 when it was rated PG. On 9 February 2026, this was called into question, and rightfully so, as the Roblox platform has a wide diversity of games with varying content, some of which is likely inappropriate.',
         src: 'Classification Board; Minister for Communications, 2026' },
       { id: 'label', title: 'Roblox was classified as a game, so it evaded the U-16 ban in Australia',
-        body: 'The under-16 social media ban leaves Roblox out as a game, though it has chat, friends and forums. What we call a technology shapes how it is regulated.',
-        src: 'eSafety; Gillespie, 2010', rel: ['ban', '^socialmedia', '^platformgames'], also: ['social-life'] },
-      { id: 'threesteps', title: '',
-        body: 'Between June and August 2025, Roblox promised Australia’s eSafety Commissioner it would stop adults contacting young children without a parent’s consent and make children’s accounts private by default. In February 2026, eSafety investigated and found adults could still send young children connection requests, and anyone could see children’s profiles and friends. In response, in August 2026 Roblox signed a court-enforceable undertaking, checked by yearly outside audits, to close these gaps and make its tools for reporting harm easier to use. Roblox denies breaking the rules.',
-        src: 'Roblox undertaking to the eSafety Commissioner, Aug 2026, paras 11, 15–22, 34, 41' },
+        body: 'Gillespie: “[Platform firms] are working not just politically but also discursively to frame their services and technologies … They do so strategically … to strike a regulatory sweet spot between legislative protections that benefit them and obligations that do not.”',
+        src: 'eSafety; Gillespie, 2010, p. 348', rel: ['ban', '^socialmedia', '^platformgames'], also: ['social-life'] },
+      { id: 'threesteps', title: 'Roblox has moved through all three of Gorwa’s modes of governance in one year',
+        src: 'Gorwa, 2019; Roblox undertaking to the eSafety Commissioner, Aug 2026', subs: ['gov-self', 'gov-external', 'gov-co'], roomCut: 0.02 },
+      { id: 'gov-self', title: 'Self-governance: Roblox’s voluntary promises, 2025',
+        body: 'Between June and August 2025, Roblox promised Australia’s eSafety Commissioner it would stop adults contacting young children without a parent’s consent and make children’s accounts private by default. Gorwa: “voluntary arrangements rely on goodwill and provide limited recourse in the case of non-compliance.”',
+        src: 'Roblox undertaking, para 11; Gorwa, 2019, p. 863' },
+      { id: 'gov-external', title: 'External governance: eSafety’s investigation, 2026',
+        body: 'In February 2026, eSafety investigated and found adults could still send young children connection requests, and anyone could see children’s profiles and friends. Gorwa: “self-governance is no longer seen as a satisfactory long-term solution by various governance stakeholders.”',
+        src: 'Roblox undertaking, paras 15–20; Gorwa, 2019, p. 864' },
+      { id: 'gov-co', title: 'Co-governance: an audited undertaking, 2026',
+        body: 'In August 2026, Roblox signed a court-enforceable undertaking, checked by yearly outside audits, to keep adults from contacting young children and make its tools for reporting harm easier to use. Roblox denies breaking the rules. Gorwa: “Steps towards ‘co-governance’ seek a third way between the two previous approaches.”',
+        src: 'Roblox undertaking, paras 21, 28–41; Gorwa, 2019, p. 864' },
       { id: 'bans', title: 'Other countries have banned Roblox',
         body: 'Turkey blocked Roblox in August 2024 over child-abuse concerns. Russia blocked it in December 2025 and let it back in June 2026.',
         src: 'Bloomberg, 2024; Roblox Q1 and Q2 2026 shareholder letters' },
@@ -436,7 +448,7 @@ const THEME_LINKS = [
   { id: 'link-law', a: 'safety', b: 'governance', title: 'Child safety failures are pushing regulators to act', holds: ['meet', 'threesteps'] },
   { id: 'link-meet', a: 'social-life', b: 'safety', title: 'Social features let strangers reach children', holds: ['parts', 'meet'] },
   { id: 'link-feeds', a: 'social-life', b: 'feeds', title: 'Platform games integrating feeds', holds: ['robloxmoments', 'tug-sociality'] },
-  { id: 'link-label', a: 'governance', b: 'typology', title: 'What we call things matters for regulation', holds: ['label', 'platformgames'] },
+  { id: 'link-label', a: 'governance', b: 'typology', title: '“What we call such things … drive how we set conditions for it” (Gillespie, 2010)', holds: ['label', 'platformgames'] },
   { id: 'link-merge', a: 'feeds', b: 'typology', title: 'The platform media landscape is homogenizing', holds: ['adding', 'socialmedia'] },
 ];
 // Dated moments, for a graph card's points to name by title (`events`); no card names any at present. `on`
@@ -945,11 +957,11 @@ function roomedNode(kind, d, c, x, y, R, cut) {
   return n;
 }
 // A facet drawn once more, centred at world (x, y) with radius r, inside `parent`, in the theme `home`. A category
-// (a facet with `subs`) gets a room at its foot, under its name, holding them and its doors up; categories nest no
-// deeper than two.
+// (a facet with `subs`) gets a room at its foot, under its name, holding them and its doors up, cut `roomCut` of its
+// radius below its centre when its own words need more room; categories nest no deeper than two.
 function drawFacet(f, parent, c, x, y, r, home, out, depth = 0) {
   const cat = f.subs && depth < 2;
-  const fn = node('facet', f, { card: c, parent, fixed: true, w: r * 2, h: r * 2, ringW: r * 0.04, home, room: cat ? { Ri: r * 0.88, cut: ROOM.cat * r } : null });
+  const fn = node('facet', f, { card: c, parent, fixed: true, w: r * 2, h: r * 2, ringW: r * 0.04, home, room: cat ? { Ri: r * 0.88, cut: (f.roomCut ?? ROOM.cat) * r } : null });
   fn.x0 = x - r; fn.y1 = y + r;
   parent.kids.push(fn); out.push(fn);
   if (!FACET_DRAWINGS.has(f.id)) FACET_DRAWINGS.set(f.id, []);
