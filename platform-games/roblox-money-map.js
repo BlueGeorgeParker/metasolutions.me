@@ -202,41 +202,34 @@ const ARROW = {
 const TOTAL = 6788;
 const OUT = [
   { id: 'fees', key: 'fees', v: 1404, say: 'Apple, Google and other payment companies take 21¢ of every dollar.',
-    about: 'They take a fee on every Robux sale made through them.',
-    how: 'Cost of revenue (A$1,544M) plus fees paid in 2025 but counted later (A$477M).', src: TEN_K + ', ' + RBA },
+    src: TEN_K + ', ' + RBA },
   { id: 'creators', key: 'creators', v: 1503, say: 'Creators get 22¢ of every dollar.',
     about: 'Paid out as real money through the Developer Exchange, to creators who have earned at least 30,000 Robux.', src: TEN_K + ', ' + RBA,
     kids: [
       { id: 'top', v: 1300, approx: true, say: 'The top 1,000 creators get most of it, about A$1.9 million each.',
-        about: 'Up over 50% on 2024.', how: '1,000 creators × about A$1.9 million each.', src: 'Roblox Q4 2025 shareholder letter, ' + RBA },
+        src: 'Roblox Q4 2025 shareholder letter, ' + RBA },
       { id: 'others', v: 203, approx: true, say: 'About 22,500 other creators share what’s left.',
-        about: 'About A$13,000 each on average.',
-        how: 'A$2.16 billion to the 23,500 creators who cashed out in 2025, less about A$1.87 billion to the top 1,000.', src: TEN_K + ', ' + RBA },
+        src: TEN_K + ', ' + RBA },
     ] },
   { id: 'running', key: 'running', v: 2418, say: 'Running Roblox takes 36¢.',
-    about: 'Its servers, its staff and the company itself. On top of this, Roblox paid its staff about A$1.6 billion in new shares.', src: TEN_K + ', ' + RBA,
+    src: TEN_K + ', ' + RBA,
     kids: [
       { id: 'servers', v: 1011, say: 'Servers, safety and support take 15¢.',
-        about: 'Data centres, cloud computing and bandwidth, plus moderation, safety staff and customer support.',
-        how: 'Infrastructure and trust & safety (A$1,660M), less pay in shares (A$205M).', src: TEN_K + ', ' + RBA },
+        src: TEN_K + ', ' + RBA },
       { id: 'eng', v: 804, say: 'Engineers and designers take 12¢.',
-        about: 'The engineers, designers and data scientists who build Roblox.',
-        how: 'Research and development (A$2,257M), less pay in shares (A$1,100M).', src: TEN_K + ', ' + RBA },
+        src: TEN_K + ', ' + RBA },
       { id: 'admin', v: 408, say: 'Legal, finance and HR take 6¢.',
-        about: 'Finance, legal, HR, outside lawyers and auditors, and legal settlements.',
-        how: 'General and administrative (A$835M), less pay in shares (A$248M).', src: TEN_K + ', ' + RBA },
+        src: TEN_K + ', ' + RBA },
       { id: 'mkt', v: 196, say: 'Marketing and advertising take 3¢.',
-        about: 'Marketing, brand partnerships, the creator conference and buying ads to win new players.',
-        how: 'Sales and marketing (A$354M), less pay in shares (A$72M).', src: TEN_K + ', ' + RBA },
+        src: TEN_K + ', ' + RBA },
     ] },
   { id: 'kept', key: 'kept', v: 1463, say: '21¢ of every dollar is left over.',
-    about: 'Money from 2025’s Robux sales that Roblox still had after these costs. Its own count of cash left over, after buying about A$0.63 billion of servers and equipment, was about A$1.95 billion.',
-    how: 'Roblox still reported a loss of about A$1.54 billion, because it counts the share pay as a cost and spreads each Robux sale over the 27 months a paying player stays.', src: TEN_K + ', ' + RBA },
+    src: TEN_K + ', ' + RBA },
 ];
 // Beside the creators' arrows
 const STEER = { id: 'steer', say: 'Roblox steers what gets built by choosing what it pays creators for.',
-  body: 'In 2025 Roblox raised what it pays per earned Robux by 8.5% and began paying creators for numbers it says drive engagement and spending. From June 2026 it pays more for spending by age-checked US adults: 37.8% of each dollar instead of 26.6%.',
-  src: TEN_K + '; Roblox Q1 2026 shareholder letter', links: ['creators', 'adults'] };
+  body: 'In 2025 Roblox raised what it pays per earned Robux by 8.5%. It also stopped paying creators for the time Premium subscribers spent in their games, and began paying for numbers it says drive engagement and spending, like bringing in new or returning players who buy Robux. However, from June 2026, it began paying more for Robux spent by age-checked US adults: 37.8% of each dollar instead of 26.6%.',
+  src: TEN_K + '; Roblox Developer Forum, Jul 2025; Roblox Q1 2026 shareholder letter', links: ['creators', 'adults'] };
 
 // Doors run both ways: a card a door leads to gets a door back
 {
@@ -775,7 +768,7 @@ function build() {
     // the amount, bigger than the statement over it, on one line
     const amount = (o.approx ? 'About ' : '') + 'A$' + aud(o.v).toLocaleString('en-US') + 'M in 2025';
     put(block(amount, SANS(Math.min(big * 1.3, w * 0.99 / unitW(amount, 700, T.body)), { wt: 700, maxW: w, lh: 1.15 })), 34);
-    put(block(o.about, SANS(56 * OF, { maxW: w })), 16);
+    if (o.about) put(block(o.about, SANS(56 * OF, { maxW: w })), 16);
     if (o.how) put(block(o.how, SANS(48 * OF, { maxW: w, color: 'ink-soft', lh: 1.32 })), 14);
     put(block(o.src, SANS(42 * OF, { it: true, maxW: w, color: 'ink-soft', lh: 1.25 })), 0);
     l.h = y; l.w = Math.max(...l.blocks.map(widthOf));
