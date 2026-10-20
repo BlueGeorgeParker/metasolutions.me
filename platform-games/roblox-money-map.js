@@ -40,7 +40,7 @@ const ARROW = {
     { id: 's1', article: true, say: 'Roblox makes (almost) all of its money through Robux.',
       text: [
         'Robux is Roblox’s in-game currency. Players buy it with real money and can spend it on the Roblox platform in a variety of ways. In Australia, [[1,000 Robux costs A$16.99|buying]]. Selling Robux is Roblox’s only meaningful revenue stream: it brought in nearly A$10 billion in 2025.',
-        'Robux can be used to buy a wide range of things. Some of it is for looks, like clothes for your character; some unlocks things, like VIP areas or special powers; and much of it is a chance at something rare. Some of it saves you from losing: a study of 30 child-friendly Roblox games found paid respawns after death ([[Song et al. 2025|song]]), and in 99 Nights in the Forest, listed for ages 5 and up, dying wipes your progress unless you pay [[45 Robux to bring yourself back|revive]], with 25 seconds to decide. Under much of it is status. Roblox’s own guide for game makers says limited-time items give [[“prestige”|prestige]] to whoever gets them, and researchers find rare avatar items work as status symbols among children, much as luxury goods do offline ([[Kusmawan et al. 2026|kusmawan]]).',
+        'Robux can be used to buy a wide range of things. Some of it is for looks, like clothes for your character; some unlocks things, like VIP areas or special powers; and much of it is a chance at something rare. Some of it saves you from losing: in 99 Nights in the Forest, listed for ages 5 and up, dying wipes your progress unless you pay [[45 Robux to bring yourself back|revive]], with 25 seconds to decide. Under much of it is status. Roblox’s own guide for game makers says limited-time items give [[“prestige”|prestige]] to whoever gets them, and researchers find rare avatar items work as status symbols among children, much as luxury goods do offline ([[Kusmawan et al. 2026|kusmawan]]).',
         'Robux is also the currency in which Roblox [[pays its creators|paycreators]].',
       ],
       kids: [
@@ -60,10 +60,6 @@ const ARROW = {
         { id: 'buying', say: 'In Australia, 1,000 Robux cost A$16.99.',
           body: 'On the website or with a gift card, 1,000 Robux cost **A$16.99** and 500 cost **A$8.49**. In the app, Roblox Premium costs **A$7.99 a month** for 450 Robux. A A$25 gift card buys a 1,000 pack and a 500 pack, leaving 48 cents that can’t be spent.',
           src: PAPER + ', p. 28; Apple App Store, Australia, Oct 2026' },
-        { id: 'song', say: 'In Roblox games made for children, losing is often something you can pay to undo.',
-          body: 'Researchers played 30 child-friendly Roblox games and found paid respawns after death, loot boxes, prize wheels, and leaderboards that tie spending to standing. In Rainbow Friends, a respawn costs more the further you get; in Break In (Story), a paid “Lucky Respawn” comes with a countdown.',
-          link: 'https://www.usenix.org/conference/soups2025/presentation/song', linkText: 'Read the paper ↗',
-          src: 'Song, Q., Zhang, Z., Hernandez, R. H., Gui, X., & Kou, Y. (2025). How predatory monetization designs manifest in child-friendly video games. Proceedings of SOUPS 2025, 515–534' },
         // quotes from the paper, not a summary of it (Parker, 2026-10-20)
         { id: 'kusmawan', say: '“In the virtual world of Roblox, the ownership of digital items has become a status symbol”',
           body: '“When children are able to show their digital identity through rare or exclusive items, they feel recognized by the community, so the intention to continue buying is very high.”',
