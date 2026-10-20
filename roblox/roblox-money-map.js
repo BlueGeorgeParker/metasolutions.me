@@ -98,12 +98,12 @@ const ARROW = {
           src: 'Roy Morgan, 3 Mar 2026; eSafety Commissioner media release, 20 Aug 2026' },
         { id: 'agechecks', say: 'Roblox now checks ages before players can chat.',
           body: 'Checks by face scan or ID started in Australia, New Zealand and the Netherlands in December 2025 and went worldwide in January 2026.',
-          src: 'Roblox Q4 2025 investor slides, p. 7' },
+          src: 'Roblox Q4 2025 shareholder letter, p. 6' },
         { id: 'ageingup', say: 'Roblox has been chasing older players.',
           body: 'In 2022, 38% of daily players were 17 or older, and 17-to-24-year-olds were the fastest-growing group. In June 2023 Roblox began allowing games for over-17s, checked with ID and a selfie.',
           src: 'Roblox newsroom, June 2023' },
         { id: 'adults', say: 'Adults spend more each, so Roblox pays more for them.',
-          body: 'In the US, over-18s spend over 50% more each than under-18s. From June 2026, creators get 37.8% instead of 26.6% of what age-checked US adults spend in their games.',
+          body: 'In the US, over-18s spend over 50% more each than under-18s. From June 2026, creators get 37.8% instead of 26.6% of what age-checked US adults spend in eligible games.',
           src: 'Roblox Q1 2026 shareholder letter', links: ['steer'] },
       ] },
 
@@ -231,7 +231,7 @@ const OUT = [
 ];
 // Beside the creators' arrows
 const STEER = { id: 'steer', say: 'Roblox steers what gets built by choosing what it pays creators for.',
-  body: 'In 2025 Roblox raised what it pays per earned Robux by 8.5%. It also stopped paying creators for the time Premium subscribers spent in their games, and began paying for numbers it says drive engagement and spending, like bringing in new or returning players who buy Robux. However, from June 2026, it began paying more for Robux spent by age-checked US adults: 37.8% of each dollar instead of 26.6%.',
+  body: 'In 2025 Roblox raised what it pays per earned Robux by 8.5%. It also stopped paying creators for the time Premium subscribers spent in their games, and began paying for numbers it says drive engagement and spending, like bringing in new or returning players who buy Robux. However, from June 2026, it began paying more for Robux spent by age-checked US adults in eligible games: 37.8% of each dollar instead of 26.6%.',
   src: TEN_K + '; Roblox Developer Forum, Jul 2025; Roblox Q1 2026 shareholder letter', links: ['creators', 'adults'] };
 
 // Doors run both ways: a card a door leads to gets a door back
