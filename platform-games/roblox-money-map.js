@@ -163,11 +163,10 @@ const ARROW = {
           body: 'Researchers bought Adopt Me!’s starter pack, **89 Robux (A$1.87)**, on an account set to age 12. It held a random-pet egg, which Australian rules say is for 15 and over. Then they asked for a refund.',
           steps: ['Apple said no.', 'Roblox said to ask the game’s makers, and wait 15 days.', 'The makers’ support needed a parent’s face scan and passport, then was only a chatbot.', 'Roblox stopped replying.'],
           src: PAPER + ', pp. 29–30' },
-        { id: 'timeline', fig: 'timeline', say:'Families and reporters have raised the alarm since 2021. Regulators are only now moving.',
+        { id: 'timeline', fig: 'timeline', say:'Researchers have raised the alarm. Regulators are only now moving.',
           law: 'Already law: the EU bans telling children to buy (2005), Australia bans false price claims (2010), and Canada bans fake deadlines.',
-          from: 2021, to: 2027,
+          from: 2024, to: 2027,
           alarm: [
-            { t: 2021.34, au: true, when: 'May 2021 · ABC Four Corners', say: '“Are you being played?” Roblox steers a 13-year-old toward buying Robux.', link: 'https://www.abc.net.au/news/2021-05-03/are-you-being-played/13327478' },
             { t: 2026.37, au: true, when: 'May 2026 · University of Sydney', say: 'Researchers find deceptive selling in 14 of 15 top games.', link: 'https://www.sydney.edu.au/news-opinion/news/2026/05/17/inside-the-pay-to-play-world-of-roblox-targeting-children-.html' },
           ],
           regs: [
