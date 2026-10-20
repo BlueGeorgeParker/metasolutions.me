@@ -520,50 +520,54 @@ function stack(blocks, x, y, gaps) { blocks.forEach((b, i) => { b.dx = x; b.dy =
 // ---------- Cards ----------
 const BAND = 62 * K, RADIUS = 16 * K, CARD_LW = 3;
 // The main card: the question and the thesis (and a note, if given) down the left, the code that opens the map on a phone
-// at the top right, and the three arguments in a row of boxes along the foot, each with its doors in a row under its
-// words. The card is filled by its words, not by more of them (Parker, 2026-10-20): the thesis's type (tf) is the
-// largest at which it takes at most four lines and everything fits, and then the arguments' and the definition's type
-// (`ak`, against tf) the largest that still fits. c.args are the boxes, c.argDoors their door cells and c.qr the code,
-// in world units from the card's top-left.
+// at the top right, and the three arguments in a row of boxes along the foot, each with its doors in a pocket under its
+// words. The card is filled by its words, not by more of them (Parker, 2026-10-20). The code and the arguments are set
+// sizes, from the card's height (`base`); the thesis's type (tf) is then the largest at which it fits beside the code
+// and above the arguments, however many lines that takes ("grow the thesis to fill it"). c.args are the boxes,
+// c.argDoors their door cells and c.qr the code, in world units from the card's top-left.
 function layoutMasthead(c, d) {
-  const pad = c.h * 0.075, iw = c.w - pad * 2, ih = c.h - pad * 2, n = d.args.length;
-  for (let tf = 1400; tf >= 200; tf -= 10) {
-    const side = tf * 6, gap = tf * 0.7, tw = iw - side - gap;
-    const ki = block(d.kicker, { wt: 700, fam: T.body, size: tf * 0.42, maxW: tw, color: 'line', lh: 1.2 });
-    const ti = block(d.title, { wt: 700, fam: T.title, size: tf, maxW: tw, color: 'ink', lh: 1.06 });
-    if (ti.lines.length > 4 || !fits(ti)) continue;
-    const url = block(d.qr.label, { wt: 600, fam: T.body, size: tf * 0.36, maxW: side, color: 'ink-soft', lh: 1.2, center: true });
-    const right = pad + side + tf * 0.25 + heightOf(url);
-    for (let ak = 1; ak >= 0.56; ak -= 0.02) {
-      const no = d.note ? block(d.note, { wt: 400, fam: T.body, size: tf * Math.max(0.34, ak * 0.62), maxW: tw, color: 'ink-soft', lh: 1.35, it: true }) : null;
-      const ag = tf * 0.5, aw = (iw - ag * (n - 1)) / n, ap = tf * 0.45, af = tf * ak;
-      const args = d.args.map(a => ({
-        title: block(a.title, { wt: 700, fam: T.title, size: af, maxW: aw - ap * 2, color: 'ink', lh: 1.12 }),
-        body: a.body ? block(a.body, { wt: 400, fam: T.body, size: af * 0.72, maxW: aw - ap * 2, color: 'ink-soft', lh: 1.35 }) : null }));
-      if (!args.every(t => fits(t.title))) continue;
-      // the doors' pocket (Parker, 2026-10-20: "a pocket dimension for each of the three main points"): a row of doors
-      // as tall as two lines of the argument, `pp` inside a pocket across the box's foot, as a facet keeps its doors
-      // in the pocket at its foot
-      const dh = (d.args.some(a => a.doors && a.doors.length) ? af * 2.4 : 0), dg = af * 0.5, pp = af * 0.35;
-      const pm = ap * 0.6, ph = dh + pp * 2;
-      const words = t => heightOf(t.title) + (t.body ? af * 0.55 + heightOf(t.body) : 0);
-      const ah = Math.max(...args.map(words)) + (dh ? ap + dg + ph + pm : ap * 2);
-      const left = stack(no ? [ki, ti, no] : [ki, ti], pad, pad, [tf * 0.28, tf * 0.4]);
-      if (Math.max(left, right) + gap + ah > pad + ih) continue;
-      // the arguments sit on the card's foot, so its margins match top and bottom
-      const ay = pad + ih - ah;
+  const pad = c.h * 0.075, iw = c.w - pad * 2, ih = c.h - pad * 2, n = d.args.length, side = c.h * 0.4;
+  const base = c.h / 15, gap = base * 0.7, tw = iw - side - gap;
+  const url = block(d.qr.label, { wt: 600, fam: T.body, size: side * 0.06, maxW: side, color: 'ink-soft', lh: 1.2, center: true });
+  const right = pad + side + side * 0.042 + heightOf(url);
+  const ki = block(d.kicker, { wt: 700, fam: T.body, size: base * 0.42, maxW: tw, color: 'line', lh: 1.2 });
+  // the arguments: the largest type up to `base` × 0.6 at which each fits its box and the code still clears them
+  const ag = base * 0.5, aw = (iw - ag * (n - 1)) / n, ap = base * 0.45;
+  for (let ak = 0.6; ak >= 0.4; ak -= 0.02) {
+    const af = base * ak;
+    const args = d.args.map(a => ({
+      title: block(a.title, { wt: 700, fam: T.title, size: af, maxW: aw - ap * 2, color: 'ink', lh: 1.12 }),
+      body: a.body ? block(a.body, { wt: 400, fam: T.body, size: af * 0.72, maxW: aw - ap * 2, color: 'ink-soft', lh: 1.35 }) : null }));
+    if (!args.every(t => fits(t.title))) continue;
+    // the doors' pocket (Parker, 2026-10-20: "a pocket dimension for each of the three main points"): a row of doors
+    // as tall as two lines of the argument, `pp` inside a pocket across the box's foot, as a facet keeps its doors
+    // in the pocket at its foot
+    const dh = (d.args.some(a => a.doors && a.doors.length) ? af * 2.4 : 0), dg = af * 0.5, pp = af * 0.35;
+    const pm = ap * 0.6, ph = dh + pp * 2;
+    const words = t => heightOf(t.title) + (t.body ? af * 0.55 + heightOf(t.body) : 0);
+    const ah = Math.max(...args.map(words)) + (dh ? ap + dg + ph + pm : ap * 2);
+    // the arguments sit on the card's foot, so its margins match top and bottom
+    const ay = pad + ih - ah;
+    if (right + gap > ay) continue;
+    // the thesis: as large as fits above them
+    for (let tf = 1600; tf >= 200; tf -= 10) {
+      const ti = block(d.title, { wt: 700, fam: T.title, size: tf, maxW: tw, color: 'ink', lh: 1.06 });
+      if (!fits(ti)) continue;
+      const no = d.note ? block(d.note, { wt: 400, fam: T.body, size: base * 0.36, maxW: tw, color: 'ink-soft', lh: 1.35, it: true }) : null;
+      const left = stack(no ? [ki, ti, no] : [ki, ti], pad, pad, [base * 0.28, base * 0.4]);
+      if (left + gap > ay) continue;
       c.qr = { x: pad + iw - side, y: pad, side, rows: d.qr.rows };
-      url.dx = c.qr.x; url.dy = pad + side + tf * 0.25;
+      url.dx = c.qr.x; url.dy = pad + side + side * 0.042;
       c.argDoors = [];
       c.args = d.args.map((a, i) => {
         const x = pad + i * (aw + ag), t = args[i];
         t.title.dx = x + ap; t.title.dy = ay + ap;
         if (t.body) { t.body.dx = x + ap; t.body.dy = ay + ap + heightOf(t.title) + af * 0.55; }
         // its pocket across the box's foot, and its doors in equal cells inside it
-        const ds = a.doors || [], pocket = ds.length ? { x: x + pm, y: ay + ah - pm - ph, w: aw - pm * 2, h: ph, r: tf * 0.3 } : null;
+        const ds = a.doors || [], pocket = ds.length ? { x: x + pm, y: ay + ah - pm - ph, w: aw - pm * 2, h: ph, r: base * 0.3 } : null;
         const cg = af * 0.4, cw = pocket ? (pocket.w - pp * 2 - cg * (ds.length - 1)) / ds.length : 0;
         ds.forEach((to, j) => c.argDoors.push({ to, x: pocket.x + pp + j * (cw + cg), y: pocket.y + pp, w: cw, h: dh }));
-        return { kind: 'arg', card: c, to: a.to, x, y: ay, w: aw, h: ah, r: tf * 0.4, pocket };
+        return { kind: 'arg', card: c, to: a.to, x, y: ay, w: aw, h: ah, r: base * 0.4, pocket };
       });
       return [ki, ti, ...(no ? [no] : []), url, ...args.flatMap(t => t.body ? [t.title, t.body] : [t.title])];
     }
