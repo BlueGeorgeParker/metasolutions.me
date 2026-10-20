@@ -116,13 +116,22 @@ const capture = cv.setPointerCapture;
 cv.setPointerCapture = function (id) { if (id < PID) return capture.call(this, id); };
 function send(type, h, p) {
   const pressed = type === 'pointerdown' || (type === 'pointermove' && h.down);
-  cv.dispatchEvent(new PointerEvent(type, {
+  cv.dispatchEvent(at(new PointerEvent(type, {
     pointerId: h.pid, pointerType: 'touch', isPrimary: h === inUse(), clientX: p[0], clientY: p[1],
     button: 0, buttons: pressed ? 1 : 0, bubbles: type !== 'pointerleave', cancelable: true,
-  }));
+  }), p));
+}
+// The map reads where an event is from offsetX/Y, which a browser works out for itself from clientX/Y; for a made-up
+// event some browser zoom settings scale it, so the map lit a thing up and to the left of the hand's ring. The place
+// is written on the event as the ring's own place on the canvas, so the browser has nothing to work out.
+function at(e, p) {
+  const r = cv.getBoundingClientRect();
+  Object.defineProperty(e, 'offsetX', { value: p[0] - r.left });
+  Object.defineProperty(e, 'offsetY', { value: p[1] - r.top });
+  return e;
 }
 function wheel(p, zoom) {
-  cv.dispatchEvent(new WheelEvent('wheel', { deltaY: -Math.log(zoom) / WHEEL_RATE, deltaMode: 0, clientX: p[0], clientY: p[1], bubbles: true, cancelable: true }));
+  cv.dispatchEvent(at(new WheelEvent('wheel', { deltaY: -Math.log(zoom) / WHEEL_RATE, deltaMode: 0, clientX: p[0], clientY: p[1], bubbles: true, cancelable: true }), p));
 }
 // The hand-control buttons sit over the map, so a hand pointer over one is over it and not the map, as a mouse would be.
 function uiAt(p) {
