@@ -217,7 +217,7 @@ const CONTENT = {
           members: [
             { id: 'parts', side: 'pg', title: 'Roblox has the features of a social media platform',
               body: 'One avatar, one friends list and chat across every game, with profiles, invites and recommendations by age and interests. Leaving costs you your friends.',
-              src: 'Barns 2019', rel: ['meet', 'robloxmoments'] },
+              src: 'Roblox undertaking to the eSafety Commissioner, Aug 2026, para 20', rel: ['meet', 'robloxmoments'] },
             { id: 'grewup', side: 'pg', title: 'Gen Z and Gen Alpha grew up meeting their friends on Roblox',
               body: '“Roblox has taken on the role of a digital third space for Generation Z and Alpha, where they … gather, socialize, and do various social activities that were previously done offline.”',
               src: 'Kusmawan, Arifah & Chitra, 2026, p. 20', rel: ['spend'] },
@@ -228,8 +228,8 @@ const CONTENT = {
               body: 'Facebook put games in Messenger and the News Feed in 2016, and YouTube began rolling them out to all its users in 2024.',
               src: 'Engadget 2016; iPhone in Canada 2024' },
             { id: 'eastasia', side: 'sm', title: 'The merging of platform functions has already happened in East Asia',
-              body: 'LINE, a chat app in Japan, became a game platform in 2012, where you play against your chat friends. WeChat, China’s chat app, followed in 2017.',
-              src: 'Niko Partners 2018; Steinberg 2020', rel: ['adding'] },
+              body: 'WeChat, China’s biggest chat app, added games in 2017 that you play against your chat friends, and one of them, Jump Jump, passed 100 million daily players.',
+              src: 'Niko Partners 2018', rel: ['adding'] },
             { id: 'robloxmoments', side: 'pg', title: 'Roblox added Moments, a scrolling feed of short gameplay videos',
               body: 'Roblox Moments “functionally mimics the vertical video format in the style of TikTok.” “Strategically, it ‘brings home’ all content creation and consumption activities that were previously ‘leaked’ to competing platforms like TikTok and YouTube, where Roblox-related content has been viewed trillions of times.”',
               src: 'Kusmawan, Arifah & Chitra, 2026, p. 21' },
@@ -243,8 +243,8 @@ const CONTENT = {
               body: 'Snapchat passed 25 million paying subscribers in 2026. TikTok, counted with its Chinese version Douyin, was the first non-game app to earn US$6bn in a year from in-app purchases, in 2024.',
               src: 'Snap, Jul 2026; Sensor Tower via TechCrunch, Feb 2025', rel: ['paid'] },
             { id: 'gameads', side: 'pg', title: 'Roblox sells ads',
-              body: 'Roblox sells ads inside its games and shows them only to players aged 13 and over. Ads are “an insignificant amount” of Roblox’s income.',
-              src: 'Roblox newsroom, 2024; Roblox 10-K, 2025', rel: ['paid', 'money'] },
+              body: 'Roblox sells ads inside its games, but ads are “an insignificant amount” of Roblox’s income.',
+              src: 'Roblox 10-K, 2025', rel: ['paid', 'money'] },
             // Parker's words (2026-10-19)
             { id: 'incentives', side: 'both', title: 'Social media and platform games also have similar incentives',
               body: 'Currently, social media sells advertising and Roblox sells robux for in-game content, but it’s easy to imagine games selling advertising space and platforms have started moving towards selling exclusive content.',
@@ -270,12 +270,7 @@ const CONTENT = {
         // each joined to it and pointing into the statement that gathers its kind; those the two share (`challenge: 'similar'`) above
         // it, on Future 1's side, those that set them apart (`'dissimilar'`) below it, on Future 2's
         { id: 'ch-ages', challenge: 'similar', title: 'Checking users’ ages', at: [0.245, 0.395], size: 0.36,
-          rel: ['ban', 'money:agechecks', 'u13'],
-          members: [
-            { id: 'agelimits', side: 'both', title: 'Age limits shape who platforms sell to',
-              body: 'Roblox shows ads only to players aged 13 and over. TikTok sells gift coins only to users aged 18 and over, and Roblox’s terms let only adults buy Robux.',
-              src: 'Roblox newsroom, 2024; TikTok Virtual Items Policy; Roblox Terms of Use, 2026', rel: ['tug-money', 'money'] },
-          ] },
+          rel: ['ban', 'money:agechecks', 'u13'] },
         { id: 'ch-strangers', challenge: 'similar', title: 'Strangers contacting children', at: [0.355, 0.395], size: 0.3, rel: ['grooming', 'commitments'] },
         { id: 'ch-feeds', challenge: 'similar', title: 'Feeds choosing what kids see', at: [0.245, 0.45], size: 0.3, rel: ['robloxmoments', 'socialmedia'] },
         { id: 'ch-money', challenge: 'similar', title: 'Making money from young users', at: [0.355, 0.45], size: 0.3, rel: ['paid', 'usermoney', 'money:s1'] },
@@ -374,7 +369,7 @@ const THEMES = [
     lobed: { id: 'gameorsocial', lobes: [
       { id: 'lobe-game', title: 'Roblox is rated as a game',
         body: 'Classified PG in 2018, and left out of the under-16 social media ban as a gaming service.',
-        src: 'Classification Board; eSafety' },
+        src: 'Classification Board; Rintoul, 2025' },
       { id: 'lobe-social', title: 'Roblox works like social media',
         body: 'One avatar, friends lists, chat, forums and a scrolling feed of videos.',
         src: 'Kusmawan, Arifah & Chitra, 2026, p. 21' }], middle: 'label', size: 1.5 },
@@ -391,7 +386,7 @@ const THEMES = [
         src: 'Classification Board; Minister for Communications, 2026' },
       { id: 'label', title: 'Roblox was classified as a game, so it evaded the U-16 ban in Australia',
         body: 'Gillespie: “[Platform firms] are working not just politically but also discursively to frame their services and technologies … They do so strategically … to strike a regulatory sweet spot between legislative protections that benefit them and obligations that do not.”',
-        src: 'eSafety; Gillespie, 2010, p. 348', rel: ['ban', '^socialmedia', '^platformgames'], also: ['social-life'] },
+        src: 'Rintoul, 2025; Gillespie, 2010, p. 348', rel: ['ban', '^socialmedia', '^platformgames'], also: ['social-life'] },
       { id: 'threesteps', title: 'Roblox has moved through all three of Gorwa’s modes of governance in one year',
         src: 'Gorwa, 2019; Roblox undertaking to the eSafety Commissioner, Aug 2026', subs: ['gov-self', 'gov-external', 'gov-co'], roomCut: 0.02 },
       { id: 'gov-self', title: 'Self-governance: Roblox failed to take appropriate measures to protect children',

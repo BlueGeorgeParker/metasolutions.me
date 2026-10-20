@@ -58,8 +58,8 @@ const ARROW = {
               src: TEN_K + '; Roblox Q4 2025 shareholder letter, ' + RBA },
           ] },
         { id: 'buying', say: 'In Australia, 1,000 Robux cost A$16.99.',
-          body: 'On the website or with a gift card, 1,000 Robux cost **A$16.99** and 500 cost **A$8.49**. In the app, Roblox Premium costs **A$7.99 a month** for 450 Robux. A A$25 gift card buys a 1,000 pack and a 500 pack, leaving 48 cents that can’t be spent.',
-          src: PAPER + ', p. 28; Apple App Store, Australia, Oct 2026' },
+          body: 'On the website or with a gift card, 1,000 Robux cost **A$16.99** and 500 cost **A$8.49**. A A$25 gift card buys a 1,000 pack and a 500 pack, leaving 48 cents that can’t be spent.',
+          src: PAPER + ', p. 28' },
         // quotes from the paper, not a summary of it (Parker, 2026-10-20)
         { id: 'kusmawan', say: '“In the virtual world of Roblox, the ownership of digital items has become a status symbol”',
           body: '“When children are able to show their digital identity through rare or exclusive items, they feel recognized by the community, so the intention to continue buying is very high.”',
@@ -76,17 +76,17 @@ const ARROW = {
 
     { id: 's2', article: true, say: 'Roblox is mostly a game for children.',
       text: [
-        'Roblox’s players are young. The last time Roblox published their ages, at the end of 2024, [[40% were under 13 and more than half were under 17|ages]]. In Australia, about [[1.7 million children aged 6 to 13|auskids]] play it, 61% of that age group, and the eSafety Commissioner calls it the second-most-popular game with Australian children. Those ages were the ones players typed in themselves. Roblox stopped publishing them at the end of 2025, while it moved to [[checking ages|agechecks]] with face scans and ID.',
-        'Adults matter to Roblox’s money. In the US, [[players over 18 spend more than 50% more each|adults]] than those under 18, and from June 2026 Roblox pays game makers more for what adults spend. But its shops are open to everyone. Apple’s Australian store now rates the Roblox app 16+ and lists loot boxes among its contents, yet many games inside it are listed for ages 5 and up.',
+        'Roblox’s players are young. The last time Roblox published their ages, at the end of 2024, [[40% were under 13 and more than half were under 17|ages]]. In Australia, about [[1.7 million children aged 6 to 13|auskids]] play it, 61% of that age group. Those ages were the ones players typed in themselves. Roblox stopped publishing them at the end of 2025, while it moved to [[checking ages|agechecks]] with face scans and ID.',
+        'Adults matter to Roblox’s money. In the US, [[players over 18 spend more than 50% more each|adults]] than those under 18, and from June 2026 Roblox pays game makers more for what adults spend. But its shops are open to everyone.',
       ],
       kids: [
         { id: 'ages', fig: 'ages', say: 'Over half of Roblox players are under 17, and 40% are under 13.',
           bands: [['Under 9', 20], ['9–12', 20], ['13–16', 16], ['17–24', 25], ['25 and over', 19]], young: 3,
           body: 'These are the ages players gave themselves.',
-          src: 'Statista, Roblox players by age, December 2024, also cited in ' + PAPER + ', p. 2' },
+          src: PAPER + ', p. 2, citing Statista' },
         { id: 'auskids', say: 'About 1.7 million Australian children aged 6 to 13 play Roblox.',
-          body: 'That is 61% of the age group, from Roy Morgan’s survey of young Australians, April to December 2025. The eSafety Commissioner cited it in August 2026, calling Roblox “the second most popular game with children in Australia”, when Roblox agreed to change how adults could contact children on it.',
-          src: 'Roy Morgan, 3 Mar 2026; eSafety Commissioner media release, 20 Aug 2026' },
+          body: 'That is 61% of the age group, from Roy Morgan’s survey of young Australians, April to December 2025.',
+          src: 'Roy Morgan, 3 Mar 2026' },
         { id: 'agechecks', say: 'Roblox now checks ages before players can chat.',
           body: 'Checks by face scan or ID started in Australia, New Zealand and the Netherlands in December 2025 and went worldwide in January 2026.',
           src: 'Roblox Q4 2025 shareholder letter, p. 6' },
@@ -211,7 +211,7 @@ const OUT = [
 // Beside the creators' arrows
 const STEER = { id: 'steer', say: 'Roblox steers what gets built by choosing what it pays creators for.',
   body: 'In 2025 Roblox raised what it pays per earned Robux by 8.5%. It also stopped paying creators for the time Premium subscribers spent in their games, and began paying for numbers it says drive engagement and spending, like bringing in new or returning players who buy Robux. However, from June 2026, it began paying more for Robux spent by age-checked US adults in eligible games: 37.8% of each dollar instead of 26.6%.',
-  src: TEN_K + '; Roblox Developer Forum, Jul 2025; Roblox Q1 2026 shareholder letter', links: ['creators', 'adults'] };
+  src: TEN_K + '; Roblox Q1 2026 shareholder letter', links: ['creators', 'adults'] };
 
 // Doors run both ways: a card a door leads to gets a door back
 {
