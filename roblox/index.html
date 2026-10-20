@@ -193,8 +193,8 @@ const CONTENT = {
   // `side` (which platform it is about). Everything sits left of the TikTok line, in the open years (Parker,
   // 2026-10-20). The card's sentences hang on lines (`links`): each
   // a small node on the line `between` two things, `along` it from the first, `size` times the usual, holding its
-  // points as relations. Nothing sits on the graph's lines, names or numbers. The moments the points name sit along
-  // the time axis and on the Roblox line.
+  // points as relations. Nothing sits on the graph's lines, names or numbers. The card names no dated moments: Parker
+  // took them off its foot (2026-10-20).
   social: {
     tug: {
       // the two futures, in Parker's words from the central node (`trajectories`), each named by its `label` (his ask)
@@ -217,17 +217,16 @@ const CONTENT = {
           members: [
             { id: 'adding', side: 'sm', title: 'Other platforms are integrating games',
               body: 'Facebook put games in Messenger and the News Feed in 2016. Netflix added games in 2021, TikTok tested them in 2022, and YouTube opened them to everyone in 2024.',
-              src: 'Annika’s research; Engadget 2016; TechCrunch 2021, 2022; iPhone in Canada 2024',
-              events: ['Facebook Instant Games', 'Netflix adds games', 'TikTok tests mini-games', 'YouTube Playables'] },
+              src: 'Annika’s research; Engadget 2016; TechCrunch 2021, 2022; iPhone in Canada 2024' },
             { id: 'eastasia', side: 'sm', title: 'In East Asia it already happened',
               body: 'KakaoTalk in Korea and LINE in Japan, both chat apps, became game platforms in 2012, where you play against your chat friends. WeChat followed in China in 2017.',
-              src: 'TechNode 2012; LINE 2012; Niko Partners 2018; Steinberg 2020', events: ['KakaoTalk and LINE add games', 'WeChat Mini Games'], rel: ['adding'] },
+              src: 'TechNode 2012; LINE 2012; Niko Partners 2018; Steinberg 2020', rel: ['adding'] },
             { id: 'fed', side: 'pg', title: 'Roblox is integrating feeds',
               body: 'Roblox’s recommendations pick which games reach players, and the rest are hidden from their feed.',
               src: 'Kavya’s mock game', rel: ['replace', 'robloxmoments'] },
             { id: 'robloxmoments', side: 'pg', title: 'Roblox added Moments, a scrolling feed of short gameplay videos',
               body: 'Players scroll short videos of other players’ games, and tapping one takes them into the game it shows. Roblox added it in 2025.',
-              src: 'TechCrunch, 2025', events: ['Roblox Moments'] },
+              src: 'TechCrunch, 2025' },
           ] },
         { id: 'tug-money', title: 'Social media and platform games are already sharing monetization strategies.', argues: 'blend', at: [0.495, 0.42], size: 1.3,
           members: [
@@ -251,7 +250,7 @@ const CONTENT = {
           members: [
             { id: 'ban', side: 'both', title: 'The under-16 ban left games out',
               body: 'Australia’s ban on social media accounts for under-16s began in December 2025 and leaves out online games. Experts warned it could push children toward Roblox.',
-              src: 'Kavya’s research; Rintoul, 2026', events: ['Under-16 social media ban begins'], rel: ['meet', 'label'] },
+              src: 'Kavya’s research; Rintoul, 2026', rel: ['meet', 'label'] },
           ] },
         { id: 'tug-giants', title: 'Heavier rules may cap the size of social media giants, preventing them from expanding into all digital niches.', argues: 'apart', at: [0.465, 0.665], size: 0.92 },
         // the challenges the two face (Parker, 2026-10-20): one small node per challenge around the central sentence,
@@ -431,7 +430,7 @@ const THEME_LINKS = [
   { id: 'link-label', a: 'governance', b: 'typology', title: 'The label sets the rules', holds: ['label', 'platformgames'] },
   { id: 'link-merge', a: 'feeds', b: 'typology', title: 'Feeds and games merging', holds: ['adding', 'socialmedia'] },
 ];
-// Dated moments, for a graph card's points to name by title (`events`); the social card names the last eight. `on`
+// Dated moments, for a graph card's points to name by title (`events`); no card names any at present. `on`
 // pins one to a line of its card's graph; with no line to sit on, it is pinned to the time axis. `au` marks Australia.
 const EVENTS = [
   { t: 2012.08, date: 'Jan 2012', title: 'Lego Universe closes', body: 'Lego’s building game shuts its servers, and every player’s builds go with it.', src: 'Wikipedia: Lego Universe' },
