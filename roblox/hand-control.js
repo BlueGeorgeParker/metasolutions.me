@@ -117,7 +117,7 @@ cv.setPointerCapture = function (id) { if (id < PID) return capture.call(this, i
 function send(type, h, p) {
   const pressed = type === 'pointerdown' || (type === 'pointermove' && h.down);
   cv.dispatchEvent(new PointerEvent(type, {
-    pointerId: h.pid, pointerType: 'touch', isPrimary: h === hands[0], clientX: p[0], clientY: p[1],
+    pointerId: h.pid, pointerType: 'touch', isPrimary: h === inUse(), clientX: p[0], clientY: p[1],
     button: 0, buttons: pressed ? 1 : 0, bubbles: type !== 'pointerleave', cancelable: true,
   }));
 }
