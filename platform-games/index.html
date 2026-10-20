@@ -527,7 +527,7 @@ const BAND = 62 * K, RADIUS = 16 * K, CARD_LW = 3;
 function layoutMasthead(c, d) {
   const pad = c.h * 0.075, iw = c.w - pad * 2, ih = c.h - pad * 2, n = d.args.length;
   for (let tf = 1400; tf >= 200; tf -= 10) {
-    const side = tf * 4.6, gap = tf * 0.7, tw = iw - side - gap;
+    const side = tf * 6, gap = tf * 0.7, tw = iw - side - gap;
     const ki = block(d.kicker, { wt: 700, fam: T.body, size: tf * 0.42, maxW: tw, color: 'line', lh: 1.2 });
     const ti = block(d.title, { wt: 700, fam: T.title, size: tf, maxW: tw, color: 'ink', lh: 1.06 });
     if (ti.lines.length > 4 || !fits(ti)) continue;
@@ -540,10 +540,13 @@ function layoutMasthead(c, d) {
         title: block(a.title, { wt: 700, fam: T.title, size: af, maxW: aw - ap * 2, color: 'ink', lh: 1.12 }),
         body: a.body ? block(a.body, { wt: 400, fam: T.body, size: af * 0.72, maxW: aw - ap * 2, color: 'ink-soft', lh: 1.35 }) : null }));
       if (!args.every(t => fits(t.title))) continue;
-      // the doors' row: as tall as two lines of the argument, under its words
-      const dh = (d.args.some(a => a.doors && a.doors.length) ? af * 2.4 : 0), dg = af * 0.5;
+      // the doors' pocket (Parker, 2026-10-20: "a pocket dimension for each of the three main points"): a row of doors
+      // as tall as two lines of the argument, `pp` inside a pocket across the box's foot, as a facet keeps its doors
+      // in the pocket at its foot
+      const dh = (d.args.some(a => a.doors && a.doors.length) ? af * 2.4 : 0), dg = af * 0.5, pp = af * 0.35;
+      const pm = ap * 0.6, ph = dh + pp * 2;
       const words = t => heightOf(t.title) + (t.body ? af * 0.55 + heightOf(t.body) : 0);
-      const ah = Math.max(...args.map(words)) + (dh ? dg + dh : 0) + ap * 2;
+      const ah = Math.max(...args.map(words)) + (dh ? ap + dg + ph + pm : ap * 2);
       const left = stack([ki, ti, no], pad, pad, [tf * 0.28, tf * 0.4]);
       if (Math.max(left, right) + gap + ah > pad + ih) continue;
       // the arguments sit on the card's foot, so its margins match top and bottom
@@ -555,10 +558,11 @@ function layoutMasthead(c, d) {
         const x = pad + i * (aw + ag), t = args[i];
         t.title.dx = x + ap; t.title.dy = ay + ap;
         if (t.body) { t.body.dx = x + ap; t.body.dy = ay + ap + heightOf(t.title) + af * 0.55; }
-        // its doors in equal cells across the box's foot
-        const ds = a.doors || [], cg = af * 0.4, cw = (aw - ap * 2 - cg * (ds.length - 1)) / ds.length;
-        ds.forEach((to, j) => c.argDoors.push({ to, x: x + ap + j * (cw + cg), y: ay + ah - ap - dh, w: cw, h: dh }));
-        return { kind: 'arg', card: c, to: a.to, x, y: ay, w: aw, h: ah, r: tf * 0.4 };
+        // its pocket across the box's foot, and its doors in equal cells inside it
+        const ds = a.doors || [], pocket = ds.length ? { x: x + pm, y: ay + ah - pm - ph, w: aw - pm * 2, h: ph, r: tf * 0.3 } : null;
+        const cg = af * 0.4, cw = pocket ? (pocket.w - pp * 2 - cg * (ds.length - 1)) / ds.length : 0;
+        ds.forEach((to, j) => c.argDoors.push({ to, x: pocket.x + pp + j * (cw + cg), y: pocket.y + pp, w: cw, h: dh }));
+        return { kind: 'arg', card: c, to: a.to, x, y: ay, w: aw, h: ah, r: tf * 0.4, pocket };
       });
       return [ki, ti, no, url, ...args.flatMap(t => t.body ? [t.title, t.body] : [t.title])];
     }
@@ -578,6 +582,11 @@ function drawMasthead(c, r, a, s, live, depth = 0) {
     const on = live && hover === b, br = { x: r.x + b.x * s, y: r.y + b.y * s, w: b.w * s, h: b.h * s };
     ctx.beginPath(); ctx.roundRect(br.x, br.y, br.w, br.h, Math.min(b.r * s, br.w / 2, br.h / 2));
     ctx.strokeStyle = col(on ? 'line' : 'rule', a); ctx.lineWidth = on ? CARD_LW * 1.2 : clamp(40 * s, 0.5, 2); ctx.stroke();
+    // its pocket, drawn as a facet's is: a fainter line in the map's blue round what it holds
+    const p = b.pocket;
+    if (!p) continue;
+    ctx.beginPath(); ctx.roundRect(r.x + p.x * s, r.y + p.y * s, p.w * s, p.h * s, Math.min(p.r * s, p.w * s / 2, p.h * s / 2));
+    ctx.strokeStyle = col('line', a * 0.7); ctx.lineWidth = clamp(25 * s, 0.5, 1.5); ctx.stroke();
   }
   if (live || depth < 3) for (const b of c.doors || []) {
     const dr = { x: r.x + (b.x0 - c.x0) * s, y: r.y + (c.y1 - b.y1) * s, w: b.w * s, h: b.h * s };
