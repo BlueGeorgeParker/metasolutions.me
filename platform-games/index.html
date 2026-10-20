@@ -114,14 +114,12 @@ const TOP = [
     // Parker's argument, in his words (2026-10-20)
     title: 'Gaming and platform-based interfaces are becoming increasingly integrated. However, the extent of future integration will depend on the decisions of regulators.',
     note: 'A platform game is a game that is also a platform: players make the games, and carry one avatar, one friends list and one wallet across all of them. Roblox, Minecraft and Fortnite are platform games. Steam and the app stores are game platforms: shops that sell separate games.',
-    // the three arguments, one for each part of the thesis; clicking one goes to the card or theme that makes it (`to`)
+    // the three arguments, in Parker's words (2026-10-20), each with an optional `body`; clicking one goes to the card,
+    // theme or point that makes it (`to`)
     args: [
-      { to: 'replace', title: 'They win players and developers, but not by enough to replace game stores.',
-        body: 'Keeping kids safe in live chat is a burden game stores don’t carry, and Roblox pays developers so much less that they keep leaving.' },
-      { to: 'social', title: 'Kids already use them as their social media.',
-        body: 'One avatar, one friends list and chat follow them into every game, while games add feeds and social media adds games.' },
-      { to: 'governance', title: 'Governments are starting to clamp down, but rules written for feeds won’t fit them.',
-        body: 'In a game the risk is who kids meet and what they spend. Roblox now age-checks anyone who wants to chat, and eSafety holds it to a promise a court can enforce.' },
+      { to: 'social', title: 'Game and platform based interfaces are already blending in various ways.' },
+      { to: 'governance', title: 'Governments are starting to clamp down, this trend is likely to continue.' },
+      { to: 'label', title: 'Platforms of all sorts have historically been successful in evading regulation, so the future is not yet crystallised.' },
     ],
     // the code a phone scans to open the map on the site: a QR code (version 3, error correction M) made with Python's
     // qrcode, QRCode(error_correction=ERROR_CORRECT_M, border=0), add_data(url), get_matrix(); a row per string, 1 dark
@@ -531,8 +529,8 @@ function layoutMasthead(c, d) {
     const ag = tf * 0.5, aw = (iw - ag * (n - 1)) / n, ap = tf * 0.45;
     const args = d.args.map(a => ({
       title: block(a.title, { wt: 700, fam: T.title, size: tf * 0.56, maxW: aw - ap * 2, color: 'ink', lh: 1.12 }),
-      body: block(a.body, { wt: 400, fam: T.body, size: tf * 0.4, maxW: aw - ap * 2, color: 'ink-soft', lh: 1.35 }) }));
-    const ah = Math.max(...args.map(a => heightOf(a.title) + tf * 0.3 + heightOf(a.body))) + ap * 2;
+      body: a.body ? block(a.body, { wt: 400, fam: T.body, size: tf * 0.4, maxW: aw - ap * 2, color: 'ink-soft', lh: 1.35 }) : null }));
+    const ah = Math.max(...args.map(a => heightOf(a.title) + (a.body ? tf * 0.3 + heightOf(a.body) : 0))) + ap * 2;
     const left = stack([ki, ti, no], pad, pad, [tf * 0.28, tf * 0.4]);
     const right = pad + side + tf * 0.25 + heightOf(url);
     if (Math.max(left, right) + gap + ah > pad + ih) continue;
@@ -542,10 +540,11 @@ function layoutMasthead(c, d) {
     url.dx = c.qr.x; url.dy = pad + side + tf * 0.25;
     c.args = d.args.map((a, i) => {
       const x = pad + i * (aw + ag), t = args[i];
-      t.title.dx = t.body.dx = x + ap; t.title.dy = ay + ap; t.body.dy = ay + ap + heightOf(t.title) + tf * 0.3;
+      t.title.dx = x + ap; t.title.dy = ay + ap;
+      if (t.body) { t.body.dx = x + ap; t.body.dy = ay + ap + heightOf(t.title) + tf * 0.3; }
       return { kind: 'arg', card: c, to: a.to, x, y: ay, w: aw, h: ah, r: tf * 0.4 };
     });
-    return [ki, ti, no, url, ...args.flatMap(t => [t.title, t.body])];
+    return [ki, ti, no, url, ...args.flatMap(t => t.body ? [t.title, t.body] : [t.title])];
   }
   c.args = []; c.qr = null;
   return [];
@@ -2345,8 +2344,8 @@ function endPointer(e) {
       popTo(HIT_LAYER);
       if (n.kind === 'link') window.open(n.href, '_blank', 'noopener');
       else if (n.kind === 'arg') {
-        // an argument goes to the card or the theme that makes it
-        const to = CARDS.find(c => c.data.id === n.to) || NODES.find(t => t.kind === 'theme' && t.data.id === n.to);
+        // an argument goes to the card, theme or point that makes it
+        const to = CARDS.find(c => c.data.id === n.to) || NODES.find(t => t.data && t.data.id === n.to);
         if (to) goTo(to);
       }
       else if (n.host) enterBud(n); else goTo(n);
