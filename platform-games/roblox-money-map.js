@@ -153,10 +153,10 @@ const ARROW = {
 
     { id: 's4', article: true, say: 'Regulators aren’t keeping up.',
       text: [
-        'Laws against most of these tactics [[already exist|laws]]. Australian Consumer Law bans false claims about price, like a “sale” that never ends. The EU bans telling children directly to buy, and Canada bans fake deadlines. But the researchers say Roblox games have had little attention. [[The ACCC has taken Coles and Woolworths to court|accc]] over misleading discounts, while the same kind of pricing in Roblox games happens, in the study lead’s words, “with far less oversight”.',
-        'Australia even has a rule aimed squarely at games. Since September 2024, games that sell loot boxes for real money are meant to be rated M, for 15 and over. Yet [[half the games in the study that had them still sold them to Australian players|lootaus]], in games listed for ages as young as 5.',
-        'Australians are also entitled to a refund for things that aren’t as described. When the researchers bought a loot box on an account set to age 12 and [[asked for their money back|refund]], Apple, Roblox and the game’s makers all turned them away.',
-        'Families and reporters have [[raised the alarm since at least 2018|timeline]]. Regulators elsewhere are only beginning to act. In 2022 the US made Fortnite’s maker refund about A$350 million over confusing purchase buttons, and in 2025 EU consumer authorities set principles for in-game currencies. In Australia, the researchers are urging the ACCC to look into Roblox games.',
+        'Laws against most of these tactics [[already exist|laws]]. Australian Consumer Law bans false claims about price, like a “sale” that never ends. But the researchers say Roblox games have had little attention. [[The ACCC has taken Coles and Woolworths to court|accc]] over misleading discounts, while the same kind of pricing in Roblox games happens, in the study lead’s words, “with far less oversight”.',
+        'Australia even has legislation aimed at the in-game purchase practices of contemporary video games. Since September 2024, games that sell loot boxes for real money are meant to be rated M for 15 and over. Yet [[half the games in the study that had them still sold them to Australian players|lootaus]], in games listed for ages as young as 5.',
+        'Australians are also entitled to a refund for things that aren’t as described. When the researchers bought a loot box on an account set to age 12 and [[asked for their money back|refund]], Apple, Roblox and the game’s makers all separately turned them away.',
+        'Families and reporters have [[been raising the alarm for years|timeline]]. But regulators are only just beginning to act. In Australia, the researchers are urging the ACCC to look into Roblox games.',
       ],
       kids: [
         { id: 'laws', say: 'The laws are already on the books.',
