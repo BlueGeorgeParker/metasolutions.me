@@ -109,15 +109,18 @@ const ARROW = {
 
     { id: 's3', article: true, say: 'Deceptive tactics are used.',
       text: [
-        'In May 2026, researchers at the University of Sydney’s Games and Play Lab published [[a study of how Roblox games sell to children|study]]. Between October 2025 and February 2026 they played 15 of Roblox’s top-earning games and recorded every purchase prompt. They also spent about A$150 to see what happened before, during and after buying.',
-        'They found 14 kinds of misleading or deceptive design, and [[14 of the 15 games used at least one|grid]]. Countdowns pressure players to buy right now. “Sales” never end. Prize wheels and loot boxes [[show rare prizes far more often than they come up|odds]]. And prices hide behind extra in-game currencies, so a child can’t easily tell what anything costs in real money. Each tactic matches a kind of selling that consumer law already treats as misleading or aggressive somewhere.',
-        'Roblox isn’t a bystander. [[Its own guides for game makers|guides]] recommend several of these tactics, such as showing a starter pack right after a player loses.',
+        'In May 2026, researchers at the University of Sydney’s Games and Play Lab published [[a study of how Roblox games sell to children|study]]. They played 15 of Roblox’s top-earning games and recorded every purchase prompt.',
+        'They found 14 kinds of misleading or deceptive design, and [[14 of the 15 games used at least one|grid]]. Some examples include:',
+        '• Countdowns that pressure players to buy right now',
+        '• Sales that never end',
+        '• Prize wheels and loot boxes that [[show rare prizes far more often than they are won|odds]]',
+        'Additionally, Roblox games hide prices behind in-game currencies, so a child can’t easily tell what anything costs in real money. Many of these tactics represent a kind of selling that consumer law, in Australia or overseas, already treats as misleading or aggressive.',
+        'Worst of all, Roblox is not an innocent bystander. In fact, [[its own guides for game makers|guides]] recommend several of these manipulative tactics, such as showing a starter pack right after a player loses.',
       ],
       kids: [
-        { id: 'study', say: 'The study comes from the University of Sydney.',
-          body: 'Professor Marcus Carter, Sanika Vekhande and Alisa-Jean Fifita of the Sydney Games and Play Lab, funded by an Australian Research Council fellowship on how children are made to spend in games. They chose games from Roblox’s own top-earning list, at least one per genre, and played each for at least 30 minutes. In three games they needed a VPN to see loot boxes hidden from Australian players.',
+        { id: 'study', say: 'Misleading and Deceptive Monetisation in Roblox',
           link: 'https://hdl.handle.net/2123/35033', linkText: 'Read the report ↗',
-          src: PAPER + ', pp. 1, 3' },
+          src: 'Carter, M., Vekhande, S., & Fifita, A.-J. (2026). Misleading and deceptive monetisation in Roblox: Evidence of false pricing, manipulative design, and consumer harm in a children’s digital platform. Sydney Games and Play Lab, The University of Sydney' },
         { id: 'odds', say: 'The animations make rare prizes look likely.',
           body: 'Adopt Me!’s rarest owl comes 1 time in 40, but its rolling animation shows it as often as 1 in 8. Steal a Brainrot’s Mythic Box shows a 3% prize as often as a 37% one. Blade Ball’s prize wheel gives a 1% prize the same size slice as a 29% one.',
           src: PAPER + ', pp. 18–21' },
@@ -274,6 +277,8 @@ function unitW(text, wt, fam, it) {
   return v;
 }
 // Text as words, each a list of runs. **…** marks bold; [[…|id]] marks a link (bold, in the link colour) to node id.
+// In an article, a paragraph starting '• ' is a point in a list: indented, its bullet hanging before it, and closer to
+// the point before it.
 // Punctuation straight after a marked run stays joined to it.
 function segments(text) {
   const out = [], re = /\[\[([^|\]]+)\|([^|\]]+)(?:\|([^\]]+))?\]\]/g;
@@ -588,7 +593,11 @@ function layoutArticle(n, depth, width) {
   const sideW = Math.max(noteW, ...buds.filter(k => k.w <= twoCols * 1.25).map(k => k.w));
   const iw = Math.max(width ? width - 2 * L.pad : 0, gfx ? sideW + 2 * gapX + T + twoCols : T + 2 * (gapX + sideW));
   const colsIn = room => Math.max(1, Math.floor((room + colGap) / (noteW + colGap)));
-  const tallAt = w => text.reduce((a, p) => a + heightOf(block(p, SANS(ART.size * z, { maxW: w, lh: 1.5 }))), 0) + ART.paraGap * z * (text.length - 1);
+  const BULLET = /^•\s+/, ind = ART.size * z * 1.1;
+  const para = (p, w) => BULLET.test(p) ? block(p.replace(BULLET, ''), SANS(ART.size * z, { maxW: w - ind, lh: 1.5 }))
+    : block(p, SANS(ART.size * z, { maxW: w, lh: 1.5 }));
+  const gapAt = i => i === 0 ? 0 : BULLET.test(text[i]) && BULLET.test(text[i - 1]) ? ART.paraGap * z * 0.25 : ART.paraGap * z;
+  const tallAt = w => text.reduce((a, p, i) => a + gapAt(i) + heightOf(para(p, w)), 0);
   let tx, sideRoom, cols, gfxRoom = 0;
   if (gfx) {
     // The graphic is as large as the width left after the notes and the text, and the text's height, allow, up to its
@@ -620,19 +629,21 @@ function layoutArticle(n, depth, width) {
   // half of the line it is in
   const anchors = new Map();
   let y = y0;
-  for (const p of text) {
-    const b = block(p, SANS(ART.size * z, { maxW: T, lh: 1.5 }));
-    b.dx = tx; b.dy = y; n.blocks.push(b);
+  text.forEach((p, i) => {
+    y += gapAt(i);
+    const pt = BULLET.test(p), b = para(p, T), off = pt ? ind : 0;
+    b.dx = tx + off; b.dy = y; n.blocks.push(b);
+    if (pt) { const d = block('•', SANS(ART.size * z, { maxW: ind, lh: 1.5 })); d.dx = tx + ind * 0.3; d.dy = y; n.blocks.push(d); }
     b.lines.forEach((l, li) => l.runs.forEach(r => {
       if (!r.ln) return;
       const a = anchors.get(r.ln);
-      if (!a) anchors.set(r.ln, { y: y + li * b.lh, b, li, x0: r.x, x1: r.x + r.w });
-      else if (a.b === b && a.li === li) { a.x0 = Math.min(a.x0, r.x); a.x1 = Math.max(a.x1, r.x + r.w); }
+      if (!a) anchors.set(r.ln, { y: y + li * b.lh, b, li, x0: off + r.x, x1: off + r.x + r.w });
+      else if (a.b === b && a.li === li) { a.x0 = Math.min(a.x0, off + r.x); a.x1 = Math.max(a.x1, off + r.x + r.w); }
     }));
-    y += heightOf(b) + ART.paraGap * z;
-  }
+    y += heightOf(b);
+  });
   for (const a of anchors.values()) a.side = (a.x0 + a.x1) / 2 < T / 2 ? 0 : 1;
-  const textBottom = y - ART.paraGap * z;
+  const textBottom = y;
   // the line from linked words to a node beside the text: the words' underline drops into the gap under their line,
   // runs out to the edge of the text, and bends into the node's number
   const join = (k, a, right) => {
