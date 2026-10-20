@@ -115,11 +115,16 @@ const TOP = [
     title: 'Gaming and platform-based interfaces are becoming increasingly integrated. However, the extent of future integration will depend on the decisions of regulators.',
     note: 'A platform game is a game that is also a platform: players make the games, and carry one avatar, one friends list and one wallet across all of them. Roblox, Minecraft and Fortnite are platform games. Steam and the app stores are game platforms: shops that sell separate games.',
     // the three arguments, in Parker's words (2026-10-20), each with an optional `body`; clicking one goes to the card,
-    // theme or point that makes it (`to`)
+    // theme or point that makes it (`to`). `doors` (Parker, 2026-10-20: "weave some connections into the three main
+    // sub-points") are the places elsewhere on the map that make the argument, named as a relation is, drawn small in a
+    // row along the box's foot; a door zooms into what it shows
     args: [
-      { to: 'social', title: 'Game and platform based interfaces are already blending in various ways.' },
-      { to: 'governance', title: 'Governments are starting to clamp down, this trend is likely to continue.' },
-      { to: 'label', title: 'Platforms of all sorts have historically been successful in evading regulation, so the future is not yet crystallised.' },
+      { to: 'social', title: 'Game and platform based interfaces are already blending in various ways.',
+        doors: ['tug-sociality', 'tug-content', 'tug-money'] },
+      { to: 'governance', title: 'Governments are starting to clamp down, this trend is likely to continue.',
+        doors: ['tug-regulation', 'threesteps', 'bans', 'money:agechecks'] },
+      { to: 'label', title: 'Platforms of all sorts have historically been successful in evading regulation, so the future is not yet crystallised.',
+        doors: ['label', 'rating', 'outpaced', 'money:lootaus'] },
     ],
     // the code a phone scans to open the map on the site: a QR code (version 3, error correction M) made with Python's
     // qrcode, QRCode(error_correction=ERROR_CORRECT_M, border=0), add_data(url), get_matrix(); a row per string, 1 dark
@@ -514,50 +519,73 @@ function stack(blocks, x, y, gaps) { blocks.forEach((b, i) => { b.dx = x; b.dy =
 // ---------- Cards ----------
 const BAND = 62 * K, RADIUS = 16 * K, CARD_LW = 3;
 // The main card: the question, the thesis and the definition down the left, the code that opens the map on a phone
-// at the top right, and the three arguments in a row of boxes along the foot. Everything is sized from the thesis's
-// type (tf), the largest that fits. c.args are the boxes and c.qr the code, in world units from the card's top-left.
+// at the top right, and the three arguments in a row of boxes along the foot, each with its doors in a row under its
+// words. The card is filled by its words, not by more of them (Parker, 2026-10-20): the thesis's type (tf) is the
+// largest at which it takes at most four lines and everything fits, and then the arguments' and the definition's type
+// (`ak`, against tf) the largest that still fits. c.args are the boxes, c.argDoors their door cells and c.qr the code,
+// in world units from the card's top-left.
 function layoutMasthead(c, d) {
   const pad = c.h * 0.075, iw = c.w - pad * 2, ih = c.h - pad * 2, n = d.args.length;
   for (let tf = 1400; tf >= 200; tf -= 10) {
     const side = tf * 4.6, gap = tf * 0.7, tw = iw - side - gap;
     const ki = block(d.kicker, { wt: 700, fam: T.body, size: tf * 0.42, maxW: tw, color: 'line', lh: 1.2 });
     const ti = block(d.title, { wt: 700, fam: T.title, size: tf, maxW: tw, color: 'ink', lh: 1.06 });
-    if (ti.lines.length > 3 || !fits(ti)) continue;
-    const no = block(d.note, { wt: 400, fam: T.body, size: tf * 0.34, maxW: tw, color: 'ink-soft', lh: 1.35, it: true });
+    if (ti.lines.length > 4 || !fits(ti)) continue;
     const url = block(d.qr.label, { wt: 600, fam: T.body, size: tf * 0.36, maxW: side, color: 'ink-soft', lh: 1.2, center: true });
-    const ag = tf * 0.5, aw = (iw - ag * (n - 1)) / n, ap = tf * 0.45;
-    const args = d.args.map(a => ({
-      title: block(a.title, { wt: 700, fam: T.title, size: tf * 0.56, maxW: aw - ap * 2, color: 'ink', lh: 1.12 }),
-      body: a.body ? block(a.body, { wt: 400, fam: T.body, size: tf * 0.4, maxW: aw - ap * 2, color: 'ink-soft', lh: 1.35 }) : null }));
-    const ah = Math.max(...args.map(a => heightOf(a.title) + (a.body ? tf * 0.3 + heightOf(a.body) : 0))) + ap * 2;
-    const left = stack([ki, ti, no], pad, pad, [tf * 0.28, tf * 0.4]);
     const right = pad + side + tf * 0.25 + heightOf(url);
-    if (Math.max(left, right) + gap + ah > pad + ih) continue;
-    // the arguments sit on the card's foot, so its margins match top and bottom
-    const ay = pad + ih - ah;
-    c.qr = { x: pad + iw - side, y: pad, side, rows: d.qr.rows };
-    url.dx = c.qr.x; url.dy = pad + side + tf * 0.25;
-    c.args = d.args.map((a, i) => {
-      const x = pad + i * (aw + ag), t = args[i];
-      t.title.dx = x + ap; t.title.dy = ay + ap;
-      if (t.body) { t.body.dx = x + ap; t.body.dy = ay + ap + heightOf(t.title) + tf * 0.3; }
-      return { kind: 'arg', card: c, to: a.to, x, y: ay, w: aw, h: ah, r: tf * 0.4 };
-    });
-    return [ki, ti, no, url, ...args.flatMap(t => t.body ? [t.title, t.body] : [t.title])];
+    for (let ak = 1; ak >= 0.56; ak -= 0.02) {
+      const no = block(d.note, { wt: 400, fam: T.body, size: tf * Math.max(0.34, ak * 0.62), maxW: tw, color: 'ink-soft', lh: 1.35, it: true });
+      const ag = tf * 0.5, aw = (iw - ag * (n - 1)) / n, ap = tf * 0.45, af = tf * ak;
+      const args = d.args.map(a => ({
+        title: block(a.title, { wt: 700, fam: T.title, size: af, maxW: aw - ap * 2, color: 'ink', lh: 1.12 }),
+        body: a.body ? block(a.body, { wt: 400, fam: T.body, size: af * 0.72, maxW: aw - ap * 2, color: 'ink-soft', lh: 1.35 }) : null }));
+      if (!args.every(t => fits(t.title))) continue;
+      // the doors' row: as tall as two lines of the argument, under its words
+      const dh = (d.args.some(a => a.doors && a.doors.length) ? af * 2.4 : 0), dg = af * 0.5;
+      const words = t => heightOf(t.title) + (t.body ? af * 0.55 + heightOf(t.body) : 0);
+      const ah = Math.max(...args.map(words)) + (dh ? dg + dh : 0) + ap * 2;
+      const left = stack([ki, ti, no], pad, pad, [tf * 0.28, tf * 0.4]);
+      if (Math.max(left, right) + gap + ah > pad + ih) continue;
+      // the arguments sit on the card's foot, so its margins match top and bottom
+      const ay = pad + ih - ah;
+      c.qr = { x: pad + iw - side, y: pad, side, rows: d.qr.rows };
+      url.dx = c.qr.x; url.dy = pad + side + tf * 0.25;
+      c.argDoors = [];
+      c.args = d.args.map((a, i) => {
+        const x = pad + i * (aw + ag), t = args[i];
+        t.title.dx = x + ap; t.title.dy = ay + ap;
+        if (t.body) { t.body.dx = x + ap; t.body.dy = ay + ap + heightOf(t.title) + af * 0.55; }
+        // its doors in equal cells across the box's foot
+        const ds = a.doors || [], cg = af * 0.4, cw = (aw - ap * 2 - cg * (ds.length - 1)) / ds.length;
+        ds.forEach((to, j) => c.argDoors.push({ to, x: x + ap + j * (cw + cg), y: ay + ah - ap - dh, w: cw, h: dh }));
+        return { kind: 'arg', card: c, to: a.to, x, y: ay, w: aw, h: ah, r: tf * 0.4 };
+      });
+      return [ki, ti, no, url, ...args.flatMap(t => t.body ? [t.title, t.body] : [t.title])];
+    }
   }
-  c.args = []; c.qr = null;
+  c.args = []; c.argDoors = []; c.qr = null;
   return [];
 }
 // The code is dark on light in either theme, so a phone can read it, with the four rows of margin round it that a
 // phone needs to find it.
 const QR_DARK = '#1B263F', QR_LIGHT = '#FFF8F0', QR_QUIET = 4;
-// The main card's boxes and code, under its words. r is the card on screen, s world-to-screen, a the opacity; `live`
-// is the card itself, not a copy of it in a door, and only there does a hovered box light.
-function drawMasthead(c, r, a, s, live) {
+// The main card's boxes, their doors and the code, under its words. r is the card on screen, s world-to-screen, a the
+// opacity; `live` is the card itself, not a copy of it in a door, and only there does a hovered box light and do its
+// doors answer clicks. `depth` is how far inside other copies a copy is drawn: the card is itself a door in the themes
+// card, so a copy's doors stop a few copies down.
+function drawMasthead(c, r, a, s, live, depth = 0) {
   for (const b of c.args) {
     const on = live && hover === b, br = { x: r.x + b.x * s, y: r.y + b.y * s, w: b.w * s, h: b.h * s };
     ctx.beginPath(); ctx.roundRect(br.x, br.y, br.w, br.h, Math.min(b.r * s, br.w / 2, br.h / 2));
     ctx.strokeStyle = col(on ? 'line' : 'rule', a); ctx.lineWidth = on ? CARD_LW * 1.2 : clamp(40 * s, 0.5, 2); ctx.stroke();
+  }
+  if (live || depth < 3) for (const b of c.doors || []) {
+    const dr = { x: r.x + (b.x0 - c.x0) * s, y: r.y + (c.y1 - b.y1) * s, w: b.w * s, h: b.h * s };
+    if (Math.min(dr.w, dr.h) < 3 || !onScreen(dr)) continue;
+    const ba = a * presence(dr);
+    if (ba <= 0.004) continue;
+    drawCopy(b.node, dr, ba, s * b.k, live && hover === b, depth + 1);
+    if (live) SHOWN.push({ b, a: ba, layer: LAYER });
   }
   const q = c.qr;
   if (!q) return;
@@ -1605,6 +1633,15 @@ function build() {
     b.x0 = c.map.x0 + (d.x + d.w / 2) * k - b.w / 2; b.y1 = c.map.y1 - (d.y + d.h / 2) * k + b.h / 2;
     return b;
   }).filter(Boolean);
+  // the main card's doors: each argument's `doors`, in the cells layoutMasthead keeps along the foot of its box, each
+  // that thing drawn small, as large as fits its cell, in the middle of it. drawMasthead draws them
+  for (const c of CARDS) if (c.sub === 'masthead') c.doors = (c.argDoors || []).map(d => {
+    const t = resolve(d.to);
+    if (!t) return null;
+    const q = Math.min(d.w / t.w, d.h / t.h), b = { host: c, node: t, door: true, k: q, w: t.w * q, h: t.h * q };
+    b.x0 = c.x0 + d.x + d.w / 2 - b.w / 2; b.y1 = c.y1 - d.y - d.h / 2 + b.h / 2;
+    return b;
+  }).filter(Boolean);
   const placedBuds = [];
   for (const n of [...NODES].sort((p, q) => q.w * q.h - p.w * p.h)) layoutBuds(n, placedBuds);
   Object.assign(WORLD, { x0: 0, y1: SHEET.h * K, w: SHEET.w * K, h: SHEET.h * K });
@@ -1840,7 +1877,7 @@ const SIDE_INK = { pg: 'roblox', sm: 'tiktok', both: 'ink' };
 const inkOf = n => n.kind === 'explainer' ? n.data.key : n.kind === 'member' && n.data.side ? SIDE_INK[n.data.side] : 'ink';
 // A whole card as a bud: the card itself drawn small, its title band and the map under it, so zooming in arrives in
 // the same picture.
-function drawCardCopy(c, r, a, s, on) {
+function drawCardCopy(c, r, a, s, on, depth = 0) {
   const rad = Math.min(RADIUS * s, r.w / 2, r.h / 2);
   ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, rad);
   ctx.fillStyle = col('card', a); ctx.fill();
@@ -1852,7 +1889,7 @@ function drawCardCopy(c, r, a, s, on) {
     art.drawAt(ctx, r.x + (c.map.x0 - c.x0) * s, r.y + (c.y1 - c.map.y1) * s, c.map.k * s, W, H, a, false);
     ctx.restore();
   }
-  if (c.sub === 'masthead') drawMasthead(c, r, a, s);
+  if (c.sub === 'masthead') drawMasthead(c, r, a, s, false, depth);
   for (const b of c.blocks) drawBlock(b, r.x, r.y, a, s);
 }
 // A room or pocket: the part of a circle of radius R (or the shape of exponent `n`) below a level cut (y down from
@@ -1884,7 +1921,7 @@ function drawPieceCopy(n, r, a, s, on) {
 // `depth` counts how far inside other copies this one is drawn: a copy shows the doors in its own pocket too, so a
 // door is the place it leads to drawn small, all the way down to where a door is too small to see.
 function drawCopy(n, r, a, s, on, depth = 0) {
-  if (n.kind === 'card') { drawCardCopy(n, r, a, s, on); return; }
+  if (n.kind === 'card') { drawCardCopy(n, r, a, s, on, depth); return; }
   if (n.kind === 'money' || n.kind === 'replace') { drawPieceCopy(n, r, a, s, on); return; }
   if (n.kind === 'lobed') {
     // its lobes filled together first, so no lobe's fill covers another's ring; then every ring, then their words
@@ -2267,9 +2304,11 @@ function hitSheet(px, py) {
   return null;
 }
 function hitCard(c, px, py, layer) {
-  // inside the main card, its argument boxes; anywhere else on it, the card, so a click frames it
+  // inside the main card, its arguments' doors, then its argument boxes; anywhere else on it, the card, so a click
+  // frames it
   if (c.sub === 'masthead') {
-    const r = rectOf(c), s = view.s;
+    const r = rectOf(c), s = view.s, d = hitBud(px, py, layer);
+    if (d) return d;
     return c.args.find(b => insideRect({ x: r.x + b.x * s, y: r.y + b.y * s, w: b.w * s, h: b.h * s }, px, py)) || c;
   }
   if (c.sub === 'money') {
