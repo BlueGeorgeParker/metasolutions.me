@@ -33,6 +33,7 @@ const FIST_GAIN = 3, FIST_BAND = 0.03;  // fist zoom = (hand size change)^GAIN, 
 const STRETCH = 1.5;                    // two-hand zoom = (spread change)^STRETCH
 const WHEEL_RATE = 0.0015;              // the map's wheel: zoom = exp(-deltaY * WHEEL_RATE)
 const EASE_MS = 30, CATCH_MS = 120;     // the pointer glides between camera frames; a drag catches up with the hand
+const MOVED = 30;                       // px on screen a hand must travel to become the hand in use, the one that points
 
 const params = new URLSearchParams(location.search);
 const TEST_SRC = params.get('handsrc');
@@ -208,8 +209,8 @@ function see(res, t = performance.now()) {
   if (!ui.panel.hidden) drawView();
 }
 function meet(f, t) {
-  const h = { pid: nextPid++, found: t, state: 'open', cand: 'open', candN: 0, down: false, press: null,
-    fx: new OneEuro(1.5, 0.015), fy: new OneEuro(1.5, 0.015), fs: new OneEuro(1, 0.05) };
+  const h = { pid: nextPid++, found: t, state: 'open', cand: 'open', candN: 0, down: false, press: null, mark: null,
+    used: hands.length ? 0 : t, fx: new OneEuro(1.5, 0.015), fy: new OneEuro(1.5, 0.015), fs: new OneEuro(1, 0.05) };
   look(h, f, t);
   h.pos = h.target.slice();
   h.el = document.createElement('div');
@@ -222,6 +223,7 @@ function look(h, f, t) {
   h.seen = t; h.c = f.c; h.lm = f.lm;
   const [x, y] = toScreen(f.c);
   h.target = [h.fx.at(x, t), h.fy.at(y, t)];
+  if (!h.mark || Math.hypot(h.target[0] - h.mark[0], h.target[1] - h.mark[1]) > MOVED) { if (h.mark) h.used = t; h.mark = h.target.slice(); }
   const size = h.fs.at(palmSize(f.lm), t);
   if (h.zoom) { // past the band, a change in a fist's size is a zoom, applied over the next few frames
     const ref = size > h.zoom.ref * (1 + FIST_BAND) ? size / (1 + FIST_BAND) : size < h.zoom.ref / (1 + FIST_BAND) ? size * (1 + FIST_BAND) : h.zoom.ref;
@@ -266,9 +268,12 @@ function release(h) {
   if (h.down) { send('pointerup', h, h.sent); h.down = false; }
   if (h.press) { const el = h.press.el; h.press = null; setTimeout(() => el.click()); } // after this look at the camera is done: Stop ends it
 }
+// The hand in use is the one that last moved a good way, so a hand resting in view (or a false one) never takes the
+// pointer from the one doing the pointing; the first hand found is in use until another moves.
+const inUse = () => hands.reduce((a, h) => (!a || h.used > a.used ? h : a), null);
 function lose(h) {
   if (h.down) send('pointercancel', h, h.sent);
-  else if (h === hands[0]) send('pointerleave', h, h.pos);
+  else if (h === inUse()) send('pointerleave', h, h.pos);
   h.press = null;
   h.el.remove();
   hands = hands.filter(o => o !== h);
@@ -310,12 +315,12 @@ function frame(now) {
     fister.zoom.owed -= step;
     wheel(fister.zoom.at, Math.exp(step));
   }
-  const lead = hands[0], wasOver = overBtn;
+  // The hand in use points; the map is asked what is under it every frame, as the map can move under a still hand
+  // (a fist's zoom, the glide after a click or a step out), and what it lit must stay what the bright ring is over.
+  const lead = inUse(), wasOver = overBtn;
   overButton(!lead || lead.down || lead.zoom ? null : lead.press ? lead.press.el : uiAt(lead.pos));
   if (overBtn && !wasOver) send('pointerleave', lead, lead.pos);
-  if (lead && !pressed.length && !lead.zoom && !overBtn && (!lead.hov || Math.abs(lead.pos[0] - lead.hov[0]) + Math.abs(lead.pos[1] - lead.hov[1]) > 0.5)) {
-    lead.hov = lead.pos.slice(); send('pointermove', lead, lead.pos);
-  }
+  if (lead && !pressed.length && !overBtn) send('pointermove', lead, lead.zoom ? lead.zoom.at : lead.pos);
   for (const h of hands) {
     const p = h.down ? h.show : h.press ? h.press.at : h.zoom ? h.zoom.at : h.pos, look = h.down ? 'pinch' : h.state;
     h.el.style.transform = `translate(${p[0].toFixed(1)}px, ${p[1].toFixed(1)}px)`;
