@@ -77,7 +77,6 @@ const ARROW = {
     { id: 's2', article: true, say: 'Roblox is mostly a game for children.',
       text: [
         'Roblox’s players are young. The last time Roblox published their ages, at the end of 2024, [[40% were under 13 and more than half were under 17|ages]]. In Australia, about [[1.7 million children aged 6 to 13|auskids]] play it, 61% of that age group, and the eSafety Commissioner calls it the second-most-popular game with Australian children. Those ages were the ones players typed in themselves. Roblox stopped publishing them at the end of 2025, while it moved to [[checking ages|agechecks]] with face scans and ID.',
-        'Its older players are mostly young adults, and Roblox describes its audience as [[ageing up|ageingup]]. In 2022, 38% of its daily players were 17 or older, and 17-to-24-year-olds were its fastest-growing group. In 2023 it began allowing games for over-17s, behind an ID check.',
         'Adults matter to Roblox’s money. In the US, [[players over 18 spend more than 50% more each|adults]] than those under 18, and from June 2026 Roblox pays game makers more for what adults spend. But its shops are open to everyone. Apple’s Australian store now rates the Roblox app 16+ and lists loot boxes among its contents, yet many games inside it are listed for ages 5 and up.',
       ],
       kids: [
@@ -91,9 +90,6 @@ const ARROW = {
         { id: 'agechecks', say: 'Roblox now checks ages before players can chat.',
           body: 'Checks by face scan or ID started in Australia, New Zealand and the Netherlands in December 2025 and went worldwide in January 2026.',
           src: 'Roblox Q4 2025 shareholder letter, p. 6' },
-        { id: 'ageingup', say: 'Roblox has been chasing older players.',
-          body: 'In 2022, 38% of daily players were 17 or older, and 17-to-24-year-olds were the fastest-growing group. In June 2023 Roblox began allowing games for over-17s, checked with ID and a selfie.',
-          src: 'Roblox newsroom, June 2023' },
         { id: 'adults', say: 'Adults spend more each, so Roblox pays more for them.',
           body: 'In the US, over-18s spend over 50% more each than under-18s. From June 2026, creators get 37.8% instead of 26.6% of what age-checked US adults spend in eligible games.',
           src: 'Roblox Q1 2026 shareholder letter', links: ['steer'] },
@@ -172,8 +168,6 @@ const ARROW = {
           from: 2021, to: 2027,
           alarm: [
             { t: 2021.34, au: true, when: 'May 2021 · ABC Four Corners', say: '“Are you being played?” Roblox steers a 13-year-old toward buying Robux.', link: 'https://www.abc.net.au/news/2021-05-03/are-you-being-played/13327478' },
-            { t: 2025.22, au: true, when: 'Mar 2025 · The Conversation', say: 'Children call Roblox loot boxes “literally just child gambling”.', link: 'https://theconversation.com/literally-just-child-gambling-what-kids-say-about-roblox-lootboxes-and-money-in-online-games-250387' },
-            { t: 2025.29, au: true, when: 'Apr 2025 · ABC News', say: 'A 17-year-old complains about gambling-like games; Roblox says it can do nothing.', link: 'https://www.abc.net.au/news/2025-04-17/childrens-video-games-addictive-features-gaming-report/105136744' },
             { t: 2026.37, au: true, when: 'May 2026 · University of Sydney', say: 'Researchers find deceptive selling in 14 of 15 top games.', link: 'https://www.sydney.edu.au/news-opinion/news/2026/05/17/inside-the-pay-to-play-world-of-roblox-targeting-children-.html' },
           ],
           regs: [
